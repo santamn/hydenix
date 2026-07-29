@@ -3,11 +3,53 @@
 「直したほうがよい」と判断した箇所の一覧です。
 上のものほど優先度が高く、下にいくほど「踏んでも仕様」と割り切れるものになります。
 
-各項目は **問題 → なぜ起きる → どう直す** の順で書いています。
+各項目は **問題 → なぜ起きる → 確認方法 → どう直す** の順で書いています。
+指摘を鵜呑みにせず、まず **確認方法** を手元で実行して再現させてください。
 
-> [!NOTE]
-> 手元の環境に `nix` が無いため、以下はコードの読解に基づく指摘です。
-> 実機で確認してから PR を出してください。
+---
+
+## 確認方法の共通手順
+
+確認には 2 種類あります。
+
+| 種類 | 内容 |
+|---|---|
+| `grep` で足りるもの | コードの形を見れば分かる（書き間違い・書き漏らし） |
+| `nix eval` が要るもの | 「実際に評価するとどうなるか」を見ないと分からない |
+
+`nix eval` を使う項目は**リポジトリのルートで**実行してください。
+`/etc/nix/nix.conf` に `experimental-features = nix-command flakes` が入っている前提です
+（hydenix / NixOS 環境では既定で有効。無ければ `--extra-experimental-features 'nix-command flakes'` を足す）。
+
+ほとんどの確認は **flake の `homeConfigurations.default` を評価するだけ**で、
+ビルドもアクティベーションも走りません。初回は依存 flake の取得で数分かかりますが、
+2 回目以降は数秒です。
+
+以降の例は共通してこの形をとります。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+  in <調べたいもの>
+'
+```
+
+- `--impure` は `builtins.getFlake` を使うために必要です
+- `toString ./.` はカレントディレクトリの絶対パスになります
+- git の作業ツリーが汚れていると `warning: Git tree ... is dirty` が出ますが、**評価は通ります**。追跡済みファイルの未コミット変更はそのまま評価されます
+- ただし **git に未追加（untracked）のファイルは flake から見えません**。新しいファイルを足して確認するときは先に `git add` してください
+- 式の中に `foldl'` のようなアポストロフィが含まれる場合、シェルのシングルクォートを一度閉じる必要があります（`builtins.foldl'"'"'` のように書くか、式をファイルに書いて `nix eval --impure --file` を使う）
+
+「設定をいじったらどうなるか」を試したいときは `extendModules` を使います。
+`configuration.nix` を書き換えずに済むので、確認用途にはこちらが便利です。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      probe = hc.extendModules { modules = [{ <試したい設定> }]; };
+  in <probe.config.… を調べる>
+'
+```
 
 ---
 
@@ -31,6 +73,34 @@ grep -rn 'entryAfter \["mutableGeneration"\]' modules/
 
 いずれも `lib.hm.dag.entryAfter ["mutableGeneration"]` と書かれていますが、
 `modules/hm/mutable.nix` が実際に定義しているのは **`mutableFileGeneration`** です。
+
+**確認方法**: 「依存先として書かれている名前」と「実在するエントリ名」を突き合わせます。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      acts = hc.config.home.activation;
+  in {
+    setThemeAfter         = acts.setTheme.after;
+    createCavaConfigAfter = acts.createCavaConfig.after;
+    存在する_mutableGeneration     = builtins.hasAttr "mutableGeneration" acts;
+    存在する_mutableFileGeneration = builtins.hasAttr "mutableFileGeneration" acts;
+  }'
+```
+
+実行結果:
+
+```
+{ createCavaConfigAfter = [ "mutableGeneration" ];
+  setThemeAfter = [ "mutableGeneration" ];
+  存在する_mutableFileGeneration = true;
+  存在する_mutableGeneration = false; }
+```
+
+`after` が指している `mutableGeneration` が `false`（実在しない）である一方、
+実際のエントリは `mutableFileGeneration` として存在しています。
+**それでもエラーにならず評価が通っている**ことが、
+「DAG が存在しない依存名を黙って無視する」ことの証拠です。
 
 **なぜ起きるか**: home-manager の DAG は**存在しない依存名を黙って無視します**。
 エラーにならないため誰も気づきませんが、
@@ -76,6 +146,28 @@ home.activation.createCavaConfig = lib.hm.dag.entryAfter [...] ''
 **実害**: `nixos-rebuild dry-activate` が副作用を持つ。
 テーマ適用まで走るので、確認のつもりが本番適用になります。
 
+**確認方法**: 生成された activation script を直接読みます。
+
+```bash
+nix eval --raw --impure --expr '
+  (builtins.getFlake (toString ./.)).homeConfigurations.default
+    .config.home.activation.createCavaConfig.data
+'
+```
+
+実行結果:
+
+```
+mkdir -p "$HOME/.config/cava"
+touch "$HOME/.config/cava/config"
+chmod 644 "$HOME/.config/cava/config"
+```
+
+`$DRY_RUN_CMD` が 1 つも付いていないことが確認できます。
+`createCavaConfig` の部分を `setTheme` / `createHyprConfigs` に変えれば他の 2 つも同様に見られます。
+対比のため `mutableFileGeneration` も同じ方法で表示すると、
+そちらには `$DRY_RUN_CMD cp ...` と付いているのが分かります。
+
 **直し方**:
 
 ```diff
@@ -96,6 +188,32 @@ home.activation.createCavaConfig = lib.hm.dag.entryAfter [...] ''
 **実運用でいちばん効く問題**です。特にフォークでは `mkHyprConfig` の生成物が
 すべて mutable になったため、影響範囲が本家より広がっています。
 
+**確認方法 1（影響範囲を数える）**: mutable なファイルの一覧を出します。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      mut = builtins.filter (f: f.mutable or false) (builtins.attrValues hc.config.home.file);
+  in { count = builtins.length mut; targets = builtins.map (f: f.target) mut; }'
+```
+
+執筆時点で **115 件**でした。これがすべて「設定から消しても残るファイル」です。
+（`grep -rn "mutable = true" modules/ | wc -l` は宣言の数（60）なので、
+`mkHyprConfig` などのループで増える分は数えられません。実数を見るには上の方法が必要です。）
+
+**確認方法 2（実機で残留を見る）**: mutable ファイルは**シンボリックリンクではなく実ファイル**です。
+
+```bash
+# リンクなら "-> /nix/store/..." が出る。実ファイルならパスだけが出る
+ls -l ~/.config/kitty/theme.conf ~/.config/hypr/keybindings.conf
+
+# home-manager 管理下の実ファイル（＝ mutable なもの）を一覧する
+find ~/.config/hypr ~/.config/waybar -maxdepth 1 -type f
+```
+
+残留そのものを再現するなら、`mutable = true` のモジュールを 1 つ無効にして
+`nixos-rebuild switch` した後、該当ファイルがまだ存在することを確認します。
+
 **当面の対処**: おかしくなったらリセットする。
 
 ```bash
@@ -112,6 +230,128 @@ rm -rf ~/.config/hyde ~/.local/share/hyde ~/.cache/hyde
 
 3 つ目が本命ですが、「ユーザーが手で編集した内容を消してよいか」の判断が難しく、
 設計上の議論が必要です。**大きめの変更なので、上流に投げる前に issue で相談するのが無難です。**
+
+### A-4. `mutable` オプションが `xdg.configFile` に生えていない
+
+**問題**: `modules/hm/mutable.nix` は `home.file` / `xdg.configFile` / `xdg.dataFile` の
+**3 つ**に `mutable` を追加しているつもりですが、実際に生えるのは **2 つ**です。
+`xdg.configFile.<name>.mutable` は存在しません。
+
+該当箇所は [`modules/hm/mutable.nix`](../modules/hm/mutable.nix) の `options` ブロック末尾です。
+
+```nix
+mergeAttrsList = builtins.foldl' lib.mergeAttrs {};   # ← ここ
+...
+mergeAttrsList (
+  map (attrPath: lib.setAttrByPath attrPath (lib.mkOption {type = fileAttrsType;})) fileOptionAttrPaths
+)
+```
+
+**なぜ起きるか**: `lib.mergeAttrs` の実体は `x: y: x // y` で、
+**トップレベルのキーしか見ない浅いマージ**です。
+`map` が作るのは次の 3 つの属性集合ですが、
+
+```nix
+[ { home = { file       = OPT; }; }
+  { xdg  = { configFile = OPT; }; }
+  { xdg  = { dataFile   = OPT; }; } ]
+```
+
+`//` で畳み込むと `xdg` というキーが**丸ごと後勝ちで置き換わり**ます。
+
+```nix
+{}
+// { home = {file = OPT;}; }        # => { home = {file = OPT;}; }
+// { xdg  = {configFile = OPT;}; }  # => { home = …; xdg = {configFile = OPT;}; }
+// { xdg  = {dataFile = OPT;}; }    # => { home = …; xdg = {dataFile   = OPT;}; }
+                                    #                      ↑ configFile が消える
+```
+
+`fileOptionAttrPaths` の 3 要素のうち、**先頭 2 階層が衝突する `xdg.*` の 2 つで
+後ろだけが残る**という形です。`home.file` と `xdg.dataFile` は無事で、
+`xdg.configFile` だけが落ちます。
+
+なお `config` 側は `file.mutable or false` と `or` でフォールバックしているため、
+オプションが無くても評価は通ります。**エラーも警告も出ません。**
+
+**実害**: **現時点ではありません。** hydenix 内の `mutable = true` は
+すべて `home.file` 経由で書かれており、`xdg.configFile` / `xdg.dataFile` は
+このリポジトリのどこからも使われていないためです。
+
+```bash
+grep -rn "xdg.configFile\|xdg.dataFile" modules/   # コメント行しかヒットしない
+```
+
+ただし利用者が `xdg.configFile."foo".mutable = true;` と書くと、
+モジュールシステムが「そんなオプションは無い」というエラーで落ちます。
+[04-mutable-files.md](./04-mutable-files.md) の記述とも食い違うため、
+**潜在バグ**として直しておく価値があります。
+
+**確認方法 1（最小再現）**: hydenix を評価せず、`lib` の挙動だけを見ます。数秒で終わります。
+
+```bash
+nix eval --impure --expr '
+  let lib = (builtins.getFlake "nixpkgs").lib;
+      paths = [["home" "file"] ["xdg" "configFile"] ["xdg" "dataFile"]];
+  in builtins.attrNames
+       (builtins.foldl'"'"' lib.mergeAttrs {} (map (p: lib.setAttrByPath p "OPT") paths)).xdg
+'
+# => [ "dataFile" ]        ← configFile が消えていれば再現
+```
+
+`builtins.getFlake "nixpkgs"` は flake レジストリ経由で nixpkgs を引くので、
+hydenix の `flake.lock` とは無関係に単体で走ります。
+
+`lib.mergeAttrs` を `lib.recursiveUpdate` に替えるだけで直ることも、同じ式で確認できます。
+
+```bash
+nix eval --impure --expr '
+  let lib = (builtins.getFlake "nixpkgs").lib;
+      paths = [["home" "file"] ["xdg" "configFile"] ["xdg" "dataFile"]];
+  in builtins.attrNames
+       (builtins.foldl'"'"' lib.recursiveUpdate {} (map (p: lib.setAttrByPath p "OPT") paths)).xdg
+'
+# => [ "configFile" "dataFile" ]     ← 両方残る
+```
+
+**確認方法 2（実際のモジュールで確認）**: 3 つのオプションの submodule に
+`mutable` が居るかどうかを直接調べます。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      has = o: builtins.hasAttr "mutable" (o.type.getSubOptions []);
+  in {
+    "home.file"      = has hc.options.home.file;
+    "xdg.configFile" = has hc.options.xdg.configFile;
+    "xdg.dataFile"   = has hc.options.xdg.dataFile;
+  }'
+```
+
+実行結果:
+
+```
+{ "home.file" = true; "xdg.configFile" = false; "xdg.dataFile" = true; }
+```
+
+`xdg.configFile` だけが `false` になっていれば再現しています。
+
+**直し方**: 畳み込みの関数を深いマージに替えるだけです。
+
+```diff
+-    mergeAttrsList = builtins.foldl' lib.mergeAttrs {};
++    mergeAttrsList = builtins.foldl' lib.recursiveUpdate {};
+```
+
+`lib.mkMerge` を使って `options = lib.mkMerge (map ... )` とする手もありますが、
+`recursiveUpdate` のほうが変更が 1 行で済みます。
+
+**リスク**: 低。`xdg.configFile` に**オプションが増えるだけ**で、既存の挙動は変わりません
+（誰も使っていないため）。ただし `home.file` と `xdg.configFile` の両方に
+同じパスを書いている設定があると、これまで無視されていた `mutable` が効き始める
+可能性はあります。修正後に確認方法 2 が 3 つとも `true` になることを確かめてください。
+
+> この修正も上流へ PR を送る価値があります。A-1 と同様、小さく独立した変更です。
 
 ---
 
@@ -132,6 +372,17 @@ meta = with lib; {
 **実害**: `nix run .#hydectl` が `hydectl` ではなく `hyde-ipc` を起動しようとします
 （`$out/bin/hyde-ipc` は存在しないのでエラーになります）。
 
+**確認方法**: メタ情報を直接読みます。ビルドは走りません。
+
+```bash
+nix eval --impure --expr '
+  (builtins.getFlake (toString ./.)).packages.x86_64-linux.hydectl.meta.mainProgram
+'
+# => "hyde-ipc"     ← "hydectl" ならば修正済み
+```
+
+darwin 上でも `x86_64-linux` の**評価**はできます（ビルドはできません）。
+
 **直し方**: `mainProgram = "hydectl";` に変更。1 行。**PR 向きの小さな修正です。**
 
 ### B-2. `hyde-gallery` の `sha256` が空
@@ -148,6 +399,16 @@ overlay には `hyde-gallery` として登録され、`flake.nix` の `packages`
 
 日常的に参照されないため表面化していないだけです。
 
+**確認方法**: `sha256 = ""` は「全ゼロのハッシュ」に正規化されます。
+これは実在しないハッシュなので、fetch は必ず不一致で失敗します。
+
+```bash
+nix eval --impure --expr '
+  (builtins.getFlake (toString ./.)).packages.x86_64-linux.hyde-gallery.src.outputHash
+'
+# => "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="   ← 全ゼロなら再現
+```
+
 **直し方の選択肢**:
 
 1. 正しい `sha256` を入れる（`nix-prefetch-git` で取得）
@@ -163,6 +424,32 @@ overlay には `hyde-gallery` として登録され、`flake.nix` の `packages`
 
 **実害**: `hyprsunset.overrideConfig = "";`（空文字）を書いても弾かれず、
 override 使用中の警告も出ません。
+
+**確認方法**: 検証されている `keybindings` と並べて、両方に空文字を与えます。
+**片方しか怒られない**なら再現です。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      probe = hc.extendModules { modules = [{
+        hydenix.hm.hyprland.hyprsunset.overrideConfig = "";
+        hydenix.hm.hyprland.keybindings.overrideConfig = "";
+      }]; };
+  in probe.config.home.file'
+```
+
+実行結果（エラー終了します。それが期待どおりです）:
+
+```
+error:
+Failed assertions:
+- hydenix.hm.hyprland.keybindings.overrideConfig is set but empty. …
+```
+
+`keybindings` は報告されるのに `hyprsunset` は 1 行も出てきません。
+修正後は 2 件とも列挙されるようになります。
+`grep -n "overrideConfig" modules/hm/hyprland/assertions.nix` でも、
+`hyprsunset` だけが 2 つのリストに載っていないことが確認できます。
 
 **直し方**: 他の 5 つと同じ行を 2 か所に足すだけ。
 
@@ -199,6 +486,34 @@ home.stateVersion = "25.05";
 そもそも `stateVersion` は「利用者がいつ環境を作ったか」を表す値なので、
 ライブラリ側が固定値を主張するのは筋が悪いです。
 
+**確認方法**: オプション定義の**優先度**を見ます。
+`mkDefault` が付いていれば `1000`、素の代入なら `100` になります。
+
+```bash
+nix eval --impure --expr '
+  (builtins.getFlake (toString ./.)).homeConfigurations.default
+    .options.home.stateVersion.highestPrio
+'
+# => 100      ← 素の代入（mkDefault 済みなら 1000）
+```
+
+衝突そのものを再現するなら、別の値を重ねてみます。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      probe = hc.extendModules { modules = [{ home.stateVersion = "24.11"; }]; };
+  in probe.config.home.stateVersion'
+```
+
+```
+error: The option `home.stateVersion' has conflicting definition values:
+- In `<unknown-file>': "25.05"
+- In `<unknown-file>': "24.11"
+```
+
+`mkDefault` を付けた後は、これが `"24.11"`（利用者側の値）を返すようになります。
+
 **直し方**: `lib.mkDefault` を付ける。
 
 ```diff
@@ -219,6 +534,17 @@ sha256 = "sha256-cNOryXKFpVSTiAuzD0VQAV+2GQhJTTs1HBM6Z0cZoFo=";
 ```
 
 `master` は動く標的なので、上流が進むと必ずハッシュ不一致で失敗します。
+
+**確認方法**: `grep -n "rev\|sha256" pkgs/hyde-diff-upstream/default.nix` で
+`rev = "master"` と固定ハッシュが同居していることを見るのが手っ取り早いです。
+
+実際に破綻しているかどうかは、上流の現在の `master` と
+記録されたハッシュを突き合わせるしかありません（ネットワークアクセスが要ります）。
+
+```bash
+nix-prefetch-git --quiet https://github.com/HyDE-Project/HyDE master | grep hash
+# 出力が pkgs/hyde-diff-upstream/default.nix の sha256 と違えば、既に失敗する状態
+```
 
 **直し方の選択肢**:
 
@@ -259,6 +585,23 @@ Python / Lua / Ruby の `a or b`（a が偽なら b）と同じ語感で書く�
 Nix では静かに意味が変わります。`cfg.vim` は属性選択式なので
 **構文エラーにも型エラーにもならず評価が通ってしまう**のが厄介な点です。
 
+**確認方法**: `vim = false; neovim = true;` にして、
+配置されるはずの `.config/vim/vimrc` が居るかを見ます。
+
+```bash
+nix eval --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      probe = hc.extendModules { modules = [{
+        hydenix.hm.editors.vim = false;
+        hydenix.hm.editors.neovim = true;
+      }]; };
+  in builtins.hasAttr ".config/vim/vimrc" probe.config.home.file'
+# => false     ← 配置されていない。修正後は true になる
+```
+
+`vim = true` に戻すと `true` が返ります。
+`neovim` の値を何に変えても結果が動かないことも、同じ方法で確かめられます。
+
 **直し方**:
 
 ```diff
@@ -278,19 +621,19 @@ Nix では静かに意味が変わります。`cfg.vim` は属性選択式なの
 
 ## C. 優先度: 低（仕様として割り切れるもの）
 
-| 項目 | 内容 | 対応の方向性 |
-|---|---|---|
-| **`pyprland` が使えない** | 本家 issue #188（`hyde-shell pypr console` が動かない）が未解決。フォークでは imports もオプションも削除済み | 上流の HyDE 側の問題。scratchpad が欲しくなったら再検討 |
-| **`nix`/`sddm`/`system` が `enable` に従わない** | `default = true` 固定（[07-5](./07-reading-notes.md)） | `config.hydenix.enable` に揃えるべきだが、既存利用者の環境が変わるので慎重に |
-| **履歴の環境変数が `xdg.nix` にある** | 本家 issue #154 | `shell.nix` へ移す。一貫性の問題のみ |
-| **fish の `$aurhelper` エイリアス** | Arch の名残で NixOS では動かない | 削除するか NixOS 版に置換 |
-| **`.config/waybar/modules` を配置している** | 本家 TODO の「もう配置不要では」が残存 | 実機で外して試さないと判断できない |
-| **hyprlock が `hyprland/` の外にある** | `lockscreen.nix` のまま。hyprlock と swaylock の排他 assertion も無い | 設計上の課題。統合するなら大きめの変更 |
-| **`hyde config.toml` がオプション化されていない** | mutable なので手で編集するしかない | Nix オプション化は大仕事。効果も限定的 |
-| **`kdePackages.kconfig` の要否** | コード中に TODO が残っている | 外して動くか実機で確認するだけ |
-| **GTK テーマ初回変更時のちらつき** | `gtk.nix` に TODO | 原因不明。優先度低 |
-| **spicetify 対応** | `spotify.nix` に TODO | flatpak 前提の案が書かれているだけ |
-| **本家 issue #182: hypr windowrules errors** | 状態不明。HyDE の bump で解消した可能性あり | まず再現するか確認 |
+| 項目 | 内容 | 確認方法 | 対応の方向性 |
+|---|---|---|---|
+| **`pyprland` が使えない** | 本家 issue #188（`hyde-shell pypr console` が動かない）が未解決。フォークでは imports もオプションも削除済み | `grep -rn "pyprland" modules/` → コメントアウト行しか出ない | 上流の HyDE 側の問題。scratchpad が欲しくなったら再検討 |
+| **`nix`/`sddm`/`system` が `enable` に従わない** | `default = true` 固定（[07-5](./07-reading-notes.md)） | `grep -rn "default = config.hydenix.enable\|default = true;" modules/system/*.nix` → `nix.nix` / `sddm.nix` / `system.nix` だけが `true` 固定 | `config.hydenix.enable` に揃えるべきだが、既存利用者の環境が変わるので慎重に |
+| **履歴の環境変数が `xdg.nix` にある** | 本家 issue #154 | `grep -n "HIST" modules/hm/xdg.nix` → `HISTFILE` / `HISTSIZE` / `SAVEHIST` が出る | `shell.nix` へ移す。一貫性の問題のみ |
+| **fish の `$aurhelper` エイリアス** | Arch の名残で NixOS では動かない | `grep -rn "aurhelper" modules/` → `shell.nix` に 4 つのエイリアス。実機では `un` を打つと空変数で失敗する | 削除するか NixOS 版に置換 |
+| **`.config/waybar/modules` を配置している** | 本家 TODO の「もう配置不要では」が残存 | `grep -rn "waybar/modules" modules/` → `waybar.nix` と `hyde.nix` の 2 か所で配置 | 実機で外して試さないと判断できない |
+| **hyprlock が `hyprland/` の外にある** | `lockscreen.nix` のまま。hyprlock と swaylock の排他 assertion も無い | `ls modules/hm/hyprland/ modules/hm/lockscreen.nix` で配置を見る | 設計上の課題。統合するなら大きめの変更 |
+| **`hyde config.toml` がオプション化されていない** | mutable なので手で編集するしかない | `grep -n -A4 '".config/hyde/config.toml"' modules/hm/hyde.nix` → `source` + `mutable = true` のみ | Nix オプション化は大仕事。効果も限定的 |
+| **`kdePackages.kconfig` の要否** | コード中に TODO が残っている | `grep -n "kconfig" modules/hm/hyde.nix` → TODO コメント付きで残っている | 外して動くか実機で確認するだけ |
+| **GTK テーマ初回変更時のちらつき** | `gtk.nix` に TODO | `grep -n "TODO" modules/hm/gtk.nix`。再現は実機でテーマを切り替えるしかない | 原因不明。優先度低 |
+| **spicetify 対応** | `spotify.nix` に TODO | `grep -n "TODO" modules/hm/spotify.nix` → 案のコメントだけで実装は無い | flatpak 前提の案が書かれているだけ |
+| **本家 issue #182: hypr windowrules errors** | 状態不明。HyDE の bump で解消した可能性あり | 実機で `hyprctl configerrors`（何も出なければ解消済み） | まず再現するか確認 |
 
 ---
 
