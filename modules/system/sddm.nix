@@ -1,3 +1,9 @@
+# ログイン画面（SDDM）。
+#
+# 重要: ログイン画面は home-manager の設定が適用される「前」に表示される。
+# そのためカーソルテーマなどはシステム側（ここ）で指定する必要がある。
+#
+# 注意: enable の既定値が `true` 固定。`hydenix.enable = false` にしても有効なまま。
 {
   config,
   lib,
@@ -21,6 +27,8 @@ in {
       sddm-astronaut
     ];
 
+    # ログイン画面は home-manager 適用前に出るため、
+    # カーソルテーマはここ（システム側）で指定しないと効かない
     # Add this section to ensure cursor theme is properly loaded
     environment.sessionVariables = {
       XCURSOR_THEME = "Bibata-Modern-Ice";

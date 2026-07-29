@@ -1,3 +1,4 @@
+# Spotify。spicetify（テーマ適用ツール）への対応は未実装。
 {
   config,
   lib,

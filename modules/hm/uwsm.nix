@@ -1,3 +1,8 @@
+# UWSM (Universal Wayland Session Manager) 用の環境変数ファイル配置。
+#
+# UWSM は Wayland セッションを systemd の管理下に置く仕組みで、
+# 「ログイン → セッション起動 → graphical-session.target」の流れを作る。
+# テーマ適用サービス（theme.nix）はこの target を起点に動く。
 {
   config,
   lib,

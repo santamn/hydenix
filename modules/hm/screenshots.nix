@@ -1,3 +1,4 @@
+# スクリーンショット関連ツール（grim: 撮影 / slurp: 範囲選択 / satty・swappy: 注釈）。
 {
   config,
   lib,

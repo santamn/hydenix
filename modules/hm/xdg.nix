@@ -1,3 +1,7 @@
+# XDG ベースディレクトリ仕様（~/.config, ~/.local/share ...）と既定アプリの設定。
+#
+# 注意: シェル履歴の環境変数（HISTFILE / HISTSIZE など）もここにある。
+# 本来 shell.nix にあるべきもので、本家 issue #154 として残っている整理課題。
 {
   config,
   lib,

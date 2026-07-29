@@ -1,3 +1,7 @@
+# GTK アプリの外観設定。
+#
+# settings.ini / .gtkrc-2.0 / xsettingsd.conf はテーマ切り替えで
+# 書き換えられるため mutable。
 {
   config,
   lib,

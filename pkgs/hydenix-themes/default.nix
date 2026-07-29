@@ -1,3 +1,16 @@
+# =============================================================================
+# テーマのカタログ。「表示名 → パッケージ」の対応表を作り、
+# pkgs.hydenix-themes として公開する。
+#
+# ★ 重要 ★
+# 利用者が hydenix.hm.theme.{active,themes} に書く名前は、
+# ここのキーと完全に一致させる必要がある。
+# ハイフン・空白・アクセント付き文字（"Rosé Pine"）と表記が不規則なので、
+# 設定する前に必ずこのファイルで確認すること。
+#
+# なお存在しない名前を書いてもビルドは失敗せず、黙って無視される
+# （modules/hm/theme.nix の findThemeByName を参照）。
+# =============================================================================
 {pkgs}: let
   mkTheme = import ./utils/mkTheme.nix {inherit pkgs;};
   # Helper function to call each theme file with pkgs and mkTheme

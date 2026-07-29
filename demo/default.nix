@@ -1,3 +1,6 @@
+# 動作確認用のデモ構成（`nix run .` で起動する VM の中身）。
+# 本家では lib/config/ と lib/vms/ に分かれていたものが、ここに統合されている。
+# 利用者が編集する場所ではない。
 {
   imports = [
     ./configuration.nix

@@ -1,3 +1,9 @@
+# ロック画面（hyprlock / swaylock）。
+#
+# 注意: 両方を同時に true にしても止められない（排他の assertion が無い）。
+# また hyprlock は Hyprland の一部だが、このモジュールは hyprland/ の外にある。
+#
+# theme.conf / greetd-wallbash.conf など wallbash が書き込むファイルだけ mutable。
 {
   config,
   lib,

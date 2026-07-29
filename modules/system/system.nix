@@ -1,3 +1,9 @@
+# システム全体の土台（Hyprland 本体・共通パッケージ・D-Bus・polkit・XDG ポータル）。
+#
+# hydenix でいちばん大きいシステムモジュール。ここで Hyprland を
+# `programs.hyprland` として有効にし、UWSM 連携も入れている。
+#
+# 注意: enable の既定値が `true` 固定。`hydenix.enable = false` にしても有効なまま。
 {
   config,
   lib,
@@ -57,6 +63,8 @@ in {
       NIXOS_OZONE_WL = "1";
     };
 
+    # Hyprland 本体。withUWSM = true にすると
+    # hyprland-uwsm.desktop セッションが作られ、systemd 管理下で起動する
     programs.hyprland = {
       package = pkgs.hyprland;
       portalPackage = pkgs.xdg-desktop-portal-hyprland;

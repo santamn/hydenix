@@ -1,3 +1,7 @@
+# シェル（zsh / bash / fish）とプロンプト（starship / p10k）の設定。
+#
+# HyDE の設定をそのまま移植した部分と、home-manager の
+# programs.zsh / programs.fish で書き直した部分が混在している。
 {
   config,
   lib,
@@ -230,6 +234,8 @@ in {
         alias ll='eza -lha --icons=auto --sort=name --group-directories-first'
         alias ld='eza -lhD --icons=auto'
         alias lt='eza --icons=auto --tree'
+        # 注意: 以下の $aurhelper 系エイリアスは Arch の AUR ヘルパー向けで、
+        # NixOS には存在しない。HyDE の設定を移植した名残であり実行しても動かない
         alias un='$aurhelper -Rns'
         alias up='$aurhelper -Syu'
         alias pl='$aurhelper -Qs'

@@ -1,6 +1,18 @@
+# =============================================================================
+# hydenix の入口。依存 (inputs) と、外部に公開するもの (outputs) を宣言する。
+#
+# 利用者が実際に使うのは次の 3 つだけで、ファイル配置には関与しない。
+#   inputs.hydenix.nixosModules.default  … システム側モジュール一式
+#   inputs.hydenix.homeModules.default   … ユーザー側モジュール一式
+#   inputs.hydenix.overlays.default      … pkgs.hyde などを pkgs に追加
+#
+# 全体像は docs-ja/01-architecture.md を参照。
+# =============================================================================
 {
   description = "Nix & home-manager configuration for HyDE, an Arch Linux based Hyprland desktop";
 
+  # このリポジトリを flake として使ったときに追加されるバイナリキャッシュ。
+  # Hyprland を自前ビルドすると非常に重いので、これがあると助かる
   nixConfig = {
     extra-substituters = ["https://hyprland.cachix.org"];
     extra-trusted-substituters = ["https://hyprland.cachix.org"];
@@ -40,6 +52,11 @@
     treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
   in {
     # Define custom NixOS modules
+    #
+    # 利用者はこれ 1 つを imports に足すだけでよい。
+    # home-manager 本体の読み込みと、homeModules.default の配線
+    # （sharedModules = 全ユーザーに適用されるモジュール）まで面倒を見てくれる。
+    # 本家では利用者が自分で書く必要があった部分
     nixosModules.default = {...}: {
       imports = [
         inputs.home-manager.nixosModules.home-manager
@@ -57,11 +74,14 @@
     homeModules.default = import ./modules/hm;
 
     # Define custom NixOS overlays
+    # Hyprland の flake から来るパッケージ群と、pkgs/ の独自パッケージを合成する。
+    # `//` は属性集合の上書きマージなので、同名なら pkgs/ 側が勝つ
     overlays.default = final: prev:
       (inputs.hyprland.overlays.hyprland-packages final prev)
       // (import ./pkgs final prev);
 
     # for `nix build .#nixosConfigurations.<name>`
+    # 動作確認用のデモ構成（demo/）。`nix run .` で VM が起動する
     nixosConfigurations.default = inputs.nixpkgs.lib.nixosSystem {
       inherit system;
       modules = [
@@ -73,6 +93,7 @@
     };
 
     # for `home-manager switch --flake .#<name>`
+    # NixOS 以外でも home-manager 単体で使えるようにするための出力（フォークで追加）
     homeConfigurations.default = inputs.home-manager.lib.homeManagerConfiguration {
       pkgs = import inputs.nixpkgs {
         inherit system;
@@ -102,6 +123,8 @@
     };
 
     # for `nix flake check`
+    # 注: フォーマットチェックはコメントアウトされている。
+    # 整形は CI 側（flint / treefmt）に任せる方針
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;

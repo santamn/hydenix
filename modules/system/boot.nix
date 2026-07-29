@@ -1,3 +1,5 @@
+# ブートローダ。既定は systemd-boot で、GRUB に切り替えると HyDE のテーマが使える。
+# GRUB テーマは pkgs.hyde の $out/share/grub/themes/ から取っている。
 {
   config,
   lib,
@@ -62,6 +64,7 @@ in {
             efiSupport = true;
             device = "nodev";
             useOSProber = true;
+            # GRUB テーマは pkgs.hyde の buildPhase で展開したものを参照する
             theme =
               pkgs.hyde
               + "/share/grub/themes/"

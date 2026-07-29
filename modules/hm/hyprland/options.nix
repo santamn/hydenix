@@ -1,3 +1,12 @@
+# =============================================================================
+# Hyprland モジュールのオプション定義（config は各ファイルが持つ）
+#
+# 「何が設定できるか」を 1 ファイルで見渡せるのが利点。
+# 逆に「その設定がどう反映されるか」は個別ファイルを見る必要がある。
+#
+# ここに無い hypridle / keybindings / monitors / nvidia / windowrules /
+# hyprsunset のオプションは utils/mkHyprConfig.nix が動的に生成している。
+# =============================================================================
 {
   config,
   lib,
@@ -11,22 +20,28 @@ in {
       default = config.hydenix.hm.enable;
       description = "Enable hyprland module";
     };
+    # 通常のカスタマイズはここ。userprefs.conf に入り、hyprland.conf の最後に読まれる
     extraConfig = lib.mkOption {
       type = lib.types.lines;
       default = "";
       description = "Extra config appended to userprefs.conf";
     };
+    # HyDE の hyprland.conf を丸ごと捨てる。HyDE の機能をほぼ全部失うので非推奨
     overrideMain = lib.mkOption {
       type = lib.types.nullOr lib.types.lines;
       default = null;
       description = "Complete override of hyprland.conf";
     };
+    # override 使用時の警告を黙らせる（assertions.nix 参照）
     suppressWarnings = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = "Suppress warnings about configuration overrides";
     };
 
+    # systemd 連携（フォークで追加された機能）。
+    # Hyprland 起動時に環境変数を systemd / D-Bus のユーザ環境へ流し込み、
+    # hyprland-session.target を起動する
     systemd = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -75,6 +90,7 @@ in {
     };
 
     # Animation configurations
+    # プリセット選択型。overrides に無く HyDE にも無い preset 名はビルド失敗になる
     animations = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -109,6 +125,7 @@ in {
     };
 
     # Shader configurations
+    # overrides のキーは拡張子まで含めて書く（例: "my-filter.frag"）
     shaders = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -139,6 +156,7 @@ in {
     };
 
     # Workflow configurations
+    # 標準プリセットに無い名前を overrides に書くと、新規ワークフローとして追加される
     workflows = {
       enable = lib.mkOption {
         type = lib.types.bool;
