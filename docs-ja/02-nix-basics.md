@@ -1,8 +1,6 @@
 # 02. このリポジトリを読むための Nix 入門
 
-Nix 言語の網羅的な入門ではなく、**hydenix のコードに実際に出てくるもの**に絞って説明します。
-
-## 1. Nix 言語の最低限
+## 1. 最低限の Nix の知識
 
 ### 属性集合 (attribute set)
 
@@ -18,11 +16,9 @@ JSON のオブジェクトに相当します。Nix の設定はほぼ全部こ�
 ```
 
 > **同じパスに 2 回代入するとどうなる？**
-> 両辺が属性集合リテラルなら自動でマージされます。
-> `modules/hm/rofi.nix` に `home.file = {...}` が 2 回出てくるのはこのためです。
+> 両辺が属性集合リテラルなら自動でマージされます。 `modules/hm/rofi.nix` に `home.file = {...}` が 2 回出てくるのはこのためです。
 > 値がリテラルでない場合（例: `a = 1; a = 2;`）はエラーになります。
-> なお `treefmt.nix` で statix の `repeated_keys` lint を無効化しているのも、
-> この書き方が随所にあるためです。
+> なお `treefmt.nix` で statix の `repeated_keys` lint を無効化しているのも、この書き方が随所にあるためです。
 
 ### 関数
 
@@ -42,7 +38,7 @@ JSON のオブジェクトに相当します。Nix の設定はほぼ全部こ�
 #  ↑ import 時に前半を渡し、imports の中で後半を渡す。返り値がモジュールになる
 ```
 
-`?` は既定値付き引数です。`extension ? "conf"` は「省略時は `"conf"`」の意味。
+`?` は既定値付き引数です。`extension ? "conf"` は「省略時は `"conf"` 」の意味。
 
 ### let ... in
 
@@ -68,25 +64,21 @@ in {... cfg.active ...}
 つまり「HyDE パッケージの中のこのファイル」を指しているわけです。
 
 > [!WARNING]
-> **`''` 文字列の中では `#` はコメントになりません。** ただの文字です。
-> そして `${...}` は文字列内でも補間されます。
-> つまり `buildPhase = ''...''` の中に説明を書くときは、
-> `${` と `''` を含めてはいけません（含めると補間されるか、文字列が途中で終わります）。
-> 文字として書きたい場合は `''${...}` / `'''` とエスケープします
-> （`modules/hm/shell.nix` の p10k 設定に実例があります）。
+> **`''` 文字列の中では `#` はコメントになりません。** ただの文字です。そして `${...}` は文字列内でも補間されます。
+> つまり `buildPhase = ''...''` の中に説明を書くときは、`${` と `''` を含めてはいけません（含めると補間されるか、文字列が途中で終わります）。
+> 文字として書きたい場合は `''${...}` / `'''` とエスケープします（`modules/hm/shell.nix` の p10k 設定に実例があります）。
 
 ### 演算子
 
 | 演算子 | 意味 | 例 |
-|---|---|---|
+|-------|-----|----|
 | `//` | 属性集合の上書きマージ | `hyprlandPkgs // (import ./pkgs final prev)` |
 | `?` | その属性が存在するか | `if cfg.animations.overrides ? ${preset} then ... else ...` |
 | `or` | 属性が無いときの既定値 | `pkgs.hydenix-themes.${name} or null` |
 | `++` | リストの連結 | `[a] ++ lib.optionals cond [b]` |
 
-> **注意**: `or` は**論理和ではありません**。属性選択とセットでしか使えません。
-> `modules/hm/editors.nix` の `cfg.vim or cfg.neovim` は
-> 「`cfg.vim` を取り出し、無ければ `cfg.neovim`」の意味で、実質 `cfg.vim` だけを見ています。
+> **注意**: `or` は **論理和ではありません** 。属性選択とセットでしか使えません。
+> 判定するのは値の真偽ではなくキーの有無です（`{a = false;}.a or true` は `false`）。論理和が欲しいときは `||` を使います。
 
 ### rec
 
@@ -101,7 +93,7 @@ buildGoModule rec {
 
 ## 2. モジュールシステム
 
-NixOS / home-manager の設定は「モジュール」の集合体です。モジュールは次の 3 つを持ちます。
+NixOS / home-manager の設定はモジュールの集合体です。モジュールは次の3つの属性を持ちます。
 
 ```nix
 {
@@ -126,22 +118,21 @@ options.hydenix.hm.theme = {
 よく使う型:
 
 | 型 | 意味 |
-|---|---|
+|----|-----|
 | `lib.types.bool` / `str` / `int` | 真偽値 / 文字列 / 整数 |
-| `lib.types.lines` | 複数行文字列。複数モジュールが書くと**連結**される |
-| `lib.types.listOf X` | X のリスト。複数モジュールが書くと**連結**される |
+| `lib.types.lines` | 複数行文字列。複数モジュールが書くと連結される |
+| `lib.types.listOf X` | X のリスト。複数モジュールが書くと連結される |
 | `lib.types.attrsOf X` | 「名前 → X」の属性集合 |
 | `lib.types.nullOr X` | X または null（「未指定」を表現したいとき） |
 | `lib.types.enum ["a" "b"]` | 決められた値のどれか |
 | `lib.types.submodule {...}` | 入れ子の設定オブジェクト |
 | `lib.types.addCheck T pred` | 既存の型に追加の検査を足す |
 
-`addCheck` は `modules/system/default.nix` の timezone 型で使われています
-（「空白を含まない文字列」という制約を足している）。
+`addCheck` は `modules/system/default.nix` の timezone 型で使われています（「空白を含まない文字列」という制約を足している）。
 
 ### config: 設定値の適用
 
-**同じオプションを複数のモジュールが書いても衝突しません。** 型に応じてマージされます。
+同じオプションを複数のモジュールが書いても衝突しません。型に応じてマージされます。
 
 - リスト → 連結される（だから各モジュールが自由に `environment.systemPackages` に足せる）
 - 属性集合 → マージされる
@@ -150,22 +141,16 @@ options.hydenix.hm.theme = {
 ### 優先度を操る関数
 
 | 関数 | 意味 | 使いどころ |
-|---|---|---|
+|-----|------|----------|
 | `lib.mkDefault v` | 弱い既定値（利用者の指定が必ず勝つ） | `hydenix.enable = lib.mkDefault false;` |
 | `lib.mkForce v` | 強制（他を無視して必ずこの値） | 上書きしたいとき |
 | `lib.mkIf cond {...}` | 条件が偽ならブロックごと無効化 | `config = lib.mkIf cfg.enable {...};` |
 | `lib.mkMerge [a b]` | 複数の設定を統合 | 条件分岐した設定をまとめるとき |
 | `lib.mkOrder n v` | 順序の指定 | `.zshrc` の書き込み位置制御 |
 
-`mkIf` が重要な理由: 単に `if cond then {...} else {}` と書くと、
-条件の評価に `config` が必要な場合に**無限再帰**に陥ることがあります。
-`mkIf` は評価を遅延させるので安全です。
+`mkIf` が重要な理由: 単に `if cond then {...} else {}` と書くと、条件の評価に `config` が必要な場合に**無限再帰**に陥ることがあります。 `mkIf` は評価を遅延させるので安全です。
 
-`mkDefault` の有無は運用に直結します。このフォークでは
-`networking.hostName` / `time.timeZone` / `i18n.defaultLocale` に `mkDefault` が付いたため、
-利用者側の指定が素直に優先されるようになりました。
-一方 `system.stateVersion` / `home.stateVersion` には付いていないので、
-**利用者が別の値を書くと定義衝突でビルドが落ちます**（[08](./08-improvements.md) 参照）。
+`mkDefault` の有無は運用に直結します。このフォークでは `networking.hostName` / `time.timeZone` / `i18n.defaultLocale` に `mkDefault` が付いたため、利用者側の指定が素直に優先されるようになりました。一方 `system.stateVersion` / `home.stateVersion` には付いていないので、**利用者が別の値を書くと定義衝突でビルドが落ちます**（[08](./08-improvements.md) 参照）。
 
 ### assertions と warnings
 
@@ -176,13 +161,12 @@ assertions = [
 warnings = ["設定を上書きしています"];
 ```
 
-`assertion` が偽ならビルドが止まり、`message` が表示されます。
-`modules/hm/hyprland/assertions.nix` が良い実例です。
+`assertion` が偽ならビルドが止まり、`message` が表示されます。 `modules/hm/hyprland/assertions.nix` が良い実例です。
 
 ## 3. このリポジトリで頻出する lib 関数
 
 | 関数 | やること |
-|---|---|
+|-----|---------|
 | `lib.mkEnableOption "説明"` | 既定値 false の bool オプションを作る短縮形 |
 | `lib.optionals cond list` | 条件が真ならそのリスト、偽なら `[]` |
 | `lib.optionalString cond str` | 条件が真ならその文字列、偽なら `""` |
@@ -198,11 +182,9 @@ warnings = ["設定を上書きしています"];
 | `lib.makeBinPath [pkgs...]` | パッケージのリストから `PATH` 用の文字列を作る |
 | `lib.hm.dag.entryAfter ["X"] script` | activation script を X の後に実行する（home-manager 固有） |
 
-`setAttrByPath` / `getAttrFromPath` は `modules/hm/mutable.nix` の核心部分です。
-「`home.file` / `xdg.configFile` / `xdg.dataFile` の 3 つに同じ処理をする」ために、
-属性パスをデータとして扱っています。
+`setAttrByPath` / `getAttrFromPath` は `modules/hm/mutable.nix` の核心部分です。`home.file` / `xdg.configFile` / `xdg.dataFile` の 3 つに同じ処理をするために、属性パスをデータとして扱っています。
 
-### `source` と `lib.readFile` の違い（重要）
+### `source` と `lib.readFile` の違い
 
 ```nix
 # (A) リンクを張る：中身は変えられない
@@ -215,8 +197,7 @@ warnings = ["設定を上書きしています"];
 '';
 ```
 
-`extraConfig` を提供しているモジュール（`mkHyprConfig` 生成分）が (B) を使っているのは、
-この違いのためです。
+`extraConfig` を提供しているモジュール（`mkHyprConfig` が生成）が (B) を使っているのは、この違いのためです。
 
 ## 4. パッケージのビルド
 
@@ -231,12 +212,9 @@ pkgs.stdenv.mkDerivation {
 }
 ```
 
-`$out` が `/nix/store/<ハッシュ>-hyde` になります。
-このディレクトリは**書き込み不可**であり、それが [04](./04-mutable-files.md) の話につながります。
+`$out` が `/nix/store/<ハッシュ>-hyde` になります。このディレクトリは**書き込み不可**であり、それが [04](./04-mutable-files.md) の話につながります。
 
-`fetchFromGitHub` の `hash` / `sha256` は「内容のハッシュ」です。
-改ざん検知と再現性のために必須で、値が合わないとビルドが失敗します
-（`pkgs/hyde-gallery/default.nix` は空のままなのでビルドできません）。
+`fetchFromGitHub` の `hash` / `sha256` は「内容のハッシュ」です。改ざん検知と再現性のために必須で、値が合わないとビルドが失敗します（`pkgs/hyde-gallery/default.nix` は空のままなのでビルドできません）。
 
 ## 5. overlay
 
@@ -246,21 +224,18 @@ final: _prev: {
 }
 ```
 
-- `prev` … 上書き前の pkgs（他の overlay の影響を受けていない状態）
-- `final` … すべての overlay 適用後の最終的な pkgs
+- `prev`：上書き前の pkgs（他の overlay の影響を受けていない状態）
+- `final`：すべての overlay 適用後の最終的な pkgs
 
 返した属性が `pkgs` に足されるので、各モジュールから `pkgs.hyde` として使えるようになります。
 
-`callPackage` は「定義ファイルの引数を自動で埋める」仕組みです。
-`pkgs/pokego/default.nix` が `{lib, buildGoModule, fetchFromGitHub}:` という引数を
-書けるのは、`callPackage` が pkgs から自動で探して渡してくれるからです。
+`callPackage` は「定義ファイルの引数を自動で埋める」仕組みです。`pkgs/pokego/default.nix` が `{lib, buildGoModule, fetchFromGitHub}:` という引数を書けるのは、`callPackage` が pkgs から自動で探して渡してくれるからです。
 
 `flake.nix` では Hyprland 側の overlay と合成しています。
 
 ```nix
 overlays.default = final: prev:
-  (inputs.hyprland.overlays.hyprland-packages final prev)
-  // (import ./pkgs final prev);
+  (inputs.hyprland.overlays.hyprland-packages final prev) // (import ./pkgs final prev);
 ```
 
 `//` は上書きマージなので、名前が衝突したら `pkgs/` 側が勝ちます。
@@ -273,9 +248,7 @@ overlays.default = final: prev:
 nix fmt          # treefmt 経由で alejandra / deadnix / statix が走る
 ```
 
-alejandra は本家が使っていた nixfmt-rfc-style と見た目が違います
-（`[ a b ]` ではなく `[a b]`、`{ x = 1; }` ではなく `{x = 1;}` など）。
-本家のコードを参考にするときは整形差分に惑わされないでください。
+alejandra は本家が使っていた nixfmt-rfc-style と見た目が違います（`[ a b ]` ではなく `[a b]`、`{ x = 1; }` ではなく `{x = 1;}` など）。
 
 ## 7. 学習リソース
 
