@@ -1,3 +1,4 @@
+# ネットワーク（NetworkManager）とファイアウォール。
 {
   config,
   lib,

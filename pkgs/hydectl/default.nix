@@ -18,6 +18,8 @@ buildGoModule {
   proxyVendor = true;
 
   meta = with lib; {
+    # 注意: mainProgram が "hyde-ipc" になっているが、正しくは "hydectl"。
+    # `nix run .#hydectl` が別のバイナリを起動してしまう
     description = "Ported core scripts of HyDE";
     homepage = "https://github.com/HyDE-Project/hydectl";
     license = licenses.gpl3;

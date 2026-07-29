@@ -1,3 +1,5 @@
+# Firefox。別のブラウザを使う場合は `hydenix.hm.firefox.enable = false;` で切れる。
+# MOZ_ENABLE_WAYLAND=1 は Wayland ネイティブ描画を有効にするための環境変数。
 {
   config,
   lib,

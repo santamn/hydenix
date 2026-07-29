@@ -1,3 +1,6 @@
+# comma (`,`) — インストールせずにコマンドを実行する仕組み。
+# nix-index のデータベースからパッケージを検索し、nix shell 経由で起動する。
+# データベースは nix-index-database から取得する（flake.nix の inputs 参照）。
 {
   config,
   lib,

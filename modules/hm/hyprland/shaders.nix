@@ -1,3 +1,10 @@
+# =============================================================================
+# 画面フィルタ（シェーダ）の選択
+#
+# animations / workflows と同じプリセット選択型。ただし 2 点異なる。
+#   - 選択結果は .conf ではなく shaders.conf 内の変数として書き出される
+#   - overrides のキーは拡張子まで含めて書く（例: "my-filter.frag"）
+# =============================================================================
 {
   config,
   lib,
@@ -6,6 +13,7 @@
 }: let
   cfg = config.hydenix.hm.hyprland;
 
+  # HyDE が同梱しているシェーダ
   standardShaders = [
     "blue-light-filter"
     "color-vision"
@@ -63,6 +71,8 @@ in {
       ])
 
       # Custom/override shaders
+      # overrides のキーは拡張子込みで書く（例: "my-filter.frag"）ので、
+      # そのままファイル名として使える
       (lib.mapAttrs' (name: content: {
           name = ".config/hypr/shaders/${name}";
           value = {

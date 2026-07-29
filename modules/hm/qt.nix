@@ -1,3 +1,7 @@
+# Qt アプリの外観設定（qt5ct / qt6ct / Kvantum）。
+#
+# 注意: `.config/kdeglobals` と `.config/menus/applications.menu` は
+# dolphin.nix でも同じ内容で定義されている（同一内容なのでマージされる）。
 {
   config,
   lib,
