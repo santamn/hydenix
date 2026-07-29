@@ -42,6 +42,8 @@ Nix の `or` は**属性が存在しないときの既定値**を指定する演
 実害: `vim = false; neovim = true;` にすると、
 neovim 用の wallbash 配色ファイルが配置されません。
 
+修正案は [08-B-6](./08-improvements.md) に書いています。
+
 ## 3. `home.file` が同じファイル内に 2 回出てくる
 
 `modules/hm/rofi.nix` には `home.file = {...};` が 2 回書かれています。

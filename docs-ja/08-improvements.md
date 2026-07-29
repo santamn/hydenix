@@ -229,6 +229,51 @@ sha256 = "sha256-cNOryXKFpVSTiAuzD0VQAV+2GQhJTTs1HBM6Z0cZoFo=";
 2 が実用的ですが、renovate の設定が複雑になります。
 現状は「使うときに手で更新する」で運用できているので、優先度は低めです。
 
+### B-6. `cfg.vim or cfg.neovim` — `or` が論理和として書かれている
+
+```nix
+# modules/hm/editors.nix
+(lib.mkIf (cfg.vim or cfg.neovim) {
+  ".config/vim/colors/wallbash.vim" = {...};
+  ".config/vim/hyde.vim" = {...};
+  ".config/vim/vimrc" = {...};
+})
+```
+
+**問題**: `vim = false; neovim = true;` にしても、この `mkIf` は `false` になります。
+配置されるはずの `.config/vim/` 一式（wallbash 配色・vimrc）が置かれません。
+
+**なぜ起きる**: Nix の `or` は**属性が存在しないときの既定値**を与える演算子で、
+判定するのは値の真偽ではなく**キーの有無**です。
+
+```nix
+{a = false;}.a or true   # => false （a は存在するので、その値がそのまま返る）
+{}.a or true             # => true  （a が無いので既定値）
+```
+
+`cfg.vim` は `options` ブロックで `default = true` 付きで宣言されているため、
+モジュール評価の時点で**必ず存在します**。よって `cfg.vim or cfg.neovim` は
+どう設定しても `cfg.vim` と等価で、`cfg.neovim` は一度も参照されません。
+
+Python / Lua / Ruby の `a or b`（a が偽なら b）と同じ語感で書くと、
+Nix では静かに意味が変わります。`cfg.vim` は属性選択式なので
+**構文エラーにも型エラーにもならず評価が通ってしまう**のが厄介な点です。
+
+**直し方**:
+
+```diff
+-(lib.mkIf (cfg.vim or cfg.neovim) {
++(lib.mkIf (cfg.vim || cfg.neovim) {
+```
+
+配置対象は vim / neovim のどちらからも使える `.config/vim/` 配下のファイルなので、
+「どちらか一方でも有効なら配置する」という元の設計意図は妥当です。
+演算子の選択だけが誤っている状態で、意図を変える変更ではありません。
+
+**PR の出し方**: 1 文字の変更ですが挙動が変わるので、他の修正と混ぜず単独 PR にします。
+「`or` は attribute fallback であって論理和ではない」という説明を本文に添えてください。
+既定値が両方 `true` のため、既存利用者のうち `vim = false` を明示している人だけに影響します。
+
 ---
 
 ## C. 優先度: 低（仕様として割り切れるもの）
@@ -237,7 +282,6 @@ sha256 = "sha256-cNOryXKFpVSTiAuzD0VQAV+2GQhJTTs1HBM6Z0cZoFo=";
 |---|---|---|
 | **`pyprland` が使えない** | 本家 issue #188（`hyde-shell pypr console` が動かない）が未解決。フォークでは imports もオプションも削除済み | 上流の HyDE 側の問題。scratchpad が欲しくなったら再検討 |
 | **`nix`/`sddm`/`system` が `enable` に従わない** | `default = true` 固定（[07-5](./07-reading-notes.md)） | `config.hydenix.enable` に揃えるべきだが、既存利用者の環境が変わるので慎重に |
-| **`cfg.vim or cfg.neovim`** | `or` は論理和ではない（[07-2](./07-reading-notes.md)） | `||` に直す。1 文字だが挙動が変わるので単独 PR に |
 | **履歴の環境変数が `xdg.nix` にある** | 本家 issue #154 | `shell.nix` へ移す。一貫性の問題のみ |
 | **fish の `$aurhelper` エイリアス** | Arch の名残で NixOS では動かない | 削除するか NixOS 版に置換 |
 | **`.config/waybar/modules` を配置している** | 本家 TODO の「もう配置不要では」が残存 | 実機で外して試さないと判断できない |
