@@ -617,6 +617,228 @@ nix eval --impure --expr '
 「`or` は attribute fallback であって論理和ではない」という説明を本文に添えてください。
 既定値が両方 `true` のため、既存利用者のうち `vim = false` を明示している人だけに影響します。
 
+### B-7. テーマ自動更新が一度も動いていない
+
+**問題**: [`scripts/update-themes.sh`](../scripts/update-themes.sh) と
+[`update-themes.yml`](../.github/workflows/update-themes.yml) は
+「テーマの `rev` / `sha256` を定期更新する」ための仕組みですが、
+**実際には `rev` も `sha256` も一度も更新されていません**。
+毎日 0:00 UTC に起動して、差分ゼロで PR を作らずに終わっています。
+
+**なぜ起きるか**: スクリプト冒頭の分岐が原因です。
+
+```bash
+# scripts/update-themes.sh:28-31
+if [[ "$CURRENT_REV" =~ ^[0-9a-f]{40}$ ]]; then
+  LATEST_COMMIT_HASH="$CURRENT_REV"     # ← 「最新」＝「今の値」と決めつけている
+```
+
+`rev` がコミットハッシュなら「最新コミット＝今のコミット」とみなし、
+以降は `sha256` を再検証するだけの分岐に入ります。
+しかし**同じコミットのアーカイブは当然同じハッシュ**になるので、
+この検証は必ず一致し、必ず `already up to date` で終わります。
+
+そして `pkgs/hydenix-themes/` のテーマ 58 ファイルが、例外なく 40 桁の
+コミットハッシュで固定されています。つまり、
+
+- ブランチ名を解決する `else` 側（L32-42）には**永久に到達しない**
+- `rev` を書き換える `sed`（L76）も**永久に実行されない**
+
+おそらく初回実行時に「ブランチ名 → コミットハッシュ」への置換が一度だけ走り、
+**それ以降は自分で自分を凍結してしまった**、という自己無効化のパターンです。
+
+**実害**: テーマが upstream に追従しません。
+壁紙の追加や `.dcol` の修正が反映されないだけなので破壊的ではありませんが、
+「自動更新されているつもり」で放置されるぶん質が悪いです。
+
+**確認方法 1（pin がすべてハッシュであること）**:
+
+```bash
+grep -o 'rev = "[^"]*"' pkgs/hydenix-themes/*.nix | grep -cv '[0-9a-f]\{40\}'
+# => 0     ← ブランチ名で pin されたファイルが 1 つも無い＝else 側に入らない
+```
+
+**確認方法 2（一度も自動コミットされていないこと）**:
+
+```bash
+git log --all --oneline --grep="chore(themes)"
+# => e561f90 chore(themes): `Ice-Age`: bump hash
+```
+
+workflow が付けるはずの `chore(themes): automated theme updates` は
+**履歴に 1 件も存在しません**。唯一のハッシュ更新は人間による手動コミットです。
+
+**確認方法 3（実際の陳腐化を数える）**: `git ls-remote` で追跡先の HEAD と突き合わせます。
+ネットワークアクセスが要りますが、clone はしないので 1〜2 分で終わります。
+
+```bash
+for f in pkgs/hydenix-themes/*.nix; do
+  case "$f" in */default.nix) continue;; esac
+  n=$(basename "$f" .nix)
+  rev=$(grep -o 'rev = "[^"]*"' "$f" | cut -d'"' -f2)
+  url=$(grep -o 'homepage = "[^"]*"' "$f" | cut -d'"' -f2)
+  case "$url" in
+    */tree/*) repo="${url%/tree/*}"; ref="refs/heads/${url##*/tree/}";;
+    *)        repo="$url"; ref="HEAD";;
+  esac
+  head=$(git ls-remote "$repo" "$ref" 2>/dev/null | awk '{print $1}')
+  [ "$rev" = "$head" ] || echo "$n: ${rev:0:8} -> ${head:0:8}"
+done
+```
+
+2026-07 時点の結果は **58 件中 11 件が upstream に遅れ**ていました。
+
+```
+1-Bit: ee6a1336 -> 84b2f94e            Moonlight:       cc389fdc -> 50f77a6e
+Breezy-Autumn: db980839 -> 959294bf    Obsidian-Purple: d1c90091 -> b73f00b1
+Cosmic-Blue: f5e0e85d -> ad8a9a50      Peace-Of-Mind:   45ee6f24 -> 632fb4a0
+Crimson-Blue: 5bc78a51 -> ee6da6ff     Timeless-Dream:  8a10d655 -> 5104d77c
+Electra: 61cd9718 -> 953676ce          Monterey-Frost:  4675ddd4 -> 559edd92
+Grukai: 95e0b926 -> 3945b4a1
+```
+
+このほかに `Red-Stone: 44c499a0 ->`（右辺が空）が 1 件出ますが、
+これは**テーマが古いのではなく、上のスクリプトがブランチを特定できなかった**ケースです。
+homepage が `tree/Red-Stone` なのに実ブランチが `Red_Stone` のため、
+`refs/heads/Red-Stone` の問い合わせが空を返しています
+（実ブランチで引き直すと pin は最新と一致します）。
+**「homepage をブランチ名の情報源にできない」ことの実例**なので、下の直し方の根拠になります。
+
+**直し方**: 「`rev` の形で分岐する」のをやめるのが本質ですが、
+**それだけでは直りません。追跡先の情報がどこにも保持されていない**のが本当の欠落です。
+
+テーマの配布元は 2 種類に分かれます。
+
+| 形 | 追跡先 | 件数 |
+|---|---|---|
+| テーマ専用リポジトリ（`rishav12s/Rain-Dark` など） | デフォルトブランチ | 37 |
+| 1 リポジトリをブランチで分割（`HyDE-Project/hyde-themes`、`hyde-gallery`、`mahaveergurjar/Theme-Gallery`、`RAprogramm/HyDe-Themes`） | 個別のブランチ | 21 |
+
+後者のブランチ名は `meta.homepage` の `/tree/<ブランチ>` に事実上書かれているだけで、
+機械可読な形では持っていません。しかもその homepage が信用できないケースがあります。
+
+- [`Red-Stone.nix`](../pkgs/hydenix-themes/Red-Stone.nix) → homepage は `tree/Red-Stone` だが、実ブランチは **`Red_Stone`**（アンダースコア）
+- [`Mac-OS.nix`](../pkgs/hydenix-themes/Mac-OS.nix) → homepage は `tree/Mac-Os`（大文字小文字が不一致）
+
+スクリプトが `NAME=$(basename "$NIX_FILE" .nix)` を計算しているのに
+`echo` 以外で使っていないのは、当初「ファイル名＝ブランチ名」を想定していた名残に見えますが、
+上記のとおりその前提も成り立ちません。
+
+したがって修正は次の 2 段構えになります。
+
+1. 各テーマファイルに追跡先を明示するフィールドを足す
+
+   ```diff
+    src = pkgs.fetchFromGitHub {
+      owner = "mahaveergurjar";
+      repo = "Theme-Gallery";
+   +  ref = "Red_Stone";        # 専用リポジトリなら "main" / "master"
+      rev = "44c499a0...";
+   ```
+
+   `ref` は `fetchFromGitHub` に渡さず、更新スクリプトだけが読むメタ情報として扱います
+   （`mkTheme` 側で受け取って捨てるか、`src` の外に置く）。
+
+2. スクリプトを「常に `git ls-remote <url> <ref>` で解決 → 変われば `rev` と `sha256` の両方を書き換える」形に直す。
+   `rev` の形を見る分岐（L28-42）は丸ごと不要になります。
+
+あわせて、workflow の PR 本文
+（`This PR updates the sha256 for HyDE themes based on their specified rev.`）と
+[05-theme-system.md](./05-theme-system.md) の
+「`sha256` は …… が定期的に更新します」という記述も実態に合わせる必要があります。
+
+**付随して直すとよい点**:
+
+- [`update-themes.sh`](../scripts/update-themes.sh) L13-16 の `grep -oP` は GNU grep 依存で、
+  `nix-shell -p` の指定に GNU grep が入っていないため **macOS ローカルでは動きません**
+  （CI の ubuntu では通るので表面化していない）。`sed -E` で代替するか `gnugrep` を足す
+- L51 の `nix hash convert --hash-algo sha256` と L67 の `nix hash to-sri --type sha256` が不統一
+  （出力はどちらも SRI なので実害は無い。`nix hash to-sri` は deprecated）
+
+**優先度の補足**: ビルドは壊れないので B に置いていますが、
+**「自動化が存在するのに機能していない」という点では A 相当の危うさ**があります。
+上流にもそのまま存在する問題なので、PR を送る価値があります。
+
+### B-8. `setThemeDconf.service` が存在しないスクリプトを起動している
+
+**問題**: テーマ適用 3 段構えの【2 段目】が、**実在しないファイル**を指しています。
+
+```nix
+# modules/hm/theme.nix:184
+ExecStart = ''
+  ${config.home.homeDirectory}/.local/lib/hyde/dconf.set.sh
+'';
+```
+
+現在ピン留めしている HyDE に `dconf.set.sh` はありません。
+上流のリファクタリングで `color/dconf.sh` へ移動・改名されています。
+TODO 中の `theme.set.sh` も同様に消えています（`color.set.sh` が相当）。
+
+**確認方法**: ピン留め中の rev に対して 3 つのパスの有無を引きます。
+
+```bash
+REV=$(nix eval --impure --raw --expr '
+  (builtins.getFlake (toString ./.)).packages.x86_64-linux.hyde.src.rev')
+
+for f in dconf.set.sh theme.set.sh color/dconf.sh; do
+  printf '%s  %s\n' \
+    "$(curl -s -o /dev/null -w '%{http_code}' \
+      "https://raw.githubusercontent.com/HyDE-Project/HyDE/$REV/Configs/.local/lib/hyde/$f")" "$f"
+done
+```
+
+実行結果:
+
+```
+404  dconf.set.sh
+404  theme.set.sh
+200  color/dconf.sh
+```
+
+サービスが指しているパスも確認できます。
+
+```bash
+nix eval --impure --expr '
+  (builtins.getFlake (toString ./.)).homeConfigurations.default
+    .config.systemd.user.services.setThemeDconf.Service.ExecStart'
+# => [ "/home/hydenix/.local/lib/hyde/dconf.set.sh\n" ]
+```
+
+実機なら次の 2 つが直接の証拠になります。
+
+```bash
+ls ~/.local/lib/hyde/dconf.set.sh              # No such file or directory
+systemctl --user status setThemeDconf.service  # status=203/EXEC
+```
+
+**実害**: 見た目ほど大きくありません。**dconf 設定自体は別経路で当たっています。**
+
+`theme.switch.sh` の末尾が `wallpaper.sh` を呼び、`wallpaper/core.sh` が
+`color.set.sh` をバックグラウンド実行し、その `color.set.sh` が
+`load_dconf_kdeglobals()` の中で `color/dconf.sh` を source するためです。
+
+つまり【2 段目】は**丸ごと死んでいるが、【3 段目】が同じ仕事を内包している**ので、
+結果として破綻していません。残るのは次の 2 点です。
+
+- `systemctl --user --failed` に常時 1 件出る（セッションが degraded 扱いになる）
+- `After = ["setThemeDconf.service"]` の順序制約が意味を失っている
+
+**直し方**: **サービスごと削除する**のが妥当です。
+`setTheme.service` の `After` からも該当行を外します。
+
+> [!WARNING]
+> **パスを `color/dconf.sh` に差し替えるだけでは直りません。**
+> このスクリプトは `color.set.sh` から source される前提で書かれており、
+> 単体起動では `dcol_mode` が未設定になります。
+> 先頭の `COLOR_SCHEME="prefer-$dcol_mode"` が `"prefer-"` という
+> 壊れた値になるため、かえって悪化します。
+> `color.set.sh` を直接呼ぶ手もありますが、引数に現在の壁紙パスが要るため、
+> サービス側でそれを解決する処理が新たに必要になります。
+
+**優先度の補足**: 壊れて見えるわりに実害が小さいので B に置いています。
+根本的には「HyDE のスクリプト名を Nix 側にハードコードしている」ことが原因で、
+これは C-1 で扱う設計課題そのものの実例です。
+
 ---
 
 ## C. 優先度: 低（仕様として割り切れるもの）
@@ -634,6 +856,197 @@ nix eval --impure --expr '
 | **GTK テーマ初回変更時のちらつき** | `gtk.nix` に TODO | `grep -n "TODO" modules/hm/gtk.nix`。再現は実機でテーマを切り替えるしかない | 原因不明。優先度低 |
 | **spicetify 対応** | `spotify.nix` に TODO | `grep -n "TODO" modules/hm/spotify.nix` → 案のコメントだけで実装は無い | flatpak 前提の案が書かれているだけ |
 | **本家 issue #182: hypr windowrules errors** | 状態不明。HyDE の bump で解消した可能性あり | 実機で `hyprctl configerrors`（何も出なければ解消済み） | まず再現するか確認 |
+
+### C-1. テーマ適用を Nix 側で再現する（`theme.nix` の TODO）
+
+[`modules/hm/theme.nix`](../modules/hm/theme.nix) に残っている TODO の検討です。
+
+> `#TODO: this works but a more robust implementation is possible. just do what
+> theme.set.sh/dconf.set.sh does and use home.file to set the correct gtk/qt/etc options`
+
+実現すれば activation script も systemd サービスも mutable ファイルも減らせます。
+ただし**そのまま実行することはできません**。理由を先に 2 つ挙げます。
+
+1. **TODO が名指ししている 2 本のスクリプトは、もう存在しません**（B-8）。
+   現在の相当物は `theme.switch.sh` と `color.set.sh` / `color/dconf.sh` です。
+   TODO を書いた時点の HyDE と現在の HyDE では構造が変わっています。
+2. **「一部だけ Nix 化する」ができません**。後述の「なぜ中途半端にできないのか」を参照。
+
+#### 何を Nix 化できるのか
+
+`theme.switch.sh` がやっていることは、**静的**（選んだテーマ名だけで決まる）と
+**動的**（現在の壁紙に依存する）にきれいに二分できます。
+
+**静的 — `theme.active` が決まれば内容が確定する。ビルド時に生成可能**
+
+| 生成先 | 現在の書き手 | 内容 |
+|---|---|---|
+| `~/.config/gtk-3.0/settings.ini` | `theme.switch.sh`（`toml_write`） | gtk-theme-name / icon / cursor / font |
+| `~/.gtkrc-2.0` | `theme.switch.sh`（`sed -i`） | 同上（GTK2） |
+| `~/.config/xsettingsd/xsettingsd.conf` | `theme.switch.sh`（`sed -i`） | `Net/ThemeName` ほか |
+| `~/.config/qt5ct/qt5ct.conf`, `qt6ct/qt6ct.conf` | `theme.switch.sh`（`toml_write`） | `Appearance/icon_theme`, `Fonts` |
+| `~/.config/kdeglobals` | `theme.switch.sh`（`toml_write`） | `Icons/Theme`, `widgetStyle=kvantum` |
+| `~/.local/share/icons/default/index.theme`, `~/.icons/default/index.theme` | `theme.switch.sh` | カーソルテーマの継承 |
+| `~/.Xresources` / `~/.Xdefaults` | `theme.switch.sh` | `Xcursor.theme` / `Xcursor.size` |
+| `~/.config/gtk-4.0`（シンボリックリンク） | `theme.switch.sh` | テーマの `gtk-4.0` へのリンク |
+| `~/.config/hypr/themes/theme.conf` | `theme.switch.sh`（`sanitize_hypr_theme`） | `hypr.theme` から `exec` と shadow 系を除いたもの |
+| dconf（`org/gnome/desktop/interface` ほか） | `color/dconf.sh` | GTK / icon / cursor / font / color-scheme |
+
+**動的 — 現在の壁紙に依存する。実行時に生成するしかない**
+
+- wallbash の色生成一式（`hypr/themes/colors.conf`, `waybar/theme.css`,
+  `kitty/theme.conf`, `dunst/dunstrc`, `rofi/theme.rasi`, Kvantum, VS Code …）
+- 壁紙そのものの適用（`wallpaper.sh`）
+- `qt5ct/colors/wallbash.conf` など wallbash 由来の配色ファイル
+
+**したがって TODO は「静的な側だけ」なら実現可能で、動的な側は残ります。**
+mutable ファイルを全廃できるわけではない、というのが最初に押さえるべき点です。
+
+#### なぜ中途半端にできないのか
+
+上の表の**静的な生成先はすべて `theme.switch.sh` も書きに来ます**。
+Nix が `settings.ini` を store へのシンボリックリンクとして置くと、
+`toml_write` が読み取り専用のリンク先に書こうとして失敗します。
+
+つまり Nix 側で書くなら、**`theme.switch.sh` の静的な部分を呼ばないようにする**必要があります。
+HyDE にそれを止めるフラグはないので、取れる道は次の 3 つです。
+
+| 案 | 内容 | 評価 |
+|---|---|---|
+| 1 | `theme.switch.sh` を呼ぶのをやめ、動的な側（`wallpaper.sh`）だけ直接呼ぶ | **本命**。下で詳述 |
+| 2 | `pkgs/hyde` で `theme.switch.sh` にパッチを当てて静的部分を削る | 非推奨。行番号決め打ちの `sed` は既に一度失敗して[コメントアウト済み](../pkgs/hyde/default.nix)（`sed -i '187,190d'`） |
+| 3 | mutable のまま両方に書かせる | 現状。何も得られない |
+
+案 1 は、`theme.switch.sh` の末尾がやっていることをそのまま引き継ぐ形になります。
+
+```bash
+# theme.switch.sh:239 — 動的な側の入口はここ 1 行
+"$LIB_DIR/hyde/wallpaper.sh" -s "$(readlink "$HYDE_THEME_DIR/wall.set")" --global
+```
+
+ただし `wallpaper.sh` は `HYDE_THEME` と `HYDE_THEME_DIR` が設定済みであることを前提にしています。
+`theme.switch.sh:121` の `set_conf "HYDE_THEME" "$themeSet"` と、
+`globalcontrol.sh` / `env-theme` の読み込みに相当する処理は Nix 側で用意する必要があります。
+
+#### 設計上の分岐点: テーマのメタデータをどこから取るか
+
+静的な側を生成するには `GTK_THEME` / `ICON_THEME` / `CURSOR_THEME` / フォント名を知る必要があります。
+これらの出どころはテーマパッケージ内の `hypr.theme` です。
+
+```bash
+# 例: Catppuccin Macchiato
+$GTK_THEME=Catppuccin-Macchiato
+$ICON_THEME = Tela-circle-dracula
+$COLOR_SCHEME = prefer-dark
+```
+
+**書かれていない変数は [`Configs/.local/share/hyde/env-theme`](https://github.com/HyDE-Project/HyDE/blob/master/Configs/.local/share/hyde/env-theme) の既定値にフォールバックします。**
+上の例のようにテーマ側は 3 つしか上書きしないことが多いので、
+テーマごとに持つべきデータは実際には少数です。実際の分布は次で数えられます。
+
+```bash
+# 実機で。各テーマの hypr.theme が上書きしている変数を集計する
+grep -h '^\$' ~/.config/hyde/themes/*/hypr.theme \
+  | sed 's/ *=.*//' | sort | uniq -c | sort -rn
+```
+
+取りうる実装は 3 つあります。
+
+| 案 | 方法 | 判定 |
+|---|---|---|
+| A | eval 時に `builtins.readFile "${themePkg}/…/hypr.theme"` で読む | **不可**。IFD になる |
+| B | `runCommand` の中で `hypr.theme` を読んで設定ファイルを生成する | 可。ただし値が Nix から見えない |
+| C | 各テーマの `.nix` にメタデータを宣言する | **推奨** |
+
+**案 A が使えない理由**: テーマパッケージは derivation です。
+その出力を eval 時に `readFile` すると import-from-derivation になり、
+評価のたびにテーマのビルドが走ります。`nix flake check` や CI の eval が重くなり、
+`--no-allow-import-from-derivation` では落ちます。
+
+なお「パスが eval 時に分かること」自体は問題ありません。ビルドを伴わずに解決できます。
+
+```bash
+nix eval --impure --raw --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+  in hc.config.home.file.".config/hyde/themes/Catppuccin Mocha".source'
+# => /nix/store/…-Catppuccin-Mocha/share/hyde/themes/Catppuccin Mocha
+```
+
+問題になるのは**中身を読む**ときだけです。
+
+**案 B**: `pkgs.runCommand` の中で `hypr.theme` を `sed` / `hyq` で解析し、
+`settings.ini` などを出力するディレクトリを作って `home.file.….source` に渡します。
+IFD にはならず、58 テーマ分のデータ入力も不要です。
+ただし値が Nix の世界に出てこないため、home-manager の
+`dconf.settings` / `gtk.*` / `qt.*` といった既存モジュールには載せられず、
+利用者が個別の値を上書きすることもできません。
+
+**案 C（推奨）**: テーマ定義そのものに書きます。
+
+```nix
+# pkgs/hydenix-themes/Catppuccin-Macchiato.nix
+mkTheme rec {
+  name = "Catppuccin Macchiato";
+  settings = {
+    gtkTheme = "Catppuccin-Macchiato";
+    iconTheme = "Tela-circle-dracula";
+    colorScheme = "prefer-dark";
+    # 未指定は env-theme 相当の既定値へ
+  };
+  src = pkgs.fetchFromGitHub { … };
+}
+```
+
+こうすると値が eval 時に見えるので、**hydenix が設定ファイルを手書きする必要がなくなります**。
+home-manager の `gtk` / `qt` / `dconf` モジュールがすでに
+`settings.ini` / `.gtkrc-2.0` / dconf の書き方を知っているので、そちらに委譲できます。
+これが本当の利得で、案 B では得られません。
+
+58 ファイルへの手入力が要るように見えますが、`hypr.theme` から値を抽出して
+`.nix` を生成するスクリプトを書けば済みます。
+**B-7 の修正が同じ 58 ファイルに `ref` を足す作業なので、まとめてやるのが効率的です。**
+上流のテーマが値を変えたときに備えて、抽出結果と `.nix` の差分を CI で検出する仕組みも
+同時に入れておくとよいでしょう。
+
+#### 段階的な進め方
+
+1. **B-8 を先に片付ける**（死んだサービスの削除）。単独で価値があり、依存もありません
+2. テーマ定義に `settings` を足し、抽出スクリプトと CI の drift 検出を用意する（案 C）
+3. dconf だけ home-manager の `dconf.settings` に移す。
+   `setThemeDconf.service` が不要になり、3 段構えが 2 段になります
+4. GTK / Qt / カーソルを `gtk.*` / `qt.*` と `home.file` に移し、対応する mutable 指定を外す
+5. `theme.switch.sh` の呼び出しを `wallpaper.sh` の直接呼び出しに置き換える（案 1）
+
+3 まで進めた時点で「初回 rebuild で dconf が失敗する」問題は消えるはずです。
+home-manager の dconf モジュールは D-Bus セッションが無い場合の面倒を自前で見ますが、
+**activation 時の挙動は実機で確認してください**（`journalctl --user` と
+`dconf dump /org/gnome/desktop/interface`）。ここは未検証です。
+
+#### 効果と費用
+
+**得られるもの**:
+
+- 3 段構えの適用が減り、初回 rebuild の失敗が消える
+- テーマ設定が Nix の世界に入るので、利用者が普通の home-manager オプションで上書きできる
+- dry-activate が正しく動くようになる（A-2 にも効く）
+
+**失うもの・費用**:
+
+- **上流追従コストが上がります。** `theme.switch.sh` が変わるたびに Nix 側の再現も追う必要があります。
+  この危険は仮定の話ではなく、**`dconf.set.sh` → `color/dconf.sh` の改名に追従できていない
+  B-8 が実例**です。
+  HyDE のスクリプトを呼ぶだけなら改名は追従不要でした。
+- **A-3 の解決にはなりません。** 減らせるのは上の表の十数件で、
+  mutable ファイル 115 件の大半は wallbash 由来のため残ります。
+- 実機での検証が必須です。GTK4・Qt・カーソルは壊れても気づきにくい割に、
+  壊れたときの体感は悪い部類です。
+
+**結論**: 設計としては正しい方向ですが、**費用に対する効果が限定的**です。
+「HyDE のスクリプトをそのまま動かす」という現在の方針を捨てて
+hydenix がテーマ適用を自前で持つ、という方針転換を伴うので、
+**着手するなら上流に issue を立てて合意を取ってからにすべきです。**
+一方、段階 1（B-8）と段階 3（dconf のみ）は方針転換を伴わず単独で価値があるため、
+そこだけ先に進めるのは十分に現実的です。
 
 ---
 
