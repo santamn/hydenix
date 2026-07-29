@@ -169,11 +169,11 @@ grep -rn "mutable = true" modules/hm/
 
 おおよそ次の性質を持つファイルです。
 
-- **wallbash が書き込む配色ファイル** — `theme.css` / `theme.conf` / `colors.conf` など
-- **テーマ切り替えで書き換わる設定** — `dunstrc` / `kdeglobals` / `gtk-3.0/settings.ini`
-- **アプリが自分で書き換える設定** — `hyde/config.toml` / VS Code の `settings.json`
-- **HyDE のスクリプト・データ本体** — `~/.local/share/hyde` / `~/.local/lib/hyde`
-- **Hyprland の各種 `.conf`** — `mkHyprConfig` が生成するもの全部（後述）
+- **wallbash が書き込む配色ファイル**: `theme.css` / `theme.conf` / `colors.conf` など
+- **テーマ切り替えで書き換わる設定**: `dunstrc` / `kdeglobals` / `gtk-3.0/settings.ini`
+- **アプリが自分で書き換える設定**: `hyde/config.toml` / VS Code の `settings.json`
+- **HyDE のスクリプト・データ本体**: `~/.local/share/hyde` / `~/.local/lib/hyde`
+- **Hyprland の各種 `.conf`**: `mkHyprConfig` が生成するもの全部（後述）
 
 > [!IMPORTANT]
 > **フォークでの変更点**: `mkHyprConfig` が生成する設定はすべて `mutable = true` です。オリジナルの hydenix では `monitors.conf` だけが mutable で、`keybindings.conf` などはリンクでした。
