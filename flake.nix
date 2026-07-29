@@ -20,10 +20,7 @@
   };
 
   inputs = {
-    # nixpkgs はコミットハッシュで固定している。
-    # HyDE / Hyprland との組み合わせを検証済みの状態に固定するのが目的で、
-    # 更新は renovate と update-flake-lock ワークフローが自動で行う
-    nixpkgs.url = "github:nixos/nixpkgs/61b7c44c4073f0b827768aff0049561b5110ea5a";
+    nixpkgs.url = "github:nixos/nixpkgs/e2587caef70cea85dd97d7daab492899902dbf5d";
 
     # Home Manager (for user specific configuration)
     home-manager.url = "github:nix-community/home-manager";
