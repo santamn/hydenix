@@ -1,3 +1,5 @@
+# チャットアプリ（Discord / Vesktop）。
+# Vesktop は Discord の代替クライアントで、Wayland での画面共有に対応している。
 {
   config,
   lib,

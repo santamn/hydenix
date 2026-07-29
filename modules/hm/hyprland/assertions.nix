@@ -1,3 +1,14 @@
+# =============================================================================
+# override 系オプションの検証と警告
+#
+#   assertions … 「null ではないが空文字」という危険な設定を弾いてビルドを止める
+#   warnings   … override を使っていること自体を rebuild のたびに知らせる
+#
+# override は HyDE の既定設定を丸ごと捨てる操作なので、事故を防ぐための安全網。
+# 自覚して使うなら suppressWarnings = true; で警告だけ黙らせられる。
+#
+# 注意: フォークで追加された hyprsunset はここに含まれていない
+# =============================================================================
 {
   config,
   lib,
@@ -6,6 +17,8 @@
   cfg = config.hydenix.hm.hyprland;
 
   # Collect all active overrides
+  # optionalString は「条件が偽なら空文字」を返すので、
+  # filter で空文字を落とすと「有効になっている override の名前一覧」が得られる
   activeOverrides = lib.filter (x: x != null && x != "") [
     (lib.optionalString (cfg.hypridle.overrideConfig != null) "hypridle.overrideConfig")
     (lib.optionalString (cfg.keybindings.overrideConfig != null) "keybindings.overrideConfig")

@@ -1,3 +1,8 @@
+# ターミナル。既定は kitty。
+# 別のターミナルを使う場合は `hydenix.hm.terminals.kitty.enable = false;` で切れるが、
+# HyDE のスクリプトの一部は kitty を前提にしている点に注意。
+#
+# theme.conf は wallbash が書き込むため mutable。
 {
   config,
   lib,

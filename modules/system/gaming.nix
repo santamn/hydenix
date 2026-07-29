@@ -1,3 +1,5 @@
+# ゲーム関連（Steam / Lutris / Wine / gamescope / コントローラ対応）。
+# 不要なら `hydenix.gaming.enable = false;` で丸ごと切れる。
 # Ref: https://github.com/Gaming-Linux-FR/GLF-OS/blob/omnislash/modules/default/gaming.nix
 {
   config,

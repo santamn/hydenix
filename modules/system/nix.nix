@@ -1,3 +1,6 @@
+# Nix 自体の設定（flakes の有効化・バイナリキャッシュ・allowUnfree）。
+#
+# 注意: enable の既定値が `true` 固定。`hydenix.enable = false` にしても有効なまま。
 {
   config,
   lib,

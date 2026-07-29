@@ -1,3 +1,8 @@
+# KDE のファイルマネージャ Dolphin と、そのサムネイル・プロトコル関連の一式。
+#
+# 注意: `.config/kdeglobals` は qt.nix でも同じ内容で定義されている。
+# 属性集合リテラルどうしのマージなのでエラーにはならない
+# （treefmt.nix で statix の repeated_keys lint を無効化しているのはこのため）。
 {
   config,
   lib,

@@ -1,3 +1,7 @@
+# エディタ（VS Code / vim / neovim）と、拡張子ごとの既定アプリ設定。
+#
+# VS Code の settings.json や wallbash 拡張は、テーマ切り替えで
+# 配色が書き換えられるため mutable として配置している。
 {
   config,
   lib,
@@ -115,6 +119,9 @@ in {
         };
       })
 
+      # 注意: Nix の `or` は論理和ではなく「属性が無いときの既定値」を指す演算子。
+      # cfg.vim は常に存在するオプションなので、この式は実質 cfg.vim しか見ていない。
+      # 論理和にしたいなら `||` を使う
       (lib.mkIf (cfg.vim or cfg.neovim) {
         ".config/vim/colors/wallbash.vim" = {
           source = "${pkgs.hyde}/Configs/.config/vim/colors/wallbash.vim";

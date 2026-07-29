@@ -84,6 +84,8 @@
         "Vanta Black"
         "Windows 11"
 
+        # 存在しないテーマ名を書いてもビルドが落ちないことの検証用エントリ。
+        # 逆に言うと、タイプミスに気づけないということでもある
         # Testing that we can add a new string and it won't fail
         "Some Theme"
       ];

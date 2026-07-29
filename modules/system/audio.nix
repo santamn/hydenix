@@ -1,3 +1,5 @@
+# 音声（PipeWire）と Bluetooth。
+# PipeWire は ALSA / PulseAudio / JACK の互換レイヤを提供する現行の標準構成。
 {
   config,
   lib,
