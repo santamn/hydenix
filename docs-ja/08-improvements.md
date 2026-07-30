@@ -939,6 +939,123 @@ systemctl --user status setThemeDconf.service  # status=203/EXEC
 根本的には「HyDE のスクリプト名を Nix 側にハードコードしている」ことが原因で、
 これは C-1 で扱う設計課題そのものの実例です。
 
+### B-9. fish の `$aurhelper` エイリアス 6 個は必ず失敗する
+
+**問題**: [`modules/hm/shell.nix`](../modules/hm/shell.nix) の `interactiveShellInit` に、
+Arch の AUR ヘルパー向けエイリアスが 6 個そのまま残っています。
+
+```nix
+# modules/hm/shell.nix:239-244
+alias un='$aurhelper -Rns'
+alias up='$aurhelper -Syu'
+alias pl='$aurhelper -Qs'
+alias pa='$aurhelper -Ss'
+alias pc='$aurhelper -Sc'
+alias po='$aurhelper -Qtdq | $aurhelper -Rns -'
+```
+
+**なぜ起きるか**: 理由が 2 段あります。
+
+1. **上流 HyDE ではこの 6 行はコメントアウトされています。**
+   移植元の [`Configs/.config/fish/user.fish`](https://github.com/HyDE-Project/HyDE/blob/a51460a7b1a822ee7194318b60a38850f711b923/Configs/.config/fish/user.fish) L15-20 は
+   すべて `#` 付きです。hydenix 側が `#` を外して書き写した形になっています。
+
+2. **`$aurhelper` はプロンプトまで届きません。** 同じ `user.fish` の L41 に
+   `set aurhelper yay`（コメント無し）があり、これは `shell.nix:197` で source されます。
+   しかし home-manager の fish モジュールは `interactiveShellInit` を
+   `status is-interactive; and begin … end` の中に埋め込みます
+   （[home-manager `modules/programs/fish.nix`](https://github.com/nix-community/home-manager/blob/079a3b5d1aa6a719920a51316253b7d6dd22738d/modules/programs/fish.nix#L774-L785)）。
+   fish の `set` はスコープ指定が無いと**そのブロックのローカル変数**を作るので、
+   `end` を抜けた時点で消えます。hydenix 自身が `shell.nix:192` で
+   `set -g fish_greeting` と `-g` を明示しているのと対照的です。
+
+   一方 `alias` が定義するのは**関数**で、関数はブロックに関係なく残ります。
+   結果、**「エイリアスだけ残り、変数は消える」**という状態になります。
+   `un` を打つと `$aurhelper` が空展開され、`-Rns` をコマンドとして実行しようとして失敗します。
+
+   仮に変数が残っていたとしても値は `yay` で、NixOS に `yay` はありません。
+   **どちらに転んでも動きません。**
+
+> [!NOTE]
+> 同じ理由で `user.fish` L38 の `set EDITOR code` も効いていません。
+> こちらは「効かないほうが望ましい」ので直す必要はありませんが、
+> 上の 2 番目の説明が正しいことの傍証になります。
+
+**実害**: 小さいです。`hydenix.hm.shell.fish.enable` は既定 `false` なので、
+fish を明示的に有効にした利用者だけが踏みます。
+ただし `up` / `pl` のような短い名前を、**動かないエイリアスが占有し続ける**のは邪魔です。
+利用者が自分で `up` を定義しても、hydenix 側の定義と衝突はしませんが（後勝ち）、
+`shellAliases` に書いた場合は HM が先に流すので hydenix 側が勝ちます。
+
+**確認方法 1（grep）**: zsh 側には同じエイリアスが無いこと、fish だけの問題であることを確認します。
+
+```bash
+grep -rn 'aurhelper' modules/
+# => modules/hm/shell.nix の 7 行（コメント 1 + alias 定義 6）だけ
+```
+
+**確認方法 2（生成される fish 設定を見る）**: fish は既定で無効なので `extendModules` で有効にします。
+
+```bash
+nix eval --raw --impure --expr '
+  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
+      probe = hc.extendModules { modules = [{ hydenix.hm.shell.fish.enable = true; }]; };
+  in probe.config.programs.fish.interactiveShellInit
+' | grep -n 'aurhelper\|user.fish'
+```
+
+`source …/user.fish` の行と 6 個の alias が並んで出ます。
+これを包む `status is-interactive; and begin` は home-manager 側が付けるので、
+そちらは入力を直接読みます。
+
+```bash
+HM=$(nix eval --raw --impure --expr '
+  (builtins.getFlake (toString ./.)).inputs.home-manager.outPath')
+grep -n 'is-interactive; and begin' -A 12 "$HM/modules/programs/fish.nix"
+```
+
+**確認方法 3（実機・fish 上で）**: エイリアスは在るのに変数は無い、という食い違いを直接見ます。
+
+```fish
+type un            # → function un … '$aurhelper -Rns $argv' が表示される（存在する）
+set -S aurhelper   # → 何も出ない（未定義）
+un fastfetch       # → 失敗する
+```
+
+**直し方**: コメント 2 行を含めて **8 行削除するだけ**です。
+
+```diff
+ alias lt='eza --icons=auto --tree'
+-# 注意: 以下の $aurhelper 系エイリアスは Arch の AUR ヘルパー向けで、
+-# NixOS には存在しない。HyDE の設定を移植した名残であり実行しても動かない
+-alias un='$aurhelper -Rns'
+-alias up='$aurhelper -Syu'
+-alias pl='$aurhelper -Qs'
+-alias pa='$aurhelper -Ss'
+-alias pc='$aurhelper -Sc'
+-alias po='$aurhelper -Qtdq | $aurhelper -Rns -'
+ alias vc='code'
+```
+
+**NixOS 版に置き換えるのは勧めません。** `up` に相当するのは
+`nixos-rebuild switch --flake …#<host>` ですが、flake のパスもホスト名も
+`sudo` の要否も利用者の構成次第で、ライブラリ側が決め打ちできる値ではありません。
+`nh` を使う流儀もあります（[D](#d-dotnix-側で持てばよいもの) 参照）。
+必要な人が自分の設定で `programs.fish.shellAliases` に書けば済む話です。
+
+**リスク**: なし。動いていないものを消すだけで、`fish.enable = true` の利用者にも
+失われる機能はありません。zsh / bash 側は無関係です（確認方法 1）。
+
+**付随して直すとよい点**: 同じ `interactiveShellInit` にある
+`c` / `l` / `ls` / `ll` / `ld` / `lt` / `vc` / `fastfetch` と `..` 系は、
+すぐ下の `shellAliases` / `shellAbbrs`（`shell.nix:265-280`）と**内容が重複**しています。
+`alias` を消して `shellAliases` 側に寄せると、fish ブロックが素直になります。
+ただし挙動が変わらない整理なので、PR にするなら削除とは分けてください。
+
+> この修正は上流へ PR を送る価値があります。A-1 と同じく小さく独立した変更で、
+> 「上流の HyDE 自身がコメントアウトしている行を、移植時に有効化してしまった」
+> という経緯を本文に書けば説明も短く済みます。
+
 ---
 
 ## C. 優先度: 低（仕様として割り切れるもの）
@@ -947,8 +1064,7 @@ systemctl --user status setThemeDconf.service  # status=203/EXEC
 |---|---|---|---|
 | **`pyprland` が使えない** | 本家 issue #188（`hyde-shell pypr console` が動かない）が未解決。フォークでは imports もオプションも削除済み | `grep -rn "pyprland" modules/` → コメントアウト行しか出ない | 上流の HyDE 側の問題。scratchpad が欲しくなったら再検討 |
 | **`nix`/`sddm`/`system` が `enable` に従わない** | `default = true` 固定（[07-5](./07-reading-notes.md)） | `grep -rn "default = config.hydenix.enable\|default = true;" modules/system/*.nix` → `nix.nix` / `sddm.nix` / `system.nix` だけが `true` 固定 | `config.hydenix.enable` に揃えるべきだが、既存利用者の環境が変わるので慎重に |
-| **履歴の環境変数が `xdg.nix` にある** | 本家 issue #154 | `grep -n "HIST" modules/hm/xdg.nix` → `HISTFILE` / `HISTSIZE` / `SAVEHIST` が出る | `shell.nix` へ移す。一貫性の問題のみ |
-| **fish の `$aurhelper` エイリアス** | Arch の名残で NixOS では動かない | `grep -rn "aurhelper" modules/` → `shell.nix` に 4 つのエイリアス。実機では `un` を打つと空変数で失敗する | 削除するか NixOS 版に置換 |
+| **履歴の環境変数が `xdg.nix` にある** | 本家 issue #154 | `grep -n "HIST" modules/hm/xdg.nix` → `HISTFILE` / `HISTSIZE` / `SAVEHIST` が出る | 移すだけなら 10 行の移動で済む。ただし**9 行中 6 行は誰も読まない**（[C-2](#c-2-履歴の環境変数を-shellnix-へ移す本家-issue-154)） |
 | **`.config/waybar/modules` を配置している** | 本家 TODO の「もう配置不要では」が残存 | `grep -rn "waybar/modules" modules/` → `waybar.nix` と `hyde.nix` の 2 か所で配置 | 実機で外して試さないと判断できない |
 | **hyprlock が `hyprland/` の外にある** | `lockscreen.nix` のまま。hyprlock と swaylock の排他 assertion も無い | `ls modules/hm/hyprland/ modules/hm/lockscreen.nix` で配置を見る | 設計上の課題。統合するなら大きめの変更 |
 | **`hyde config.toml` がオプション化されていない** | mutable なので手で編集するしかない | `grep -n -A4 '".config/hyde/config.toml"' modules/hm/hyde.nix` → `source` + `mutable = true` のみ | Nix オプション化は大仕事。効果も限定的 |
@@ -1147,6 +1263,200 @@ hydenix がテーマ適用を自前で持つ、という方針転換を伴うの
 **着手するなら上流に issue を立てて合意を取ってからにすべきです。**
 一方、段階 1（B-8）と段階 3（dconf のみ）は方針転換を伴わず単独で価値があるため、
 そこだけ先に進めるのは十分に現実的です。
+
+### C-2. 履歴の環境変数を `shell.nix` へ移す（本家 issue #154）
+
+**結論から**: 簡単に直せます。移すだけなら 10 行の移動で、挙動は変わりません。
+ただし調べると「置き場所が変」以上のことが分かります。
+**この 9 行は 1 行も効いていません。**
+
+**問題**: [`modules/hm/xdg.nix`](../modules/hm/xdg.nix) L91-100 の `home.sessionVariables` に
+zsh の履歴設定が置かれています。XDG とは無関係なので `shell.nix` にあるべきものです。
+
+```nix
+# History configuration // explicit to not nuke history
+HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
+HISTSIZE = "10000";
+SAVEHIST = "10000";
+setopt_EXTENDED_HISTORY = "true";
+setopt_INC_APPEND_HISTORY = "true";
+setopt_SHARE_HISTORY = "true";
+setopt_HIST_EXPIRE_DUPS_FIRST = "true";
+setopt_HIST_IGNORE_DUPS = "true";
+setopt_HIST_IGNORE_ALL_DUPS = "true";
+```
+
+**なぜ効いていないか**: 理由が 2 つに分かれます。
+
+**(1) `setopt_*` の 6 行は、読み手が存在しません。**
+
+`setopt_EXTENDED_HISTORY` は zsh の `setopt` とは無関係な、HyDE 側の独自変数です。
+しかし**ピン留め中の HyDE（`a51460a`）に `setopt_` という文字列は 1 か所もありません**。
+上流のリファクタリングで無くなった変数を、hydenix が export し続けている状態です。
+
+**(2) `HISTFILE` / `HISTSIZE` / `SAVEHIST` は home-manager に上書きされます。**
+
+`shell.nix:111-112` で `programs.zsh.enable = true` にしているため、
+home-manager の zsh モジュール
+（[`modules/programs/zsh/history.nix`](https://github.com/nix-community/home-manager/blob/079a3b5d1aa6a719920a51316253b7d6dd22738d/modules/programs/zsh/history.nix)）が
+`.zshrc` の order 910 で同じ 3 つを書きます。
+
+```zsh
+# 生成される .zshrc
+HISTSIZE="10000"
+SAVEHIST="10000"
+HISTFILE="/home/<user>/.config/zsh/.zsh_history"
+```
+
+`hm-session-vars.sh` を読むのは `.zshenv` / `.zprofile` で、`.zshrc` はその後に走ります。
+つまり**後から書く home-manager が必ず勝ちます**。
+
+`HISTSIZE` / `SAVEHIST` は値が同じ（`10000`）なので差は出ませんが、`HISTFILE` は違います。
+`${HISTFILE:-$HOME/.zsh_history}` という書き方を尊重するのは
+HyDE の `Configs/.config/zsh/conf.d/hyde/terminal.zsh` L171 ですが、
+**hydenix はこのファイルを配置していません**（`shell.nix:338` でコメントアウト）。
+コメントにある「explicit to not nuke history」＝既存の `~/.zsh_history` を引き継ぐ意図は、
+達成されていないことになります。実際の履歴は `~/.config/zsh/.zsh_history` に溜まります。
+
+**実害**: ありません。home-manager 側の既定が十分まともなので、
+「意図した設定が効いていない」だけで壊れてはいません。
+効いていない設定は次の 3 つです。
+
+| 意図した `setopt_*` | home-manager の既定 |
+|---|---|
+| `EXTENDED_HISTORY = true` | `NO_EXTENDED_HISTORY`（タイムスタンプを残さない） |
+| `HIST_EXPIRE_DUPS_FIRST = true` | `NO_HIST_EXPIRE_DUPS_FIRST` |
+| `HIST_IGNORE_ALL_DUPS = true` | `NO_HIST_IGNORE_ALL_DUPS` |
+
+`SHARE_HISTORY` と `HIST_IGNORE_DUPS` は home-manager の既定で既に有効なので、
+結果的に一致しています。
+
+**確認方法 1（`setopt_*` の読み手が居ないこと）**: hydenix 側と HyDE 側の両方を見ます。
+
+```bash
+grep -rn 'setopt_' modules/
+# => xdg.nix の定義 6 行だけ（読んでいる箇所は無い）
+```
+
+HyDE 本体はピン留め rev のアーカイブを落として grep します（`nix` は不要）。
+
+```bash
+REV=$(grep -o '"[0-9a-f]\{40\}"' pkgs/hyde/default.nix | head -1 | tr -d '"')
+curl -sL "https://codeload.github.com/HyDE-Project/HyDE/tar.gz/$REV" | tar xz
+grep -rI 'setopt_' "HyDE-$REV" | wc -l
+# => 0
+```
+
+**確認方法 2（home-manager に上書きされること）**: 生成される `.zshrc` の中身を直接読みます。
+
+```bash
+nix eval --raw --impure --expr '
+  (builtins.getFlake (toString ./.)).homeConfigurations.default
+    .config.programs.zsh.initContent
+' | grep -n 'HISTFILE\|HISTSIZE\|SAVEHIST'
+```
+
+`HISTFILE="/home/hydenix/.config/zsh/.zsh_history"` が出れば、
+export した `${HISTFILE:-$HOME/.zsh_history}` が使われていないことの証拠です。
+
+実際に適用される `setopt` の一覧も同じ方法で見られます。
+
+```bash
+nix eval --impure --expr '
+  (builtins.getFlake (toString ./.)).homeConfigurations.default
+    .config.programs.zsh.setOptions'
+# => [ "HIST_FCNTL_LOCK" "HIST_IGNORE_DUPS" … "NO_EXTENDED_HISTORY" "NO_HIST_IGNORE_ALL_DUPS" … ]
+```
+
+上の表のとおり `NO_` 付きで並んでいれば再現しています。実機なら次の 2 つが直接の証拠です。
+
+```bash
+grep -n 'HISTFILE\|EXTENDED_HISTORY' ~/.config/zsh/.zshrc
+echo $HISTFILE          # => /home/<user>/.config/zsh/.zsh_history
+```
+
+**直し方**: 2 つの案があります。issue #154 の文面どおりなら案 1、実態に合わせるなら案 2 です。
+
+**案 1（最小・移動だけ）**: `xdg.nix` の該当 10 行（コメント含む）を切り取り、
+`shell.nix` の `config` にそのまま貼ります。zsh 専用の設定なので `zsh.enable` で括ります。
+
+```nix
+# modules/hm/shell.nix の config 内に追加
+home.sessionVariables = lib.mkIf cfg.zsh.enable {
+  # History configuration // explicit to not nuke history
+  HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
+  # …以下 xdg.nix からそのまま
+};
+```
+
+括る条件が `hydenix.hm.xdg.enable` から `hydenix.hm.shell.enable`（＋ `zsh.enable`）に
+変わるだけです。どちらの既定も `config.hydenix.hm.enable` なので、
+**既定の構成では出力が 1 バイトも変わりません**。
+`xdg.nix` 冒頭 L3-4 の注意書きも同時に消せます。
+
+**案 2（推奨）**: 死んでいる 6 行を消し、意図を home-manager のオプションで表現します。
+
+```diff
+ # modules/hm/xdg.nix
+-      # History configuration // explicit to not nuke history
+-      HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
+-      HISTSIZE = "10000";
+-      SAVEHIST = "10000";
+-      setopt_EXTENDED_HISTORY = "true";
+-      setopt_INC_APPEND_HISTORY = "true";
+-      setopt_SHARE_HISTORY = "true";
+-      setopt_HIST_EXPIRE_DUPS_FIRST = "true";
+-      setopt_HIST_IGNORE_DUPS = "true";
+-      setopt_HIST_IGNORE_ALL_DUPS = "true";
+```
+
+```diff
+ # modules/hm/shell.nix の programs.zsh 内
+     dotDir = "${config.xdg.configHome}/zsh";
++
++    # 履歴設定（旧: xdg.nix の setopt_* 環境変数。読み手が居なかったので HM のオプションへ移した）
++    history = {
++      extended = true;              # setopt_EXTENDED_HISTORY
++      expireDuplicatesFirst = true; # setopt_HIST_EXPIRE_DUPS_FIRST
++      ignoreAllDups = true;         # setopt_HIST_IGNORE_ALL_DUPS
++      # ignoreDups / share と size / save(=10000) は home-manager の既定と同じなので書かない
++    };
+```
+
+- `setopt_INC_APPEND_HISTORY` に対応するオプションはありませんが、**不要です**。
+  zsh の `SHARE_HISTORY` は「入力したコマンドを履歴ファイルへ追記する」動作を含んでおり、
+  マニュアルにも「この場合 `INC_APPEND_HISTORY` は切っておくべき」と書かれています。
+- **`HISTFILE` は書かないのが正解です。** 現在の実効値は `~/.config/zsh/.zsh_history`
+  （home-manager の既定 = `$ZDOTDIR/.zsh_history`）です。
+  ここで `programs.zsh.history.path` を `$HOME/.zsh_history` に変えると、
+  既存利用者の履歴が**消えたように見えます**（ファイルは残るが読まれなくなる）。
+  置き場所を変えるかどうかは整理とは別の判断なので、混ぜないでください。
+- `home.sessionVariables` は fish / bash からも読まれますが、
+  fish は履歴に `HISTFILE` を使わず、hydenix は `programs.bash` を設定していないため、
+  **削除して困る利用者は居ません**。
+
+**リスク**: 案 1 はゼロ（出力が変わらない）。
+案 2 は `.zshrc` に `setopt` が 3 つ増えるぶん挙動が変わります。
+特に `EXTENDED_HISTORY` は履歴ファイルの書式が `: <epoch>:<elapsed>;<コマンド>` に変わりますが、
+zsh は新旧どちらの行も読めるので**既存の履歴が壊れることはありません**。
+
+**付随して直すとよい点**: すぐ上の `xdg.nix:89` も同じ理由で効いていません。
+
+```nix
+ZSH_AUTOSUGGEST_STRATEGY = "history completion";
+```
+
+`shell.nix:114` で `autosuggestion.enable = true` にしているため、home-manager が
+`.zshrc` の order 700 で `ZSH_AUTOSUGGEST_STRATEGY=(history)`（既定値）を書き、
+export した値を潰します。`completion` が落ちるので、補完候補からの提案が効きません。
+直すなら `programs.zsh.autosuggestion.strategy = ["history" "completion"];` を書き、
+`xdg.nix` 側の 1 行を消します。HyDE 本家の `terminal.zsh` も
+`(history completion)` にしているので、意図としてはこちらが正です。
+
+> この修正は上流へ PR を送る価値があります。issue #154 は「`shell.nix` へ移す」という
+> 整理の issue ですが、**「6 行は読み手が消滅している」「3 行は home-manager に上書きされている」**
+> という調査結果を添えれば、案 2 まで一度に通しやすくなります。
+> 案 1 と案 2 を分けて出す必要はありません（案 2 は案 1 を含むため）。
 
 ---
 
