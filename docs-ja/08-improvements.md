@@ -55,6 +55,106 @@ nix eval --impure --expr '
 
 ## A. 優先度: 高
 
+### A-0. 素材アーカイブを可変ブランチ ref から取得している（✅ 対応済み）
+
+> **このリストで唯一、実害が顕在化した項目です。** 他の項目が「潜在的な問題」なのに対し、
+> これは 2026-07-29 に dotnix の `nixos-rebuild` を**実際に停止させました**。
+
+**問題**: `pkgs/` の 2 つのパッケージが、素材の tar.gz を **ブランチ ref**（`refs/heads/...`）から
+取得しています。ブランチは動くので、上流がファイルを消した瞬間にビルド不能になります。
+
+| ファイル | 参照先 | 状態 |
+|---|---|---|
+| `pkgs/Bibata-Modern-Ice.nix` | `HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz` | ❌ 404（発生済み） |
+| `pkgs/Tela-circle-dracula.nix` | `hyde-themes/raw/refs/heads/Catppuccin-Mocha/Source/Icon_TelaDracula.tar.gz` | ⚠️ まだ生きているが同じ構造 |
+
+HyDE 本家が 2026-07-27 のリリースコミット `b8cc647`（"Release - rc → master" #1731、Lua 大改修）で
+**`Source/arcs/` ディレクトリを丸ごと削除**したため、前者の URL が 404 になりました。
+
+**なぜ起きるか**: fixed-output derivation（FOD）は **`sha256` を固定するだけで、
+URL の指す先までは固定しません**。「ハッシュを書いてあるから再現性がある」というのは半分だけ正しく、
+URL が動く先を向いていれば、ある日突然ビルドが落ちます。時限爆弾です。
+
+**実害**: `Bibata-Modern-Ice` は `modules/hm/hyde.nix`（カーソルテーマ）と
+`modules/system/sddm.nix`（ログイン画面）の**両方**から参照されるため、
+失敗が `home-manager-path` → `system-path` → `nixos-system` と連鎖し、
+**システムのクロージャ全体がビルドできなくなります**。
+
+```
+> curl: (22) The requested URL returned error: 404
+> error: cannot download Cursor_BibataIce.tar.gz from any mirror
+error: Cannot build '/nix/store/...-Bibata-Modern-Ice-1.0.0.drv'. Reason: 1 dependency failed.
+error: Cannot build '/nix/store/...-home-manager-path.drv'.   Reason: 1 dependency failed.
+error: Cannot build '/nix/store/...-system-path.drv'.         Reason: 1 dependency failed.
+error: Cannot build '/nix/store/...-nixos-system-....drv'.    Reason: 1 dependency failed.
+```
+
+**確認方法**: `nix eval` は不要です。`grep` と `curl` だけで再現します。
+
+```bash
+# 可変 ref を参照している fetchurl を洗い出す
+grep -rn 'raw/refs/heads' pkgs/
+
+# 生きているか確認（404 が返れば再現）
+curl -sIL -o /dev/null -w '%{http_code}\n' \
+  'https://github.com/HyDE-Project/HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz'
+```
+
+移転先を探しても**無駄です**。HyDE master のツリー全体を見てもカーソル素材は残っていません。
+
+```bash
+curl -sL 'https://api.github.com/repos/HyDE-Project/HyDE/git/trees/master?recursive=1' \
+  | grep -ci 'bibata'
+# => 0
+```
+
+**直し方**: URL のブランチ名を**コミット SHA に置き換えるだけ**です。
+
+```diff
+-url = "https://github.com/HyDE-Project/HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz";
++url = "https://github.com/HyDE-Project/HyDE/raw/a51460a7b1a822ee7194318b60a38850f711b923/Source/arcs/Cursor_BibataIce.tar.gz";
+```
+
+`a51460a` を選ぶ理由は 2 つあり、これが**偶然ではない**点が重要です。
+
+1. 削除コミット `b8cc647` の**親**にあたる ＝ 素材が残っている最後の rev
+2. **`pkgs/hyde` が既に pin している rev と同一**
+
+```bash
+grep -n 'rev = ' pkgs/hyde/default.nix
+# => rev = "a51460a7b1a822ee7194318b60a38850f711b923";
+```
+
+つまり修正後は、カーソルテーマが「master の気分次第」ではなく
+**パッケージ済みの HyDE 本体と同じ rev に揃う**ことになり、以前より設計として素直になります。
+
+**`sha256` の変更は不要です。** 同じコミットの同じファイルなのでバイト列が同一だからです。
+
+```bash
+curl -sL -o /tmp/c.tar.gz \
+  'https://github.com/HyDE-Project/HyDE/raw/a51460a7b1a822ee7194318b60a38850f711b923/Source/arcs/Cursor_BibataIce.tar.gz'
+nix hash file /tmp/c.tar.gz
+# => sha256-pYvIxOZ3jvcLrv4bDYPc0FPkPLydyWwltFLCZ7aILaQ=   ← 既存の値と一致
+```
+
+**nixpkgs の `bibata-cursors` で置き換えるのは不適当です。** この tar.gz の中身は
+`Bibata-Modern-Ice/{cursors,hyprcursors}` で、**hyprcursor 版を同梱**しています。
+nixpkgs 側は XCursor 版のみ（hyprcursor は別パッケージ）で、ディレクトリ構成も異なります。
+
+**対応状況**: ブランチ `fix/pin-hyde-asset-urls` に実装済みです（コミット 1 個。
+上流追従で rebase すると SHA は変わるので、ここでは branch 名だけを控えます）。
+`main` から分岐しており、コメントは英語で書いてあるので、そのまま上流へ出せます。
+`Tela-circle-dracula.nix` も同じ壊れ方をする潜在バグなので、
+現在の `Catppuccin-Mocha` の HEAD（`415d22a`）に同時に固定してあります（こちらもハッシュ不変）。
+
+> **未実施**: `nix fmt` をまだ通していません（作業した Mac に Nix が無いため）。
+> 変更はコメント追加と文字列 1 行なので alejandra が触る箇所ではないはずですが、
+> push 前に実機で一度流してください。手順は [09-fork-workflow.md](./09-fork-workflow.md) を参照。
+
+> この修正は上流へ PR を送る価値があります。**上流の `main` は本フォークの `main` と
+> 同一コミットなので、このブランチはそのまま PR にできます。**
+> 上流も同じバグを踏んだままの状態です。
+
 ### A-1. `mutableGeneration` — 存在しない依存名を参照している
 
 **問題**: 3 つの activation script が、実在しないエントリを待っている。
