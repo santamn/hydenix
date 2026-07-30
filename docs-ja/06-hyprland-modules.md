@@ -18,18 +18,12 @@ hyprland/
     └── mkHyprConfig.nix  ← 「追記 or 置き換え」型モジュールを動的生成する関数
 ```
 
-**設計の要点**: `options.nix` に定義を集め、`config`（適用処理）は各ファイルが持ちます。
-「何が設定できるか」を 1 ファイルで見渡せる一方、
-「その設定がどう反映されるか」は個別ファイルを見る必要があります。
+**設計の要点:** `options.nix` に定義を集め、`config`（適用処理）は各ファイルが持ちます。何が設定できるかは1ファイルに集約されており、その設定がどう反映されるかについては個別ファイルを見る必要があります。
 
 > [!IMPORTANT]
-> **フォークでの最大の変更点がここです。**
-> 本家には `hypridle.nix` / `keybindings.nix` / `windowrules.nix` / `nvidia.nix` /
-> `monitors.nix` / `pyprland.nix` という個別ファイルがありましたが、
-> すべて同じ構造だったため、**`mkHyprConfig.nix` という関数に一本化されました**。
+> フォークでの最大の変更点がここです。本家には `hypridle.nix` / `keybindings.nix` / `windowrules.nix` / `nvidia.nix` / `monitors.nix` / `pyprland.nix` という個別ファイルがありましたが、すべて同じ構造だったため、`mkHyprConfig.nix` という関数に一本化されました。
 >
-> **オプション名も使い方も本家と同じ**なので、利用者側の設定はそのまま動きます。
-> 変わったのは「どこに実装があるか」だけです。
+> オプション名も使い方も本家と同じなので、利用者側の設定はそのまま動きます。変わったのはどこに実装があるかだけです。
 
 ## パターン A: 追記 or 置き換え型（`mkHyprConfig`）
 
@@ -53,8 +47,8 @@ imports = [
 
 `mkHyprConfig {name = "keybindings";}` を呼ぶと、次のモジュールが返ります。
 
-- **オプション**: `hydenix.hm.hyprland.keybindings.{enable, extraConfig, overrideConfig}`
-- **設定**: `~/.config/hypr/keybindings.conf` の配置
+- **オプション:** `hydenix.hm.hyprland.keybindings.{enable, extraConfig, overrideConfig}`
+- **設定:** `~/.config/hypr/keybindings.conf` の配置
 
 ### 中身
 
@@ -77,7 +71,7 @@ config = lib.mkIf (hyprCfg.enable && cfg.enable) {
 ### なぜ `source` ではなく `lib.readFile` なのか
 
 | 書き方 | できること |
-|---|---|
+|-------|----------|
 | `source = "${pkgs.hyde}/..."` | HyDE のファイルへリンクを張るだけ。中身は変えられない |
 | `text = "${lib.readFile ...}\n追記"` | 中身を読み込んで**新しいファイルを生成**するので追記できる |
 
@@ -109,15 +103,12 @@ Note this may break hydenix, hope you know what you're doing!
 自覚した上で使うなら `suppressWarnings = true;` で黙らせられます。
 
 > [!NOTE]
-> `assertions.nix` は `hypridle` / `keybindings` / `windowrules` / `nvidia` /
-> `monitors` / `overrideMain` しか見ていません。
-> フォークで追加された **`hyprsunset` は検証対象から漏れています**。
+> `assertions.nix` は `hypridle` / `keybindings` / `windowrules` / `nvidia` / `monitors` / `overrideMain` しか見ていません。
+> フォークで追加された **`hyprsunset`** は検証対象から漏れています。
 
 ### monitors について
 
-本家では `monitors.nix` だけが「`extraConfig` なし・`mutable = true`」という特別扱いでした。
-フォークでは `mkHyprConfig` に統合されたため、**`monitors` にも `extraConfig` が使えます**。
-また `mutable = true` は全モジュール共通になりました。
+本家では `monitors.nix` だけが `extraConfig` なし・`mutable = true` という特別扱いでした。フォークでは `mkHyprConfig` に統合されたため、`monitors` にも `extraConfig` が使えます。また `mutable = true` は全モジュール共通になりました。
 
 内容を Nix で固定したい場合は従来通り `overrideConfig` を使います。
 
@@ -130,17 +121,13 @@ hydenix.hm.hyprland.monitors.overrideConfig = ''
 
 ### pyprland が使えない件
 
-`default.nix` の imports で**コメントアウトされており、オプションも存在しません**。
-本家 issue #188（`hyde-shell pypr console` が動かない）が未解決のためです。
+`default.nix` の imports でコメントアウトされており、オプションも存在しません。本家 issue #188（`hyde-shell pypr console` が動かない）が未解決のためです。
 
-そのため scratchpad などの pyprland 機能は使えません。
-`hydenix.hm.hyprland.pyprland.extraConfig = "...";` と書くと、
-本家と違って**オプション未定義エラーで止まります**（黙って無視されるよりは親切です）。
+そのため scratchpad などの pyprland 機能は使えません。`hydenix.hm.hyprland.pyprland.extraConfig = "...";` と書くと、本家と違って**オプション未定義エラーで止まります**。
 
 ## パターン B: プリセット選択型
 
-`animations` / `shaders` / `workflows` が該当します。
-「複数の候補ファイルを全部置いておき、そのうち 1 つを有効にする」構造です。
+`animations` / `shaders` / `workflows` が該当します。「複数の候補ファイルを全部置いておき、そのうち 1 つを有効にする」構造です。
 
 ```nix
 config = lib.mkIf (cfg.enable && cfg.animations.enable) {
@@ -154,7 +141,7 @@ config = lib.mkIf (cfg.enable && cfg.animations.enable) {
 };
 ```
 
-(2) で全プリセットを配置しているのは、**実行中に HyDE の機能で切り替えられるようにする**ためです。
+(2) で全プリセットを配置しているのは、**実行中に HyDE の機能で切り替えられるようにするため**です。
 
 ### overrides の使い方
 
@@ -180,20 +167,16 @@ if cfg.animations.overrides ? ${cfg.animations.preset} then <overrides の中身
 ```
 
 > [!WARNING]
-> `preset` に「overrides にも HyDE にも無い名前」を書くと、
-> `${pkgs.hyde}/Configs/.config/hypr/animations/<名前>.conf` が存在せず、
-> **ビルドが失敗します**。テーマ名と違い、こちらは黙って無視されません。
+> `preset` に「overrides にも HyDE にも無い名前」を書くと、`${pkgs.hyde}/Configs/.config/hypr/animations/<名前>.conf` が存在せず、**ビルドが失敗します**。テーマ名と違い、こちらは黙って無視されません。
 
-`workflows.nix` だけは追加処理があり、標準プリセットに無い名前の `overrides` を
-新規ワークフローとしても配置します。
+`workflows.nix` だけは追加処理があり、標準プリセットに無い名前の `overrides` を新規ワークフローとしても配置します。
 
 ```nix
 (lib.mapAttrs' (name: content: {...})
   (lib.filterAttrs (name: _: !(lib.elem name workflowPresets)) cfg.workflows.overrides))
 ```
 
-`shaders.nix` の `overrides` はキーに**拡張子まで含めて**書く点が他と異なります
-（例: `"my-filter.frag"`）。
+`shaders.nix` の `overrides` はキーに**拡張子まで含めて**書く点が他と異なります（例: `"my-filter.frag"`）。
 
 ## メイン設定の扱い
 
@@ -219,8 +202,7 @@ hydenix.hm.hyprland.extraConfig = ''
 '';
 ```
 
-`overrideMain` は HyDE の機能をほぼ全部失うため、
-「HyDE のレイアウトを土台にしたくない」という明確な意図がある場合のみ使います。
+`overrideMain` は HyDE の機能をほぼ全部失うため、HyDE のレイアウトを土台にしたくないという明確な意図がある場合のみ使います。
 
 ## systemd 連携（フォークで追加）
 
@@ -230,8 +212,7 @@ hydenix.hm.hyprland.extraConfig = ''
 exec-once = <dbus>/bin/dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target
 ```
 
-これにより、systemd ユーザサービス側から `WAYLAND_DISPLAY` などが見えるようになります。
-テーマ適用サービス（`setTheme.service`）が正しく動くための前提です。
+これにより、systemd ユーザサービス側から `WAYLAND_DISPLAY` などが見えるようになります。テーマ適用サービス（`setTheme.service`）が正しく動くための前提です。
 
 ```nix
 hydenix.hm.hyprland.systemd = {
@@ -252,19 +233,15 @@ home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableGeneration"] 
 '';
 ```
 
-これらは**テーマ適用スクリプトが後で書き込む先**のファイルです。
-Hyprland は設定ファイル内の `source = ...` で存在しないファイルを指すとエラーを出すため、
-初回起動時のエラーを防ぐために空ファイルを先に用意しています。
+これらは**テーマ適用スクリプトが後で書き込む先**のファイルです。Hyprland は設定ファイル内の `source = ...` で存在しないファイルを指すとエラーを出すため、初回起動時のエラーを防ぐために空ファイルを先に用意しています。
 
 > [!NOTE]
-> 依存先に指定されている `"mutableGeneration"` は、
-> `mutable.nix` が実際に定義している名前 `"mutableFileGeneration"` と食い違っています。
+> 依存先に指定されている `"mutableGeneration"` は、`mutable.nix` が実際に定義している名前 `"mutableFileGeneration"` と食い違っています。
 > 詳細は [08-improvements.md](./08-improvements.md) を参照。
 
 ## 設定を変更したときの反映
 
-Hyprland は設定ファイルの変更を自動で再読み込みします。
-ただし hydenix 経由で変更した場合は、まず rebuild が必要です。
+Hyprland は設定ファイルの変更を自動で再読み込みします。ただし hydenix 経由で変更した場合は、まず rebuild が必要です。
 
 ```bash
 sudo nixos-rebuild switch --flake .#<ホスト名>
@@ -273,7 +250,4 @@ sudo nixos-rebuild switch --flake .#<ホスト名>
 ```
 
 > [!TIP]
-> `mkHyprConfig` の生成物は `mutable = true` なので、
-> **手で編集した内容は次の rebuild まで残ります**。
-> 試行錯誤するときは直接編集 → `hyprctl reload` が速く、
-> 決まったら `extraConfig` に書き戻す、という進め方ができます。
+> `mkHyprConfig` の生成物は `mutable = true` なので、**手動で編集した内容は次の rebuild まで残ります**。試行錯誤するときは直接編集 → `hyprctl reload` が速く、決まったら `extraConfig` に書き戻す、という進め方ができます。
