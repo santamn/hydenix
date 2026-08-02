@@ -105,6 +105,10 @@
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
+      # Asset packages are fixed-output derivations: their fetch only runs at
+      # build time, so a dead upstream URL passes evaluation. Build them here so
+      # it fails a PR instead of a user's rebuild.
+      inherit (pkgs) hyde Bibata-Modern-Ice Tela-circle-dracula;
     };
 
     # for `nix fmt`

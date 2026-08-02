@@ -6,6 +6,10 @@ on:
     branches: [main]
     tags: ['*']
   pull_request:
+  schedule:
+    # Weekly: the asset packages in checks fetch archives from upstream repos,
+    # so this catches an upstream file deletion even when no PR is open.
+    - cron: '0 3 * * 1'
 
 permissions: {}
 
