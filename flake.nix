@@ -106,6 +106,23 @@
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
       inherit (pkgs) hyde Bibata-Modern-Ice Tela-circle-dracula;
+
+      /*
+      Mirrors how `home.packages` merges every package into a single profile:
+      the standalone icon/cursor themes and the copies bundled in the HyDE
+      themes both land in `share/icons`, and `buildEnv` refuses to merge two
+      directories whose files disagree. Building the default theme set here
+      catches such a collision in CI instead of on a user's rebuild.
+      */
+      theme-assets = pkgs.buildEnv {
+        name = "hydenix-theme-assets";
+        paths = with pkgs; [
+          Bibata-Modern-Ice
+          Tela-circle-dracula
+          hydenix-themes."Catppuccin Mocha"
+          hydenix-themes."Catppuccin Latte"
+        ];
+      };
     };
 
     # for `nix fmt`
