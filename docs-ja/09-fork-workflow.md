@@ -158,15 +158,16 @@ git switch ja && git rebase main
 
 ## PR を出すときの決まりごと
 
-このリポジトリは CI で以下を強制しています。
+このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が強制し、整形はレビューで担保する運用です。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
 
-| 項目 | ツール | 内容 |
-|---|---|---|
-| 整形 | treefmt（alejandra / deadnix / statix） | `nix fmt` を通すこと |
-| コミットメッセージ | commitlint | **Conventional Commits 必須**。72 文字以内、末尾のピリオド禁止 |
-| スペル | typos | リポジトリ全体を検査 |
-| Actions | zizmor | ワークフローの静的解析 |
-| ビルド | flake-check | `nix flake check` |
+| 項目 | ツール | CI で強制 | 内容 |
+|---|---|---|---|
+| 整形 | treefmt（alejandra / deadnix / statix） | されない | `nix fmt` を通すこと |
+| コミットメッセージ | commitlint | される | **Conventional Commits 必須**。72 文字以内、末尾のピリオド禁止 |
+| スペル | typos | される | リポジトリ全体を検査 |
+| Actions | zizmor | される | ワークフローの静的解析 |
+| 依存の重複 | flint | される | `flake.lock` 内の依存バージョン重複を検査 |
+| ビルド | flake-check | される | `nix flake check` |
 
 コミットメッセージの型は次のどれかです。
 
