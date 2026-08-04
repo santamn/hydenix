@@ -108,11 +108,12 @@
       runHook postInstall
     '';
 
-    meta = with pkgs.lib; {
-      inherit (meta) description homepage priority;
-      license = licenses.mit;
-      platforms = platforms.all;
-    };
+    meta = with pkgs.lib;
+      {
+        license = licenses.mit;
+        platforms = platforms.all;
+      }
+      // meta;
   };
 in
   pkg
