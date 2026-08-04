@@ -1174,6 +1174,66 @@ NixOS 版に置き換えるのは勧めません。`up` に相当するのは `n
 
 > この修正は上流へ PR を送る価値があります。A-1 と同じく小さく独立した変更で、上流の HyDE 自身がコメントアウトしている行を移植時に有効化してしまった、という経緯を本文に書けば説明も短く済みます。
 
+### B-10. 同名アイコンテーマを複数テーマが「異なる内容」で同梱している
+
+[santamn/hydenix#5](https://github.com/santamn/hydenix/pull/5)（`share/icons` の buildEnv 衝突修正）の調査で見つかった、同じ構造のより静かな問題です。
+
+#### 問題
+
+HyDE テーマの tarball は各テーマリポジトリで別々の時期に生成されているため、同じアイコンテーマ（同じ `share/icons/<dir>`）を複数のテーマが**中身の違うビルド**で同梱していることがあります。全 58 テーマの pin 済み rev を調査して、内容が食い違うペアが 4 つ確認できました（10 桁は tar.gz の blob SHA）。
+
+| 展開先ディレクトリ | テーマ A | テーマ B |
+|---|---|---|
+| `Tela-circle-grey` | Catppuccin Latte `1cd2add523` | Graphite Mono `1c9e602cc5` |
+| `Tela-circle-green` | Greenify `1fbe03250f` | LimeFrenzy `6b38249179` |
+| `Aretha-Dark-Icons` | Amethyst-Aura `a2933d8840` | Nightbrew `a936bb73d2` |
+| `Gruvbox-Plus-Dark` | AbyssGreen `99ed823d5f` | Gruvbox Retro `e944ab8ae7` |
+
+同名で blob も一致するペア（`TelaGreen` の Decay Green / Green Lush、`Vivid-Glassy-Dark` の Another World / Code Garden など）はバイト同一なので無害です。また `Tela-circle-dracula`（5 テーマが同梱、うち Electra / Joker は別内容）と `Bibata-Modern-Ice`（Vanta Black が同梱）は standalone パッケージと衝突する側の問題で、#5 の `sharedAssets` で解決済みです。
+
+#### 原因
+
+[`modules/hm/theme.nix`](../modules/hm/theme.nix) は選択されたテーマを 1 つの `symlinkJoin` に束ねます。`symlinkJoin` の実体は `lndir` で、同じパスに 2 回目のエントリが来ると**警告してスキップ**します（`buildEnv` と違ってエラーにしない）。結果は「先に並んだテーマの共有ファイル ＋ 後のテーマにしかないファイル」という混成アイコンテーマで、ビルドは何事もなく通ります。表のペアを両方 `hydenix.hm.theme.themes` に入れた場合だけ発生し、デフォルトの `[Mocha, Latte]` 単独では起きません。
+
+#### 確認方法
+
+ネットワークだけで確認できます（clone もビルドも不要、`gh` と `jq` が必要）。
+
+```bash
+for f in pkgs/hydenix-themes/*.nix; do
+  case "$f" in */default.nix) continue;; esac
+  owner=$(grep -o 'owner = "[^"]*"' "$f" | head -1 | cut -d'"' -f2)
+  repo=$(grep -o 'repo = "[^"]*"' "$f" | head -1 | cut -d'"' -f2)
+  rev=$(grep -o 'rev = "[a-f0-9]*"' "$f" | head -1 | cut -d'"' -f2)
+  gh api "repos/$owner/$repo/git/trees/$rev?recursive=1" \
+    --jq '.tree[] | select(.path|test("(Icon|Cursor)_[^/]*\\.tar\\.gz$")) | "\(.sha[0:10])  \(.path)"' \
+    | sed "s|^|$(basename "$f" .nix)  |"
+done
+```
+
+読み方の注意が 2 つあります。
+
+- **owner / repo は必ずテーマごとに読むこと。** 58 テーマ中 37 個は `HyDE-Project/hyde-themes` ではなく専用リポジトリにあります。全 rev を `hyde-themes` に対して照会すると 44 件が 404 になり、「pin が壊れている」ように見えますが、それはリポジトリ違いによる誤検出です（実際には 58 件すべて到達可能でした）。
+- **tarball 名と展開先ディレクトリ名は一致しないことがある。** Joker は `Icon_Tela-circle-dracula.tar.gz`（他は `Icon_TelaDracula.tar.gz`）、Electra の `Cursor_Electra.tar.gz` は `Nero-Cyber-Cyan` に展開されます。blob が違う同名 tarball を見つけたら、最終判断は raw URL から取得して `tar -tzf` で top-level を見ること。
+
+#### 実害
+
+該当ペアを両方有効にしてテーマを切り替えると、アイコンの一部だけ別ビルド由来になります。サイズ違い・デザイン改版の混在なので視覚的な破綻は軽微ですが、「テーマを切り替えたのに一部のアイコンが変わらない」形で表面化し、原因究明が非常にしづらい類のバグです。
+
+#### 修正方法
+
+#5 で入れた `sharedAssets`（展開先ディレクトリ名 → 正準パッケージの attrset。該当ディレクトリを展開後に正準パッケージへの symlink に置き換える）がそのまま受け皿になります。ペアごとに正準ソースを 1 つ決めて登録するだけです。
+
+| ディレクトリ | 正準ソース候補 |
+|---|---|
+| `Tela-circle-grey` / `Tela-circle-green` | nixpkgs `tela-circle-icon-theme.override { colorVariants = ["grey" / "green"]; }`（`Tela-circle-dracula` と同じ作り） |
+| `Gruvbox-Plus-Dark` | nixpkgs `gruvbox-plus-icons`（展開先ディレクトリ名が一致するかは要確認） |
+| `Aretha-Dark-Icons` | nixpkgs に無い。どちらかのテーマの blob を `fetchurl` で固定して 1 回だけ展開する小パッケージを作るか、原作者リポジトリから `fetchFromGitHub` する |
+
+`sharedAssets` は「そのディレクトリを同梱していたテーマだけ」を置き換えるので、`home.packages` に増えるものはなく、該当テーマを有効にした人の閉包にだけ正準パッケージが入ります。あわせて `checks.theme-assets`（`buildEnv` はテーマを別 paths として突き合わせるので、`symlinkJoin` と違って同名衝突を検出できる）に該当テーマを足すと、正準化漏れが CI で落ちるようになります。
+
+> この修正は上流へ PR を送る価値がありますが、#5（衝突修正）が前提になるので、送るなら #5 の後に積んでください。優先度は B の末尾（ビルドは壊れず、特定の組み合わせでしか起きない）。
+
 ---
 
 ## C. 優先度: 低（仕様として割り切れるもの）
