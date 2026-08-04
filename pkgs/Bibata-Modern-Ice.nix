@@ -1,32 +1,35 @@
 {
   lib,
-  stdenv,
-  pkgs,
+  runCommand,
+  bibata-cursors,
+  hyprcursor,
+  xcur2png,
 }:
-stdenv.mkDerivation {
-  pname = "Bibata-Modern-Ice";
-  version = "1.0.0";
-
-  src = pkgs.fetchurl {
-    url = "https://github.com/HyDE-Project/HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz";
-    sha256 = "sha256-pYvIxOZ3jvcLrv4bDYPc0FPkPLydyWwltFLCZ7aILaQ=";
-  };
-
-  nativeBuildInputs = with pkgs; [
-    jdupes
-  ];
-
-  installPhase = ''
-    mkdir -p $out/share/icons/
-    tar -xf $src -C $out/share/icons/
-    jdupes --recurse $out/share/icons/
-  '';
+runCommand "Bibata-Modern-Ice-${bibata-cursors.version}" {
+  nativeBuildInputs = [hyprcursor xcur2png];
 
   meta = {
-    description = "Bibata Modern Ice cursor theme";
-    homepage = "https://github.com/HyDE-Project/HyDE";
-    license = lib.licenses.gpl3;
+    description = "Bibata Modern Ice cursor theme, with hyprcursor variant";
+    homepage = "https://github.com/ful1e5/Bibata_Cursor";
+    license = lib.licenses.gpl3Only;
     maintainers = [];
-    platforms = lib.platforms.all;
+    platforms = lib.platforms.linux;
   };
-}
+} ''
+  xcursor=${bibata-cursors}/share/icons/Bibata-Modern-Ice
+  theme=$out/share/icons/Bibata-Modern-Ice
+
+  mkdir -p $out/share/icons
+  cp -r "$xcursor" $out/share/icons/
+  chmod -R u+w "$theme"
+
+  # nixpkgs builds XCursor only, so rebuild the hyprcursor variant from it
+  hyprcursor-util --extract "$xcursor" --output "$TMPDIR" --resize bilinear
+  substituteInPlace "$TMPDIR/extracted_Bibata-Modern-Ice/manifest.hl" \
+    --replace-fail "name = Extracted Theme" "name = Bibata-Modern-Ice" \
+    --replace-fail "version = 0.1" "version = ${bibata-cursors.version}"
+  hyprcursor-util --create "$TMPDIR/extracted_Bibata-Modern-Ice" --output "$TMPDIR"
+
+  cp "$TMPDIR/theme_Bibata-Modern-Ice/manifest.hl" "$theme/"
+  cp -r "$TMPDIR/theme_Bibata-Modern-Ice/hyprcursors" "$theme/"
+''
