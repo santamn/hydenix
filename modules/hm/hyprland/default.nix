@@ -34,6 +34,7 @@ in {
       pkgs.hyprutils
       pkgs.hyprpicker
       pkgs.hyprcursor
+      (lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset)
     ];
 
     home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableGeneration"] ''
