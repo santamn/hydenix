@@ -45,270 +45,57 @@ nix eval --impure --expr '
 
 ## A. 優先度: 高
 
-### A-0. 素材アーカイブを可変ブランチ ref から取得している（一部対応済み）
+### A-0. `pkgs/hyde` の rev を上げると素材アーカイブが無くてビルドが落ちる
 
 #### 問題
 
-`pkgs/` の 2 つのパッケージが、素材の tar.gz をブランチ ref（`refs/heads/...`）から取得しています。ブランチは動くので、上流がファイルを消した瞬間にビルド不能になります。
+HyDE 本家が 2026-07-27 のリリースコミット `b8cc647`（chore: Release - rc → master #1731）で `Source/arcs/` から `Code_Wallbash.vsix` と `Font_*.tar.gz` 6 個、それに `Cursor_BibataIce.tar.gz` を削除しました。ピン留め中の `v26.7.4` にはまだ残っているので現状は動きますが、これより後へ rev を上げた瞬間に [`pkgs/hyde/default.nix`](../pkgs/hyde/default.nix) の `buildPhase` が壊れます。
 
-| ファイル | 参照先 | 状態 |
-|--------|--------|-----|
-| `pkgs/Bibata-Modern-Ice.nix` | `HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz` | 404（発生済み） |
-| `pkgs/Tela-circle-dracula.nix` | `hyde-themes/raw/refs/heads/Catppuccin-Mocha/Source/Icon_TelaDracula.tar.gz` | まだ生きているが同じ構造 |
+| 処理 | 削除後の挙動 |
+|---|---|
+| `unzip ./Source/arcs/Code_Wallbash.vsix` | ファイルが無く `unzip` が失敗してビルドが落ちる |
+| `for fontarchive in ./Source/arcs/Font_*.tar.gz` | `if [ -f "$fontarchive" ]` に守られているためエラーにならず、**フォントが 0 個の hyde が黙って出来上がる** |
 
-HyDE 本家が 2026-07-27 のリリースコミット `b8cc647`（chore: Release - rc → master #1731、Lua 大改修）で `Cursor_BibataIce.tar.gz` を削除したため、前者の URL が 404 になりました。消えたのはこのファイルだけではなく、同じコミットで `Code_Wallbash.vsix` と `Font_*.tar.gz` 6 個も無くなっています。一方 `Source/arcs/` ディレクトリ自体は残っており、Grub / Sddm / Firefox / Gtk / Icon 系のアーカイブ 10 個は現在の master にもあります。ディレクトリごと消えたわけではない、という点が後の判断に効いてきます。
-
-`Bibata-Modern-Ice` は `modules/hm/hyde.nix`（カーソルテーマ）と `modules/system/sddm.nix`（ログイン画面）の両方から参照されるため、失敗が `home-manager-path` → `system-path` → `nixos-system` と連鎖し、システムのクロージャ全体がビルドできなくなります。
-
-```
-> curl: (22) The requested URL returned error: 404
-> error: cannot download Cursor_BibataIce.tar.gz from any mirror
-error: Cannot build '/nix/store/...-Bibata-Modern-Ice-1.0.0.drv'. Reason: 1 dependency failed.
-error: Cannot build '/nix/store/...-home-manager-path.drv'.   Reason: 1 dependency failed.
-error: Cannot build '/nix/store/...-system-path.drv'.         Reason: 1 dependency failed.
-error: Cannot build '/nix/store/...-nixos-system-....drv'.    Reason: 1 dependency failed.
-```
-
-#### 原因
-
-原因は 3 つ重なっています。1 つ目だけを直しても、同じ壊れ方をまた繰り返します。
-
-1 つ目は fixed-output derivation（FOD）の性質です。FOD は `sha256` を固定するだけで、URL の指す先までは固定しません。ハッシュを書いてあるから再現性があるというのは半分だけ正しく、URL が動く先を向いていれば、ある日突然ビルドが落ちます。
-
-2 つ目は CI がこの 2 つのパッケージを一度もビルドしていないことです。`flake.nix` の `checks` に入っているのは `hyprquery` / `hydectl` / `hyde-config` / `hyde-ipc` の 4 つだけで、`nix flake check` が実際にビルドするのはこの `checks` の中身です。素材パッケージは評価されるだけなので、fetch の失敗はビルド時にしか起きず、CI を素通りします。上流のファイル削除が CI ではなく利用者の `nixos-rebuild` で初めて表面化したのはこのためです。
-
-3 つ目は renovate がこの 2 つを見ていないことです。`.github/renovate.json` の customManagers は `fetchFromGitHub { owner … repo … rev … }` という形しか拾わないので、生の URL に書かれた ref は更新対象にも監視対象にもなっていません。
+前者はすぐ気づけますが、後者は気づけません。上流追従を再開するなら、先にこの 2 つの入手先を決める必要があります。
 
 #### 確認方法
 
-`nix eval` は不要です。`grep` と `curl` だけで再現します。
+ネットワークだけで確認できます。
 
 ```bash
-# 可変 ref を参照している fetchurl を洗い出す
-grep -rn 'raw/refs/heads' pkgs/
-
-# 生きているか確認（404 が返れば再現）
-curl -sIL -o /dev/null -w '%{http_code}\n' 'https://github.com/HyDE-Project/HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz'
-```
-
-移転先を探しても無駄です。HyDE master のツリー全体を見てもカーソル素材は残っていません。
-
-```bash
-curl -sL 'https://api.github.com/repos/HyDE-Project/HyDE/git/trees/master?recursive=1' | grep -ci 'bibata'
-# => 0
-```
-
-何が消えて何が残ったかは、ピン留め中の rev と master の `Source/arcs/` を並べると分かります。
-
-```bash
-for ref in a51460a7b1a822ee7194318b60a38850f711b923 master; do
+for ref in v26.7.4 master; do
   echo "--- $ref ---"
-  curl -s "https://api.github.com/repos/HyDE-Project/HyDE/contents/Source/arcs?ref=$ref" |
-    grep -o '"name": "[^"]*"' | cut -d'"' -f4
+  gh api "repos/HyDE-Project/HyDE/contents/Source/arcs?ref=$ref" --jq '.[].name'
 done
-# a51460a 側にだけ Cursor_BibataIce.tar.gz / Code_Wallbash.vsix / Font_*.tar.gz がある
+# v26.7.4 側にだけ Code_Wallbash.vsix / Cursor_BibataIce.tar.gz / Font_*.tar.gz がある
 ```
 
-CI が素材パッケージをビルドしていないことは `checks` の中身を見れば分かります。
-
-```bash
-nix eval --impure --expr '
-  builtins.attrNames (builtins.getFlake (toString ./.)).checks.x86_64-linux'
-# => [ "hyde-config" "hyde-ipc" "hydectl" "hyprquery" ]
-```
-
-renovate が素材の URL を見ていないことは設定ファイルで確認できます。
-
-```bash
-grep -n 'matchStrings' -A 2 .github/renovate.json
-# => fetchFromGitHub の形しか書かれていない
-```
-
-#### 修正方法
-
-先に前提を 1 つ整理しておきます。ブランチ ref は上流追従の仕組みではありません。FOD の URL が指す中身が変われば `sha256` が合わずにビルドが落ち、消えれば 404 になるだけで、新しい版が自動で取り込まれることは決してありません。`refs/heads/master` と書いてあっても得られるのは最新版ではなく、いつ壊れるか分からない状態です。したがって rev を固定しても追従性は失われません。失われるものはもともと無く、代わりに壊れるタイミングが予測可能になります。
-
-そのうえで、追従の仕組みは別に用意します。ビルドは固定して決定的にし、上流が動いたことを知らせる役目は CI に持たせる、という分担です。エラーが出ること自体は歓迎してよく、問題はそれが利用者の `nixos-rebuild` で出るか CI の PR で出るかの違いです。以下の 4 手順はこの分担を作るためのものです。
-
-##### 手順 1: 参照を固定する（実装済み）
-
-URL のブランチ名をコミット SHA に置き換えます。
-
-```diff
--url = "https://github.com/HyDE-Project/HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz";
-+url = "https://github.com/HyDE-Project/HyDE/raw/a51460a7b1a822ee7194318b60a38850f711b923/Source/arcs/Cursor_BibataIce.tar.gz";
-```
-
-`a51460a` を選ぶ理由は 2 つあり、これが偶然ではない点が重要です。
-
-1. 削除コミット `b8cc647` の親にあたる、つまり素材が残っている最後の rev
-2. `pkgs/hyde` が既に pin している rev と同一
-
-```bash
-grep -n 'rev = ' pkgs/hyde/default.nix
-# => rev = "a51460a7b1a822ee7194318b60a38850f711b923";
-```
-
-つまり修正後は、カーソルテーマが master の状態に左右されず、パッケージ済みの HyDE 本体と同じ rev に揃うことになり、以前より設計として素直になります。
-
-`sha256` の変更は不要です。同じコミットの同じファイルなのでバイト列が同一だからです。
-
-```bash
-curl -sL -o /tmp/c.tar.gz 'https://github.com/HyDE-Project/HyDE/raw/a51460a7b1a822ee7194318b60a38850f711b923/Source/arcs/Cursor_BibataIce.tar.gz'
-nix hash file /tmp/c.tar.gz
-# => sha256-pYvIxOZ3jvcLrv4bDYPc0FPkPLydyWwltFLCZ7aILaQ=   既存の値と一致
-```
-
-なお `a51460a` には `v26.7.4` というタグが付いています。`raw/v26.7.4/...` でも同じファイルが取れるので、タグ表記でも構いません。後述するとおり上流はこの表記に寄せています。
-
-```bash
-curl -s 'https://api.github.com/repos/HyDE-Project/HyDE/git/ref/tags/v26.7.4' | grep -o '"sha": "[^"]*"'
-# => "sha": "a51460a7b1a822ee7194318b60a38850f711b923"
-```
-
-nixpkgs の `bibata-cursors` で置き換えるのは不適当です。この tar.gz の中身は `Bibata-Modern-Ice/{cursors,hyprcursors}` で、hyprcursor 版を同梱しています。nixpkgs 側は XCursor 版のみ（hyprcursor は別パッケージ）で、ディレクトリ構成も異なります。
-
-##### 手順 2: Bibata の取得元を `pkgs/hyde` に一本化する
-
-追従先が 2 か所あるから片方が取り残されるので、1 か所に減らすのが本命の修正です。
-
-`pkgs/hyde` は HyDE のリポジトリ全体を取得しており、`buildPhase` が消しているのは `Source/assets` だけで `Source/arcs` は残しています。`installPhase` が `cp -r . $out` なので、`Cursor_BibataIce.tar.gz` は既に `pkgs/hyde` の出力の中にあります。2 度目の fetch は要りません。
-
-```bash
-grep -n 'rm -rf Source\|cp -r . \$out' pkgs/hyde/default.nix
-# => rm -rf Source/assets  と  cp -r . $out
-```
-
-`hyde.src` を直接参照する形に書き換えます。
-
-```diff
- {
-   lib,
-   stdenv,
--  pkgs,
-+  jdupes,
-+  hyde,
- }:
- stdenv.mkDerivation {
-   pname = "Bibata-Modern-Ice";
--  version = "1.0.0";
--
--  src = pkgs.fetchurl {
--    url = "https://github.com/HyDE-Project/HyDE/raw/refs/heads/master/Source/arcs/Cursor_BibataIce.tar.gz";
--    sha256 = "sha256-pYvIxOZ3jvcLrv4bDYPc0FPkPLydyWwltFLCZ7aILaQ=";
--  };
-+  inherit (hyde) version;
-+
-+  dontUnpack = true;
- 
--  nativeBuildInputs = with pkgs; [
--    jdupes
--  ];
-+  nativeBuildInputs = [jdupes];
- 
-   installPhase = ''
-     mkdir -p $out/share/icons/
--    tar -xf $src -C $out/share/icons/
-+    tar -xf ${hyde.src}/Source/arcs/Cursor_BibataIce.tar.gz -C $out/share/icons/
-     jdupes --recurse $out/share/icons/
-   '';
-```
-
-これで pin と `sha256` が 1 組減り、カーソルは常に `pkgs/hyde` と同じ rev のものになります。`pkgs/hyde` の rev は renovate の監視対象なので、追従の仕組みが既にある側へ寄せたことになります。
-
-代償として、`pkgs/hyde` を `b8cc647` 以降へ上げると tar.gz が存在せずビルドが落ちます。これは意図した挙動です。壊れる場所が利用者の実機ではなく renovate の PR になり、上げてよいかどうかを判断する場所と失敗する場所が一致します。
-
-ただし、この代償は実質的に増えていません。同じコミットで `Code_Wallbash.vsix` も消えており、`pkgs/hyde` の `buildPhase` はこれを無条件に `unzip` するため、hyde の bump は今でもそこで失敗します。
+`buildPhase` 側の扱いは `grep` で分かります。
 
 ```bash
 grep -n 'Code_Wallbash\|Font_\*' pkgs/hyde/default.nix
 ```
 
-フォントのほうはさらに厄介で、`for fontarchive in ./Source/arcs/Font_*.tar.gz` のループが `if [ -f "$fontarchive" ]` で守られているため、glob が 1 つも一致しなくてもエラーにならず、フォントが 0 個の hyde が黙って出来上がります。上流追従を再開するなら、カーソルより先にこの 2 つを片付ける必要があります。
+#### 修正方法
 
-##### 手順 3: Tela を nixpkgs のパッケージに置き換える
+`Code_Wallbash.vsix` は VS Code の wallbash 拡張なので、[`modules/hm/editors.nix`](../modules/hm/editors.nix) が参照している側ごと見直すか、拡張の配布元（`prasanthrangan/wallbash` 系リポジトリ）から `fetchFromGitHub` で取り直すことになります。フォントは nixpkgs に同等のもの（`nerd-fonts.*` / `noto-fonts-cjk-sans` / `maple-mono` など）が揃っているので、そちらへ寄せるのが素直です。
 
-こちらは pin を残す必要すらありません。nixpkgs の `tela-circle-icon-theme` は `colorVariants` に `"dracula"` を持っています。
+いずれにせよ、まず `if [ -f ... ]` の握りつぶしをやめて **無いなら落ちる** ようにしてください。フォントが 0 個であることに気づけないのが一番まずい状態です。
 
-```bash
-curl -s 'https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-unstable/pkgs/by-name/te/tela-circle-icon-theme/package.nix' \
-  | grep -n 'colorVariants\|"dracula"'
-```
+#### 対応済みの部分
 
-tar.gz の中身も先頭ディレクトリが `Tela-circle-dracula/` なので、`modules/hm/hyde.nix` や各テーマの `hypr.theme` が参照する `$ICON_THEME` の名前は変わりません。
+この項目のうち、可変ブランチ ref から素材を取得していた問題と、CI がそれを検知できない問題は解決済みです。
 
-```bash
-curl -sL -o /tmp/t.tar.gz 'https://github.com/HyDE-Project/hyde-themes/raw/415d22a6bb6348a6d09c11307be54c592fb15138/Source/Icon_TelaDracula.tar.gz'
-tar tzf /tmp/t.tar.gz | head -1
-# => Tela-circle-dracula/
-```
-
-```diff
--  Tela-circle-dracula = final.callPackage ./Tela-circle-dracula.nix {};
-+  Tela-circle-dracula = final.tela-circle-icon-theme.override {colorVariants = ["dracula"];};
-```
-
-置き換えれば `pkgs/Tela-circle-dracula.nix` は削除でき、更新は nixpkgs 側に任せられます。HyDE が同梱していたのは Tela のある時点のスナップショットなので、アイコンの網羅範囲が完全に一致する保証はありません。実機で `nix build` してアイコンが欠けないことを確認してから入れてください。
-
-nixpkgs への置き換えを避けるなら、SHA 固定のまま renovate に監視させる手もあります。追跡先のブランチ名を機械可読な形でコメントに書き、`git-refs` datasource で digest 更新を出させます。
-
-```json
-{
-  "customType": "regex",
-  "depTypeTemplate": "nix-asset-url",
-  "managerFilePatterns": ["/^pkgs/.*\\.nix$/"],
-  "matchStrings": [
-    "# renovate: branch=(?<currentValue>\\S+)\\s*\\n\\s*url = \"(?<packageName>https://github\\.com/[^/]+/[^/]+)/raw/(?<currentDigest>[0-9a-f]{40})/"
-  ],
-  "datasourceTemplate": "git-refs"
-}
-```
-
-この手を採る場合、renovate は URL の SHA だけを書き換えて `sha256` は放置するので、PR は必ずハッシュ不一致で落ちます。落ちること自体は気づける仕組みとして機能しますが、毎回手で直すことになります。避けたければ `postUpgradeTasks` に `nix-prefetch-url` でハッシュを取り直すスクリプトを足す必要があります。`RENOVATE_ALLOWED_COMMANDS` に既に `nix run github:Mic92/nix-update -- ` を許可している前例があるので、追加自体は難しくありません。手順 3 の本命が nixpkgs 置き換えなのは、この後始末が丸ごと不要になるからです。
-
-##### 手順 4: CI で気づけるようにする
-
-ここが上流追従の本体です。
-
-まず素材パッケージを `checks` に入れて、URL が死んだ時点で PR の CI が落ちるようにします。
-
-```diff
- checks.${system} = {
-   inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
-+  inherit (pkgs) hyde Bibata-Modern-Ice Tela-circle-dracula;
- };
-```
-
-次に、PR が無い期間にも気づけるように定期実行を足します。`flake-check.yml` は push と pull_request でしか走らないので、今のままでは上流がファイルを消しても誰かが PR を出すまで誰も気づけません。
-
-```diff
- on:
-   workflow_dispatch:
-   push:
-     branches: [main]
-     tags: ['*']
-   pull_request:
-+  schedule:
-+    - cron: "0 3 * * 1" # 毎週月曜 03:00 UTC
-```
-
-最後に renovate に HyDE のタグを追わせます。上流は 2026-07-31 の PR #98 で `pkgs/hyde` を `rev = "v26.7.4"` に戻し、`github-digest` を使う customManager と、HyDE を `github-releases` から除外する packageRule を削除しました。`github-digest` は digest 固定の更新しか出さない datasource で、現在の設定は SHA を `currentValue` に捕まえていて `currentDigest` を渡していないため、そもそも更新が出ません。実際、`pkgs/hyde` の rev は `dc99277`（手作業の修正）以降 1 度も動いていません。
+- `pkgs/Bibata-Modern-Ice.nix` と `pkgs/Tela-circle-dracula.nix` は `raw/refs/heads/...` の `fetchurl` をやめ、nixpkgs の `bibata-cursors` / `tela-circle-icon-theme` からビルドするようになりました（[#3](https://github.com/santamn/hydenix/pull/3)）。前者は nixpkgs が XCursor 形式しか作らないため、`hyprcursor-util` で hyprcursor 版を作り直しています（理由は [#4](https://github.com/santamn/hydenix/pull/4) でコメントとして残してあります）
+- `checks.${system}` に `hyde` / `Bibata-Modern-Ice` / `Tela-circle-dracula` と `theme-assets` が入り、素材パッケージが CI で実際にビルドされるようになりました（[#3](https://github.com/santamn/hydenix/pull/3) / [#5](https://github.com/santamn/hydenix/pull/5)）
+- `flake-check.yml` に `schedule`（毎週月曜 03:00 UTC）が入り、PR の無い期間でも上流のファイル削除に気づけるようになりました
+- 上流の PR #98 が入ったことで `.github/renovate.json` の customManager が `fetchFromGitHub` の `rev` を `github-releases` として拾うようになり、HyDE のタグも renovate の監視対象になりました。つまり次のタグが出れば renovate が PR を作り、その PR の CI が上記の `unzip` 失敗で落ちます。壊れる場所が利用者の実機ではなく PR になったので、この項目は「気づけないまま壊れる」問題から「上げる前に片付ける宿題」に変わっています
 
 ```bash
-git log --oneline -L '/rev = /,+1:pkgs/hyde/default.nix' | grep -c '^commit'
+nix eval --impure --expr '
+  builtins.attrNames (builtins.getFlake (toString ./.)).checks.x86_64-linux'
+# => [ "Bibata-Modern-Ice" "Tela-circle-dracula" "hyde" "hyde-config" "hyde-ipc" "hydectl" "hyprquery" "theme-assets" ]
 ```
-
-本フォークの `.github/renovate.json` はまだ PR #98 前の状態なので、上流に追いつく際にこの差分が入ります。手順 2 まで入れておけば、renovate が HyDE のタグを上げた PR でカーソルも一緒に動き、追従先が 1 か所にまとまります。
-
-#### 対応状況
-
-手順 1 のみ、ブランチ `fix/pin-hyde-asset-urls` に実装済みです（コミット 1 個。上流追従で rebase すると SHA は変わるので、ここでは branch 名だけを控えます）。コメントは英語で書いてあるので、そのまま上流へ出せます。`Tela-circle-dracula.nix` も同じ壊れ方をする潜在バグなので、現在の `Catppuccin-Mocha` の HEAD（`415d22a`）に同時に固定してあります（こちらもハッシュ不変）。手順 2 から 4 は未着手です。
-
-> [!IMPORTANT]
-> 上流の `main` は本フォークの `main` より進んでいます。本フォークの `23b7af7` の直後が PR #98 のマージコミット `b54af86` で、その後さらに 2 コミット進んでいます。分岐元自体は共通なので PR は出せますが、`pkgs/hyde` の rev 表記が `v26.7.4` に変わっているため、`fix/pin-hyde-asset-urls` のコメント文（rev が同一である旨）は書き直す必要があります。
-
-> [!NOTE]
-> `nix fmt` をまだ通していません（作業した Mac に Nix が無いため）。変更はコメント追加と文字列 1 行なので alejandra が触る箇所ではないはずですが、push 前に実機で一度流してください。手順は [09-fork-workflow.md](./09-fork-workflow.md) を参照。
 
 ### A-1. `mutableGeneration` — 存在しない依存名を参照している
 
@@ -1232,7 +1019,7 @@ done
 
 `sharedAssets` は「そのディレクトリを同梱していたテーマだけ」を置き換えるので、`home.packages` に増えるものはなく、該当テーマを有効にした人の閉包にだけ正準パッケージが入ります。あわせて `checks.theme-assets`（`buildEnv` はテーマを別 paths として突き合わせるので、`symlinkJoin` と違って同名衝突を検出できる）に該当テーマを足すと、正準化漏れが CI で落ちるようになります。
 
-> この修正は上流へ PR を送る価値がありますが、#5（衝突修正）が前提になるので、送るなら #5 の後に積んでください。優先度は B の末尾（ビルドは壊れず、特定の組み合わせでしか起きない）。
+> 前提となる #5 は `main` にマージ済みなので、そのまま積み増せます。優先度は B の末尾（ビルドは壊れず、特定の組み合わせでしか起きない）。
 
 ---
 
@@ -1578,7 +1365,23 @@ hydenix に無くても、利用側（`santamn/dotnix`）で解決できるも�
 
 ---
 
-## E. すでに解決済み（本家 → フォークで直ったもの）
+## E. すでに解決済み
+
+### E-1. このフォーク（santamn）で直したもの
+
+いずれも `main` にマージ済みで、上流へそのまま出せる形になっています。
+
+| PR | 項目 | 内容 |
+|---|---|---|
+| [#3](https://github.com/santamn/hydenix/pull/3) | 素材の取得元 | `Bibata-Modern-Ice` / `Tela-circle-dracula` を可変ブランチ ref の `fetchurl` から nixpkgs のソースへ。あわせて `checks` に追加 |
+| [#4](https://github.com/santamn/hydenix/pull/4) | hyprcursor | nixpkgs が XCursor しか作らないため hyprcursor 版を作り直している理由をコメント化 |
+| [#5](https://github.com/santamn/hydenix/pull/5) | `share/icons` の衝突 | `mkTheme` に `sharedAssets` を追加し、テーマ同梱コピーを正準パッケージへの symlink に置換。`checks.theme-assets` で CI 検出 |
+| [#6](https://github.com/santamn/hydenix/pull/6) | `hyprsunset` 未インストール | 設定だけ配置されて本体が無く、毎回 `Executable not found` 通知が出ていた |
+| [#7](https://github.com/santamn/hydenix/pull/7) | `hyde-shell` が source できない | `wrapProgram` の `exec` が source 元プロセスを置き換えるため、`hyprlock.sh` 等が 1 行目で終了していた |
+| [#8](https://github.com/santamn/hydenix/pull/8) | Python インタプリタ不在 | 実行時 uv venv のパスを `hydePython` に置換。waybar の該当モジュールが空になる問題 |
+| [#9](https://github.com/santamn/hydenix/pull/9) | swaync のプロセス名 | `pgrep -x swaync` を `.swaync-wrapped` に置換。通知センターが開かなかった |
+
+### E-2. 本家 → 上流フォークで直ったもの
 
 同じ問題を再度報告しないための記録です。
 

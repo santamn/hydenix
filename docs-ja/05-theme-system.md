@@ -49,6 +49,24 @@ $out/share/
 
 `dontPatchELF` / `dontRewriteSymlinks` / `dontDropIconThemeCache` は、Nix が実行ファイル向けに行う後処理を無効化する指定です。テーマは素材の集まりなので、これらの処理はむしろ壊す原因になります。
 
+#### sharedAssets — 同名アイコンテーマの衝突を避ける
+
+テーマの tar.gz には、hydenix が単体パッケージとしても配布しているアイコン・カーソルテーマが含まれていることがあります。たとえば Catppuccin Mocha は `Tela-circle-dracula` を、Vanta Black は `Bibata-Modern-Ice` を同梱しています。hydenix はこの 2 つを HyDE の tar.gz ではなく nixpkgs のソースからビルドしているため、同じ `share/icons/<名前>` に**中身の違う 2 つのディレクトリ**が生まれます。両方が `home.packages` に載った時点で home-manager の `buildEnv` が衝突を検出してビルドが落ちます。
+
+`mkTheme` の `sharedAssets` 引数（キー = 展開先ディレクトリ名、値 = 正準パッケージ）がこれを吸収します。展開後に該当ディレクトリを削除し、正準パッケージへの symlink に張り替えるので、両方の参照が同じストアパスへ解決され `buildEnv` が通ります。テーマは自己完結したままです。
+
+```nix
+# pkgs/hydenix-themes/default.nix
+mkTheme = import ./utils/mkTheme.nix {
+  inherit pkgs;
+  sharedAssets = {inherit (pkgs) Bibata-Modern-Ice Tela-circle-dracula;};
+};
+```
+
+CI では `flake.nix` の `checks.theme-assets` が `Bibata-Modern-Ice` / `Tela-circle-dracula` / Catppuccin Mocha / Catppuccin Latte を 1 つの `buildEnv` に束ねており、同じ衝突が起きれば PR の時点で落ちます（[santamn/hydenix#5](https://github.com/santamn/hydenix/pull/5)）。
+
+なお `modules/hm/theme.nix` が使う `symlinkJoin` は `buildEnv` と違い、同名パスの 2 つ目を**警告してスキップする**だけでエラーにしません。テーマ同士が同名アイコンテーマを別ビルドで同梱しているケースはこの経路を通るため検出されません。詳しくは [08-improvements.md](./08-improvements.md) の B-10 を参照してください。
+
 ### カタログ
 
 [`pkgs/hydenix-themes/default.nix`](../pkgs/hydenix-themes/default.nix) が「表示名 → パッケージ」の対応表を作り、`pkgs.hydenix-themes` として公開します。

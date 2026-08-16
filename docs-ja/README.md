@@ -53,6 +53,21 @@ santamn/hydenix            ← このリポジトリ
 
 自分のフォークを挟んでいるのは、florianvazelle 氏が 1 人で保守しているため、止まった場合に即座に自分で前へ進められるようにするためです。普段は `git merge upstream/main` するだけで済みます（[09](./09-fork-workflow.md)）。
 
+## このフォークが加えた修正
+
+`main` には上流追従だけでなく、自分で見つけた不具合の修正も入っています。上流へそのまま出せるよう、英語のコミット・英語のコメントで書いてあります。
+
+| PR | 内容 |
+|---|---|
+| [#3](https://github.com/santamn/hydenix/pull/3) / [#4](https://github.com/santamn/hydenix/pull/4) | カーソル・アイコンテーマを HyDE の tar.gz ではなく nixpkgs からビルドする（可変ブランチ ref による突然のビルド不能を回避） |
+| [#5](https://github.com/santamn/hydenix/pull/5) | テーマ同梱のアイコンテーマと単体パッケージが `share/icons` で衝突する問題を `sharedAssets` で解消 |
+| [#6](https://github.com/santamn/hydenix/pull/6) | `hyprsunset` の設定だけ配置されて本体が入っていなかった |
+| [#7](https://github.com/santamn/hydenix/pull/7) | `hyde-shell` を `wrapProgram` で包むと `source` できなくなる問題 |
+| [#8](https://github.com/santamn/hydenix/pull/8) | HyDE の Python スクリプトに実在するインタプリタを与える |
+| [#9](https://github.com/santamn/hydenix/pull/9) | swaync のラップ後プロセス名に waybar モジュールを合わせる |
+
+背景と再現方法は [08-improvements.md](./08-improvements.md) の E-1 にまとまっています。未解決の課題も同じファイルにあります。
+
 ## 本家からの主な変更点
 
 本家（richen604）を読んだことがある人向けの差分です。
@@ -83,7 +98,7 @@ santamn/hydenix            ← このリポジトリ
 
 - `nixosModules.default` が **home-manager 本体と `homeModules.default` を自動で配線する**（`home-manager.sharedModules` 経由）。本家より利用者側の記述が減る
 - `homeConfigurations.default` が追加され、home-manager 単体でも使える
-- Hyprland を flake input で `v0.55.4` に固定し、cachix を `nixConfig` に追加
+- Hyprland を flake input でバージョン固定し（現在は `v0.56.2`。HyDE が対応する最新版に合わせる）、cachix を `nixConfig` に追加
 - `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）
 
 ### 開発基盤

@@ -4,13 +4,14 @@
 
 ## 何が問題なのか
 
-HyDE はもともと Arch Linux 用の設定集なので、そのまま NixOS に持ってくると主に次の 4 つの理由で動きません。
+HyDE はもともと Arch Linux 用の設定集なので、そのまま NixOS に持ってくると主に次の 5 つの理由で動きません。
 
 | 問題 | 具体例 |
 |-----|-------|
 | プロセス名が違う | NixOS はラッパー経由で起動するので、実プロセス名が `.waybar-wrapped` になる |
 | 設定がシンボリックリンク | `find` がリンクをたどらず、設定ファイルを見つけられない |
 | バイナリの入手方法が違う | Arch は `pacman` 前提。NixOS では Nix パッケージを使う |
+| Python 環境が存在しない | 実行時に `uv` で作る venv が前提だが、NixOS では誰もそれを作らない |
 | アーカイブが未展開 | フォント・アイコン・GRUB テーマが `.tar.gz` のまま同梱されている |
 
 `buildPhase` は、これらを 1 つずつ潰していく処理です。
@@ -41,7 +42,9 @@ find . -type f -print0 | xargs -0 sed -i 's/killall waybar/killall .waybar-wrapp
 
 NixOS では、多くのプログラムが「環境変数を設定してから本体を呼ぶ」ラッパースクリプト経由で起動されます。このとき実プロセス名が `.waybar-wrapped` のように先頭ドット付きになります。
 
-HyDE のスクリプトは `killall waybar` でバーを再起動しようとしますが、 NixOS ではその名前のプロセスが存在しないため失敗します。そこで置換して名前を合わせています。waybar / dunst / kitty の 3 つが対象です。
+HyDE のスクリプトは `killall waybar` でバーを再起動しようとしますが、 NixOS ではその名前のプロセスが存在しないため失敗します。そこで置換して名前を合わせています。対象は waybar / dunst / kitty / swaync の 4 つです。
+
+swaync だけは `killall` ではなく `pgrep -x swaync` で生存確認をしており、置換対象もそちらです。ここが漏れていると waybar の通知モジュールが常に「swaync は起動していない」と判断し、クリックしても通知センターが開きません（[santamn/hydenix#9](https://github.com/santamn/hydenix/pull/9)）。
 
 ### (3) find のシンボリックリンク対応
 
@@ -75,7 +78,18 @@ nix run .#hyde-diff-upstream    # 固定中の HyDE と上流 master の差分
 nix run .#hyde-diff-home        # 固定中の HyDE と自分のホーム構成の差分
 ```
 
-### (5) アーカイブの展開
+### (5) Python インタプリタの差し替え
+
+```bash
+find . -type f -print0 | xargs -0 sed -i \
+  's|${XDG_STATE_HOME:-$HOME/.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
+```
+
+HyDE の Python スクリプトは、実行時に `uv` が `$XDG_STATE_HOME/hyde/python_env` へ作る venv を前提にしています。NixOS ではその venv を作る処理が動かないので、`hyde-shell`（`run_command`）・`gpuinfo.sh` の AMD 分岐・`gamelauncher.sh` が存在しないパスを `exec` して何も出力せずに終了していました。waybar のモジュールが空になる、という形で表面化します。
+
+そこで `hydePython` 引数（既定は `inotify-simple` / `loguru` / `pulsectl` / `pygobject3` / `pywayland` / `requests` / `xdg-base-dirs` と `pyamdgpuinfo` を入れた `python3`）を用意し、venv のパスをすべてこれに置換しています。ライブラリを足したり減らしたりしたい場合は、この引数を `overrideAttrs` ではなく `callPackage` の引数として差し替えてください（[santamn/hydenix#8](https://github.com/santamn/hydenix/pull/8)）。
+
+### (6) アーカイブの展開
 
 ```bash
 mkdir -p $out/share/fonts/truetype
@@ -93,7 +107,7 @@ theme = pkgs.hyde + "/share/grub/themes/Retroboot";
   "${pkgs.hyde}/share/vscode/extensions/prasanthrangan.wallbash";
 ```
 
-### (6) installPhase と postInstall
+### (7) installPhase と postInstall
 
 ```bash
 mkdir -p $out
@@ -102,7 +116,9 @@ cp -r . $out
 
 手直し済みのソースツリー全体を `$out` にコピーします。これにより `${pkgs.hyde}/Configs/...` という形で、 HyDE の元のディレクトリ構造をそのまま参照できるようになります。
 
-さらに `postInstall` で `hyde-shell` にラッパーを被せ、Python 本体と `pyamdgpuinfo` を `PATH` / `PYTHONPATH` に注入しています（HyDE のスクリプトの一部が Python を呼ぶため）。
+さらに `postInstall` で `hyde-shell` の 1 行目（シバン）の直後に `export PATH=...` を挿し込み、`hydePython` を `PATH` に載せています。
+
+ここで `wrapProgram` を使ってはいけません。`hyde-shell` は実行されるだけでなく、`hyprsunset.sh` / `hyprlock.sh` / `animations.sh` / `workflows.sh` / `wallpaper.mpvpaper.sh` から `source "$(which hyde-shell)"` の形で読み込まれます。`wrapProgram` が生成するラッパーは最後に `exec` で本体へ処理を渡すため、`source` した側のプロセスがそこで置き換わり、これらのスクリプトは 1 行目で終了します。スクリプト自身に環境を埋め込む形にしているのはこのためです（[santamn/hydenix#7](https://github.com/santamn/hydenix/pull/7)）。
 
 ## 完成したパッケージの構造
 
@@ -141,6 +157,9 @@ flowchart LR
 2. `rev` / `hash` を更新する
 3. `nix run .#hyde-diff-home` で、自分のホーム構成に配置されないファイルが増えていないか確認する（新しい設定ファイルが追加されていたらモジュール側の追従が要る）
 4. VM (`nix run .`) で動作確認する
+
+> [!WARNING]
+> ピン留め中の `v26.7.4` より後の HyDE には `Source/arcs/Code_Wallbash.vsix` と `Font_*.tar.gz` が存在しません。(6) の `unzip` はここで失敗し、フォントのループは `if [ -f ... ]` に守られているためエラーにならず**フォントが 0 個のパッケージが黙って出来上がります**。rev を上げるときは先にこの 2 つの入手先を決めてください。詳しくは [08-improvements.md](./08-improvements.md) の A-0 を参照。
 
 ## 覚えておくとよいこと
 

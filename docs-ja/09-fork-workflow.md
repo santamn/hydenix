@@ -8,21 +8,25 @@
 
 | ブランチ | 中身 | 用途 |
 |---|---|---|
-| `main` | 上流と同じ。**日本語は一切入れない** | 上流追従、PR の分岐元、dotnix が参照する先 |
+| `main` | 上流 + 自分の修正。**日本語は一切入れない** | 上流追従、PR の分岐元、dotnix が参照する先 |
 | `ja` | `main` + 日本語コメント + `docs-ja/` | 自分がコードを読むとき |
+
+当初 `main` は上流をそのまま追うだけの場所でしたが、現在は自分で見つけた不具合の修正も一度ここに入れています（[08-improvements.md](./08-improvements.md) の E-1）。修正は英語で書き、`fix/...` ブランチから `santamn/hydenix` の `main` へ PR を出してマージする、という手順を踏んでいます。上流へ出すときはその形のまま `base` を `florianvazelle/hydenix` に変えるだけで済みます。
 
 日本語コメントは `ja` ブランチにしか存在しないので、
 `main` から分岐した PR には**構造的に混入しません**。
 「うっかり入れてしまう」事故が起きない、というのがこの方式の要点です。
 
 ```
-upstream/main ──●──●──●──────────────▶  florianvazelle/hydenix
+upstream/main ──●──●──●───────────────▶  florianvazelle/hydenix
                  ╲
-   origin/main ───●──●──●─────────────▶  santamn/hydenix (main)
-                   ╲       ╲
-        ja ─────────●───────●─────────▶  日本語コメント + docs-ja/
-                            ▲
-                            └ main が進むたび rebase する
+                  ╲        fix/... ──●
+                   ╲                  ╲   ← PR 経由でマージ
+   origin/main ─────●──●──●────────────●──▶  santamn/hydenix (main)
+                     ╲                  ╲
+          ja ─────────●──────────────────●──▶  日本語コメント + docs-ja/
+                                          ▲
+                                          └ main が進むたびマージする
 ```
 
 ### なぜ「コミットしないで作業ツリーに置いておく」ではダメか
@@ -90,7 +94,7 @@ worktree をリポジトリ内に置きたい場合は `.wt/` 以下が使えま
 ```bash
 git switch main
 git fetch upstream
-git merge upstream/main       # 競合はまず起きない（main には自分の変更が無い）
+git merge upstream/main       # 自分の修正と同じ行を上流が触らない限り競合しない
 git push origin main
 ```
 
@@ -98,32 +102,25 @@ git push origin main
 
 ```bash
 git switch ja
-git rebase main
+git merge main
+git push origin ja
 ```
 
-日本語コメントは**行の追加**が中心なので、
-上流が同じ行を触らない限り競合しません。競合したら、
-その部分は上流の変更を優先し、コメントを付け直します。
+**rebase ではなく merge を使います。** `ja` には日本語コメントとドキュメントの履歴が積み上がっており、rebase で全部書き換えると force push が要るうえ、過去のコミットが指す行番号もずれていきます。merge なら履歴はそのまま残り、push も通常どおりです。
+
+日本語コメントは**行の追加**が中心なので、上流や `main` 側が同じ行を触らない限り競合しません。競合するのはたいてい「英語コメントを日本語に置き換えた行を、`main` 側で書き直した」ケースです。その場合は `main` 側の内容を正として、日本語で書き直します。
 
 ```bash
 # 競合したら
 git status                    # 競合ファイルを確認
-# 編集して解決
+# 編集して解決（main 側の内容を日本語で書き直す）
 git add <file>
-git rebase --continue
+git commit
 ```
 
-`ja` は rebase で履歴が書き換わるので、push は force が要ります。
+`main` に自分の修正が入ったときは、コードだけでなく `docs-ja/` の該当箇所も更新してください。マージしただけでは、日本語の説明が修正前の挙動を説明したまま残ります。
 
-```bash
-git push --force-with-lease origin ja
-```
-
-> [!TIP]
-> `--force-with-lease` は「リモートが自分の知っている状態のときだけ上書きする」オプションです。
-> `--force` より安全なので、こちらを使ってください。
-
-### 3. 上流へ PR を送る
+### 3. 修正の PR を出す
 
 **必ず `main` から分岐します。**
 
@@ -138,20 +135,27 @@ git commit -am "fix: correct activation dependency name to mutableFileGeneration
 git push -u origin fix/mutable-generation-dag-name
 ```
 
-GitHub の Web UI で PR を作成します。
+PR は 2 段構えです。まず自分のフォークの `main` へ出してマージし、上流へ送る準備ができたら同じブランチから `base` だけ変えてもう一度出します。
 
 ```
+# 1 段目（手元で確定させる）
+base:    santamn/hydenix         main
+compare: santamn/hydenix         fix/mutable-generation-dag-name
+
+# 2 段目（上流へ）
 base:    florianvazelle/hydenix  main
 compare: santamn/hydenix         fix/mutable-generation-dag-name
 ```
 
+1 段目を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを走らせないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に走らせられる場所はここしかありません。
+
 ### 4. 自分の修正を `ja` にも取り込む
 
-PR が `main` にマージされたら、`ja` を rebase するだけです。
+PR が `main` にマージされたら、`ja` へマージし、日本語コメントとドキュメントを追従させます。
 
 ```bash
 git switch main && git pull
-git switch ja && git rebase main
+git switch ja && git merge main
 ```
 
 ---
@@ -264,3 +268,9 @@ sudo nixos-rebuild switch --flake .#<ホスト名>
 - [ ] コミットメッセージが Conventional Commits に従っている
 - [ ] 実機で動作確認した
 - [ ] 1 PR = 1 修正になっている
+
+マージ後は `ja` を追随させます。
+
+- [ ] `git switch ja && git merge main`
+- [ ] 修正した箇所の日本語コメントを書き直した
+- [ ] `docs-ja/` の該当する説明を更新した
