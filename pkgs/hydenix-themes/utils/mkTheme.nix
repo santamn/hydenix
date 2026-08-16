@@ -1,8 +1,21 @@
-{pkgs}: {
+{
+  pkgs,
+  # Standalone icon/cursor theme packages, keyed by the directory name their bundled tarball unpacks to
+  sharedAssets,
+}: {
   name,
   src,
   meta,
 }: let
+  # Replace bundled copies of shared assets with symlinks so both providers resolve to one store path
+  relinkShared = pkgs.lib.concatMapStringsSep "\n" (assetName: ''
+    if [ -e "$out/share/icons/${assetName}" ]; then
+      echo "Using the standalone ${assetName} package instead of the bundled copy"
+      rm -rf "$out/share/icons/${assetName}"
+      ln -s "${sharedAssets.${assetName}}/share/icons/${assetName}" "$out/share/icons/${assetName}"
+    fi
+  '') (builtins.attrNames sharedAssets);
+
   # Helper function to find the first directory in a path
   findFirstDir = ''
     findFirstDir() {
@@ -95,6 +108,8 @@
         fi
       done
 
+      ${relinkShared}
+
       # Install font if available
       for font_archive in ./Source/arcs/Font_* ./Source/Font_*; do
         if [ -f "$font_archive" ]; then
@@ -108,11 +123,12 @@
       runHook postInstall
     '';
 
-    meta = with pkgs.lib; {
-      inherit (meta) description homepage priority;
-      license = licenses.mit;
-      platforms = platforms.all;
-    };
+    meta = with pkgs.lib;
+      {
+        license = licenses.mit;
+        platforms = platforms.all;
+      }
+      // meta;
   };
 in
   pkg
