@@ -45,6 +45,8 @@ imports = [
 ];
 ```
 
+`mkHyprConfig` が用意するのは設定ファイルの配置だけで、コマンド本体は入りません。`hyprsunset` はこれが問題になっていました。`~/.config/hypr/hyprsunset.conf` は置かれ、waybar にも `custom/hyprsunset` ボタンが出るのに、パッケージ自体はどこからもインストールされていなかったのです。HyDE の `startup.conf` は毎回これを `exec` するため、ログインのたびに `Executable not found: 'hyprsunset'` という critical 通知が出て、ブルーライト低減も効きませんでした。現在は `default.nix` の `home.packages` に `lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset` を足し、`lockscreen.nix` が hyprlock / swaylock を設定と対で入れているのと同じ形にしてあります（[santamn/hydenix#6](https://github.com/santamn/hydenix/pull/6)）。
+
 `mkHyprConfig {name = "keybindings";}` を呼ぶと、次のモジュールが返ります。
 
 - **オプション:** `hydenix.hm.hyprland.keybindings.{enable, extraConfig, overrideConfig}`

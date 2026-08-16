@@ -59,6 +59,8 @@ in {
       pkgs.hyprutils
       pkgs.hyprpicker
       pkgs.hyprcursor
+      # hyprsunset.conf を配置するだけでは本体が入らないため、
+      # モジュールを有効にしたときだけパッケージも一緒に入れる
       (lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset)
     ];
 

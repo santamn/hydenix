@@ -2,12 +2,13 @@
 # HyDE 本体を NixOS 向けにパッケージ化する
 #
 # HyDE はもともと Arch Linux 用の設定集なので、そのままでは動かない。
-# buildPhase で次の 4 つを潰してから $out にまるごとコピーしている。
+# buildPhase で次の 5 つを潰してから $out にまるごとコピーしている。
 #
 #   1. プロセス名の違い   … NixOS はラッパー経由で起動するので実名が .waybar-wrapped になる
 #   2. シンボリックリンク … home-manager がリンクで配置するため find がたどれない
 #   3. バイナリの入手方法 … Arch は pacman 前提。Nix パッケージ版に差し替える
-#   4. 未展開のアーカイブ … フォント・アイコン・GRUB テーマが .tar.gz のまま同梱されている
+#   4. Python インタプリタ … 実行時に uv で作る venv は NixOS では誰も作らない
+#   5. 未展開のアーカイブ … フォント・アイコン・GRUB テーマが .tar.gz のまま同梱されている
 #
 # 詳細は docs-ja/03-hyde-package.md を参照。
 # =============================================================================
@@ -15,6 +16,7 @@
   pkgs,
   lib,
   fetchFromGitHub,
+  # HyDE 同梱の Python スクリプトを動かすインタプリタ。
   # Interpreter for the Python scripts HyDE ships. Upstream builds a uv venv at
   # runtime ($XDG_STATE_HOME/hyde/python_env); on NixOS nothing ever creates it,
   # so the interpreter is provided from nixpkgs instead. Override this argument
@@ -72,7 +74,7 @@ pkgs.stdenv.mkDerivation {
     # NixOS ではラッパースクリプト経由で起動されるため、実プロセス名が
     # 先頭ドット付きの `.waybar-wrapped` になる。
     # HyDE は `killall waybar` でバーを再起動しようとするが該当プロセスが無く失敗するので、
-    # 名前を置換して合わせる（waybar / dunst / kitty の 3 つが対象）
+    # 名前を置換して合わせる（waybar / dunst / kitty は killall の対象名、swaync は pgrep の照合名）
     find . -type f -print0 | xargs -0 sed -i 's/killall waybar/killall .waybar-wrapped/g'
 
     # update dunst
@@ -85,6 +87,7 @@ pkgs.stdenv.mkDerivation {
     # update swaync
     find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
 
+    # 実行時 uv venv を指す参照を、すべて Nix のインタプリタへ向け直す。
     # Point every call to the runtime uv venv at the Nix interpreter.
     # hyde-shell (run_command), gpuinfo.sh (AMD branch) and gamelauncher.sh all
     # exec "$XDG_STATE_HOME/hyde/python_env/bin/python" directly; that path does
