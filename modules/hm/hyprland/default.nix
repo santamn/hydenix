@@ -59,6 +59,7 @@ in {
       pkgs.hyprutils
       pkgs.hyprpicker
       pkgs.hyprcursor
+      (lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset)
     ];
 
     # テーマ適用スクリプトが後から書き込む先のファイルを、空で先に用意しておく。

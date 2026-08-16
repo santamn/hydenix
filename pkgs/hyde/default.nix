@@ -15,6 +15,24 @@
   pkgs,
   lib,
   fetchFromGitHub,
+  # Interpreter for the Python scripts HyDE ships. Upstream builds a uv venv at
+  # runtime ($XDG_STATE_HOME/hyde/python_env); on NixOS nothing ever creates it,
+  # so the interpreter is provided from nixpkgs instead. Override this argument
+  # to add or drop libraries.
+  hydePython ?
+    pkgs.python3.withPackages (
+      ps:
+        (with ps; [
+          inotify-simple
+          loguru
+          pulsectl
+          pygobject3
+          pywayland
+          requests
+          xdg-base-dirs
+        ])
+        ++ [pkgs.pyamdgpuinfo]
+    ),
 }:
 pkgs.stdenv.mkDerivation {
   name = "hyde";
@@ -30,7 +48,6 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = with pkgs; [
     gnutar
     unzip
-    makeWrapper
   ];
 
   buildPhase = ''
@@ -64,6 +81,16 @@ pkgs.stdenv.mkDerivation {
     # update kitty
     find . -type f -print0 | xargs -0 sed -i 's/killall kitty/killall .kitty-wrapped/g'
     find . -type f -print0 | xargs -0 sed -i 's/killall -SIGUSR1 kitty/killall -SIGUSR1 .kitty-wrapped/g'
+
+    # update swaync
+    find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
+
+    # Point every call to the runtime uv venv at the Nix interpreter.
+    # hyde-shell (run_command), gpuinfo.sh (AMD branch) and gamelauncher.sh all
+    # exec "$XDG_STATE_HOME/hyde/python_env/bin/python" directly; that path does
+    # not exist here, so those commands died before printing anything and their
+    # waybar modules stayed empty.
+    find . -type f -print0 | xargs -0 sed -i 's|''${XDG_STATE_HOME:-$HOME/\.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
 
     # fix find commands for symlinks
     # home-manager は設定ファイルを Nix ストアへのリンクとして配置する。
@@ -125,12 +152,21 @@ pkgs.stdenv.mkDerivation {
     runHook postInstall
   '';
 
-  # hyde-shell は Python スクリプトを呼ぶため、python3 と pyamdgpuinfo を
-  # PATH / PYTHONPATH に注入したラッパーを被せる
+  # hyde-shell は実行されるだけでなく、HyDE のスクリプトから source される。
+  # hyprsunset.sh / hyprlock.sh / animations.sh / workflows.sh /
+  # wallpaper.mpvpaper.sh はいずれも `source "$(which hyde-shell)"` で始まる。
+  # wrapProgram のラッパーは最後に exec するため、source した側のプロセスが
+  # 置き換わってしまい、これらのスクリプトは 1 行目で終了して何も出力しない。
+  # そのためラッパーを被せず、スクリプト自身に環境変数を埋め込んでいる。
   postInstall = ''
-    wrapProgram $out/Configs/.local/bin/hyde-shell \
-      --prefix PATH : "${pkgs.lib.makeBinPath [pkgs.python3]}" \
-      --prefix PYTHONPATH : "${pkgs.python3.pkgs.makePythonPath [pkgs.pyamdgpuinfo]}" \
+    hydeShell=$out/Configs/.local/bin/hyde-shell
+    {
+      head -n 1 "$hydeShell"
+      echo 'export PATH="${pkgs.lib.makeBinPath [hydePython]}:$PATH"'
+      tail -n +2 "$hydeShell"
+    } >"$hydeShell.new"
+    mv "$hydeShell.new" "$hydeShell"
+    chmod +x "$hydeShell"
   '';
 
   meta = {
