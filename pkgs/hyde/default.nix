@@ -60,6 +60,9 @@ pkgs.stdenv.mkDerivation {
     find . -type f -print0 | xargs -0 sed -i 's/killall kitty/killall .kitty-wrapped/g'
     find . -type f -print0 | xargs -0 sed -i 's/killall -SIGUSR1 kitty/killall -SIGUSR1 .kitty-wrapped/g'
 
+    # update swaync
+    find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
+
     # Point every call to the runtime uv venv at the Nix interpreter.
     # hyde-shell (run_command), gpuinfo.sh (AMD branch) and gamelauncher.sh all
     # exec "$XDG_STATE_HOME/hyde/python_env/bin/python" directly; that path does
