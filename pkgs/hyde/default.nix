@@ -17,7 +17,6 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = with pkgs; [
     gnutar
     unzip
-    makeWrapper
   ];
 
   buildPhase = ''
@@ -96,10 +95,16 @@ pkgs.stdenv.mkDerivation {
     runHook postInstall
   '';
 
+  # inline the env instead of wrapProgram: hyde-shell is also sourced, and a wrapper's exec would kill the sourcing script
   postInstall = ''
-    wrapProgram $out/Configs/.local/bin/hyde-shell \
-      --prefix PATH : "${pkgs.lib.makeBinPath [pkgs.python3]}" \
-      --prefix PYTHONPATH : "${pkgs.python3.pkgs.makePythonPath [pkgs.pyamdgpuinfo]}" \
+    hydeShell=$out/Configs/.local/bin/hyde-shell
+    {
+      head -n 1 "$hydeShell"
+      echo 'export PATH="${pkgs.lib.makeBinPath [pkgs.python3]}:$PATH"'
+      tail -n +2 "$hydeShell"
+    } >"$hydeShell.new"
+    mv "$hydeShell.new" "$hydeShell"
+    chmod +x "$hydeShell"
   '';
 
   meta = {
