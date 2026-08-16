@@ -20,7 +20,7 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/148bab9c1c3c53136ecb44a6ea356a0ed5b39b06";
+    nixpkgs.url = "github:nixos/nixpkgs/f13ff45afd1bb73e640eaa08a7066dbed07e3238";
 
     # Home Manager (for user specific configuration)
     home-manager.url = "github:nix-community/home-manager";
@@ -30,7 +30,7 @@
     nixos-hardware.url = "github:nixos/nixos-hardware";
 
     # Hyprland (pin it to the latest version supported by HyDE)
-    hyprland.url = "github:hyprwm/Hyprland/v0.56.1";
+    hyprland.url = "github:hyprwm/Hyprland/v0.56.2";
 
     # Nix-index-database (for comma and command-not-found)
     nix-index-database.url = "github:nix-community/nix-index-database";
@@ -128,6 +128,24 @@
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
+      inherit (pkgs) hyde Bibata-Modern-Ice Tela-circle-dracula;
+
+      /*
+      Mirrors how `home.packages` merges every package into a single profile:
+      the standalone icon/cursor themes and the copies bundled in the HyDE
+      themes both land in `share/icons`, and `buildEnv` refuses to merge two
+      directories whose files disagree. Building the default theme set here
+      catches such a collision in CI instead of on a user's rebuild.
+      */
+      theme-assets = pkgs.buildEnv {
+        name = "hydenix-theme-assets";
+        paths = with pkgs; [
+          Bibata-Modern-Ice
+          Tela-circle-dracula
+          hydenix-themes."Catppuccin Mocha"
+          hydenix-themes."Catppuccin Latte"
+        ];
+      };
     };
 
     # for `nix fmt`
