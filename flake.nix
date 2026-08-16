@@ -104,7 +104,18 @@
     # for `nix flake check`
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
-      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
+      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde Bibata-Modern-Ice Tela-circle-dracula;
+
+      # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`
+      theme-assets = pkgs.buildEnv {
+        name = "hydenix-theme-assets";
+        paths = with pkgs; [
+          Bibata-Modern-Ice
+          Tela-circle-dracula
+          hydenix-themes."Catppuccin Mocha"
+          hydenix-themes."Catppuccin Latte"
+        ];
+      };
     };
 
     # for `nix fmt`
