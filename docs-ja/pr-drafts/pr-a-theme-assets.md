@@ -35,12 +35,6 @@ URL を commit に pin し直す選択肢もあるが、HyDE がもう配布し�
 
 これらのパッケージは fixed-output derivation で fetch はビルド時にしか走らないため、URL が死んでいた間も `nix flake check` は green のままだった。`hyde` と両テーマパッケージを `checks` に追加してビルドし、PR の段階で落ちるようにする。さらに `home.packages` と同じ `buildEnv` マージをデフォルトテーマセット（`hydenix.hm.theme.themes` のデフォルト値 = Catppuccin Mocha/Latte）に対して行う `theme-assets` check を追加し、2 のような衝突も CI で検出する。`symlinkJoin` では検出できない（`lndir` は衝突時に警告を出すだけ）。
 
-### 検証
-
-- Linux（`nixos/nix` コンテナ、この flake の lock に pin した nixpkgs）で両パッケージをビルド。`Bibata-Modern-Ice` はテーマディレクトリ構成（`cursor.theme`/`cursors`/`hyprcursors`/`index.theme`/`manifest.hl`）、XCursor 145 エントリ、56 shape が旧アーカイブと一致。`Tela-circle-dracula` は `index.theme` が一致し、ファイル数 28,078 vs 27,882（upstream 側の更新分でリグレッションなし）
-- ディレクトリ名は HyDE の `env-theme` が期待する `CURSOR_THEME="Bibata-Modern-Ice"` / `ICON_THEME="Tela-circle-dracula"` と一致
-- `nix eval .#checks.x86_64-linux`（`theme-assets` 含む）成功、alejandra clean
-
 ## Type of change
 
 - [x] Bug fix (non-breaking change which fixes an issue)
