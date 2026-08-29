@@ -1,5 +1,8 @@
 {pkgs}: let
-  mkTheme = import ./utils/mkTheme.nix {inherit pkgs;};
+  mkTheme = import ./utils/mkTheme.nix {
+    inherit pkgs;
+    sharedAssets = {inherit (pkgs) Bibata-Modern-Ice Tela-circle-dracula;};
+  };
   # Helper function to call each theme file with pkgs and mkTheme
   callTheme = file: import file {inherit pkgs mkTheme;};
 in {
