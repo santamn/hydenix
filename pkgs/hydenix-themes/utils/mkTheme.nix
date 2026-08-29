@@ -1,33 +1,8 @@
-{
-  pkgs,
-  # Icon/cursor themes that hydenix also ships as standalone packages, keyed by
-  # the directory name the bundled HyDE tarballs unpack to. See `relinkShared`.
-  sharedAssets ? {},
-}: {
+{pkgs}: {
   name,
   src,
   meta,
 }: let
-  /*
-  HyDE themes bundle their icon/cursor themes as tarballs, and some of them
-  carry a theme hydenix already installs on its own -- Catppuccin Mocha ships
-  Tela-circle-dracula, for instance. Since hydenix builds those from nixpkgs
-  sources rather than from HyDE's tarballs, the two copies of
-  `share/icons/<name>` differ, and home-manager's `buildEnv` aborts with a
-  collision as soon as both land in `home.packages`.
-
-  Replacing the bundled copy with a symlink to the standalone package keeps the
-  theme self-contained while making both paths resolve to the same store path,
-  which `buildEnv` accepts.
-  */
-  relinkShared = pkgs.lib.concatMapStringsSep "\n" (assetName: ''
-    if [ -e "$out/share/icons/${assetName}" ]; then
-      echo "Using the standalone ${assetName} package instead of the bundled copy"
-      rm -rf "$out/share/icons/${assetName}"
-      ln -s "${sharedAssets.${assetName}}/share/icons/${assetName}" "$out/share/icons/${assetName}"
-    fi
-  '') (builtins.attrNames sharedAssets);
-
   # Helper function to find the first directory in a path
   findFirstDir = ''
     findFirstDir() {
@@ -120,8 +95,6 @@
         fi
       done
 
-      ${relinkShared}
-
       # Install font if available
       for font_archive in ./Source/arcs/Font_* ./Source/Font_*; do
         if [ -f "$font_archive" ]; then
@@ -135,15 +108,11 @@
       runHook postInstall
     '';
 
-    # No theme sets `priority`, so it must not be inherited unconditionally:
-    # `buildEnv` reads `meta.priority or <default>`, and an attribute that is
-    # present but throws when forced defeats the `or` fallback.
-    meta = with pkgs.lib;
-      {
-        license = licenses.mit;
-        platforms = platforms.all;
-      }
-      // meta;
+    meta = with pkgs.lib; {
+      inherit (meta) description homepage priority;
+      license = licenses.mit;
+      platforms = platforms.all;
+    };
   };
 in
   pkg
