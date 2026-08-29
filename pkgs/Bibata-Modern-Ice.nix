@@ -23,7 +23,6 @@ runCommand "Bibata-Modern-Ice-${bibata-cursors.version}" {
   cp -r "$xcursor" $out/share/icons/
   chmod -R u+w "$theme"
 
-  # nixpkgs builds XCursor only, so rebuild the hyprcursor variant from it
   hyprcursor-util --extract "$xcursor" --output "$TMPDIR" --resize bilinear
   substituteInPlace "$TMPDIR/extracted_Bibata-Modern-Ice/manifest.hl" \
     --replace-fail "name = Extracted Theme" "name = Bibata-Modern-Ice" \
