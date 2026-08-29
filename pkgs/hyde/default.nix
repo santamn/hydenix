@@ -2,24 +2,6 @@
   pkgs,
   lib,
   fetchFromGitHub,
-  # Interpreter for the Python scripts HyDE ships. Upstream builds a uv venv at
-  # runtime ($XDG_STATE_HOME/hyde/python_env); on NixOS nothing ever creates it,
-  # so the interpreter is provided from nixpkgs instead. Override this argument
-  # to add or drop libraries.
-  hydePython ?
-    pkgs.python3.withPackages (
-      ps:
-        (with ps; [
-          inotify-simple
-          loguru
-          pulsectl
-          pygobject3
-          pywayland
-          requests
-          xdg-base-dirs
-        ])
-        ++ [pkgs.pyamdgpuinfo]
-    ),
 }:
 pkgs.stdenv.mkDerivation {
   name = "hyde";
@@ -62,13 +44,6 @@ pkgs.stdenv.mkDerivation {
 
     # update swaync
     find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
-
-    # Point every call to the runtime uv venv at the Nix interpreter.
-    # hyde-shell (run_command), gpuinfo.sh (AMD branch) and gamelauncher.sh all
-    # exec "$XDG_STATE_HOME/hyde/python_env/bin/python" directly; that path does
-    # not exist here, so those commands died before printing anything and their
-    # waybar modules stayed empty.
-    find . -type f -print0 | xargs -0 sed -i 's|''${XDG_STATE_HOME:-$HOME/\.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
 
     # fix find commands for symlinks
     find . -type f -executable -print0 | xargs -0 sed -i 's/find "/find -L "/g'
@@ -131,7 +106,8 @@ pkgs.stdenv.mkDerivation {
     hydeShell=$out/Configs/.local/bin/hyde-shell
     {
       head -n 1 "$hydeShell"
-      echo 'export PATH="${pkgs.lib.makeBinPath [hydePython]}:$PATH"'
+      echo 'export PATH="${pkgs.lib.makeBinPath [pkgs.python3]}:$PATH"'
+      echo 'export PYTHONPATH="${pkgs.python3.pkgs.makePythonPath [pkgs.pyamdgpuinfo]}''${PYTHONPATH:+:$PYTHONPATH}"'
       tail -n +2 "$hydeShell"
     } >"$hydeShell.new"
     mv "$hydeShell.new" "$hydeShell"
