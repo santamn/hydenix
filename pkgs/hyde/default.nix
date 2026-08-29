@@ -17,6 +17,7 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = with pkgs; [
     gnutar
     unzip
+    makeWrapper
   ];
 
   buildPhase = ''
@@ -95,23 +96,10 @@ pkgs.stdenv.mkDerivation {
     runHook postInstall
   '';
 
-  # hyde-shell is not only executed, it is also sourced by HyDE scripts:
-  # hyprsunset.sh, hyprlock.sh, animations.sh, workflows.sh and
-  # wallpaper.mpvpaper.sh all start with `source "$(which hyde-shell)"`.
-  # A wrapProgram wrapper ends in `exec`, which replaces the sourcing script's
-  # process, so those scripts die at their first line and produce no output.
-  # Inline the environment into the script itself instead of wrapping it, so
-  # hyde-shell stays safe to source.
   postInstall = ''
-    hydeShell=$out/Configs/.local/bin/hyde-shell
-    {
-      head -n 1 "$hydeShell"
-      echo 'export PATH="${pkgs.lib.makeBinPath [pkgs.python3]}:$PATH"'
-      echo 'export PYTHONPATH="${pkgs.python3.pkgs.makePythonPath [pkgs.pyamdgpuinfo]}''${PYTHONPATH:+:$PYTHONPATH}"'
-      tail -n +2 "$hydeShell"
-    } >"$hydeShell.new"
-    mv "$hydeShell.new" "$hydeShell"
-    chmod +x "$hydeShell"
+    wrapProgram $out/Configs/.local/bin/hyde-shell \
+      --prefix PATH : "${pkgs.lib.makeBinPath [pkgs.python3]}" \
+      --prefix PYTHONPATH : "${pkgs.python3.pkgs.makePythonPath [pkgs.pyamdgpuinfo]}" \
   '';
 
   meta = {
