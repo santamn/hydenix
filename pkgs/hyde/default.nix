@@ -2,6 +2,21 @@
   pkgs,
   lib,
   fetchFromGitHub,
+  # interpreter for the Python scripts HyDE ships; override to add or drop libraries
+  hydePython ?
+    pkgs.python3.withPackages (
+      ps:
+        (with ps; [
+          inotify-simple
+          loguru
+          pulsectl
+          pygobject3
+          pywayland
+          requests
+          xdg-base-dirs
+        ])
+        ++ [pkgs.pyamdgpuinfo]
+    ),
 }:
 pkgs.stdenv.mkDerivation {
   name = "hyde";
@@ -17,7 +32,6 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = with pkgs; [
     gnutar
     unzip
-    makeWrapper
   ];
 
   buildPhase = ''
@@ -45,6 +59,9 @@ pkgs.stdenv.mkDerivation {
 
     # update swaync
     find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
+
+    # point the runtime uv venv interpreter path at hydePython
+    find . -type f -print0 | xargs -0 sed -i 's|''${XDG_STATE_HOME:-$HOME/\.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
 
     # fix find commands for symlinks
     find . -type f -executable -print0 | xargs -0 sed -i 's/find "/find -L "/g'
@@ -96,10 +113,16 @@ pkgs.stdenv.mkDerivation {
     runHook postInstall
   '';
 
+  # inline the env instead of wrapProgram: hyde-shell is also sourced, and a wrapper's exec would kill the sourcing script
   postInstall = ''
-    wrapProgram $out/Configs/.local/bin/hyde-shell \
-      --prefix PATH : "${pkgs.lib.makeBinPath [pkgs.python3]}" \
-      --prefix PYTHONPATH : "${pkgs.python3.pkgs.makePythonPath [pkgs.pyamdgpuinfo]}" \
+    hydeShell=$out/Configs/.local/bin/hyde-shell
+    {
+      head -n 1 "$hydeShell"
+      echo 'export PATH="${pkgs.lib.makeBinPath [hydePython]}:$PATH"'
+      tail -n +2 "$hydeShell"
+    } >"$hydeShell.new"
+    mv "$hydeShell.new" "$hydeShell"
+    chmod +x "$hydeShell"
   '';
 
   meta = {
