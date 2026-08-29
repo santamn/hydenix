@@ -105,7 +105,6 @@
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
-      inherit (pkgs) hyde Bibata-Modern-Ice Tela-circle-dracula;
     };
 
     # for `nix fmt`
