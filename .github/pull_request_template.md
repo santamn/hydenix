@@ -1,6 +1,20 @@
 ## Description
 <!-- Describe your changes in detail -->
 
+### Problems and Solutions
+<!--
+  Required when "Bug fix" is checked below. 
+  Describe what went wrong (symptom, trigger, blast radius) and how this PR fixes it. 
+  Delete this section for non-bug-fix PRs.
+-->
+
+### Changes
+<!--
+  One entry per logical commit. Format: 
+    Changed X to Y. (Because Z.) + a short supplementary note if needed
+  Z should contain only essential information not found in the code or other context.
+-->
+
 ## Type of change
 <!-- Please delete options that are not relevant -->
 

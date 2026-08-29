@@ -1,0 +1,32 @@
+name: Lint PR Description
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  pr-description:
+    if: ${{ !endsWith(github.event.pull_request.user.login, '[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required headings
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$PR_BODY" > body.md
+
+          missing=()
+          grep -q '^## Description' body.md || missing+=("## Description")
+          grep -q '^### Changes' body.md || missing+=("### Changes")
+
+          if grep -qE '^- \[[xX]\] Bug fix' body.md; then
+            grep -q '^### Problems and Solutions' body.md || missing+=("### Problems and Solutions (required when Bug fix is checked)")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required section(s) in PR description:\n'
+            printf ' - %s\n' "${missing[@]}"
+            printf '\nSee .github/pull_request_template.md.\n'
+            exit 1
+          fi
