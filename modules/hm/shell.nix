@@ -230,12 +230,6 @@ in {
         alias ll='eza -lha --icons=auto --sort=name --group-directories-first'
         alias ld='eza -lhD --icons=auto'
         alias lt='eza --icons=auto --tree'
-        alias un='$aurhelper -Rns'
-        alias up='$aurhelper -Syu'
-        alias pl='$aurhelper -Qs'
-        alias pa='$aurhelper -Ss'
-        alias pc='$aurhelper -Sc'
-        alias po='$aurhelper -Qtdq | $aurhelper -Rns -'
         alias vc='code'
         alias fastfetch='fastfetch --logo-type kitty'
 
