@@ -38,20 +38,20 @@ in {
     ];
 
     home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
-      mkdir -p "$HOME/.config/hypr/animations"
-      mkdir -p "$HOME/.config/hypr/themes"
-      mkdir -p "$HOME/.config/hypr/shaders"
-      mkdir -p "$HOME/.config/hypr/workflows"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/animations"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/themes"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/shaders"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/workflows"
 
-      touch "$HOME/.config/hypr/animations/theme.conf"
-      touch "$HOME/.config/hypr/themes/colors.conf"
-      touch "$HOME/.config/hypr/themes/theme.conf"
-      touch "$HOME/.config/hypr/themes/wallbash.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/animations/theme.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/colors.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/theme.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/wallbash.conf"
 
-      chmod 644 "$HOME/.config/hypr/animations/theme.conf"
-      chmod 644 "$HOME/.config/hypr/themes/colors.conf"
-      chmod 644 "$HOME/.config/hypr/themes/theme.conf"
-      chmod 644 "$HOME/.config/hypr/themes/wallbash.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/animations/theme.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/themes/colors.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/themes/theme.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/themes/wallbash.conf"
     '';
 
     home.file = {

@@ -38,9 +38,9 @@ in {
 
     # fixes cava from not initializing on boot
     home.activation.createCavaConfig = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
-      mkdir -p "$HOME/.config/cava"
-      touch "$HOME/.config/cava/config"
-      chmod 644 "$HOME/.config/cava/config"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/cava"
+      $DRY_RUN_CMD touch "$HOME/.config/cava/config"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/cava/config"
     '';
 
     home.file = {
