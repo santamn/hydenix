@@ -115,7 +115,7 @@ in {
         };
       })
 
-      (lib.mkIf (cfg.vim or cfg.neovim) {
+      (lib.mkIf (cfg.vim || cfg.neovim) {
         ".config/vim/colors/wallbash.vim" = {
           source = "${pkgs.hyde}/Configs/.config/vim/colors/wallbash.vim";
           force = true;
