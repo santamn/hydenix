@@ -223,25 +223,6 @@ in {
         set fish_pager_color_prefix cyan
         set fish_color_autosuggestion brblack
 
-        # List Directory
-        alias c='clear'
-        alias l='eza -lh --icons=auto'
-        alias ls='eza -1 --icons=auto'
-        alias ll='eza -lha --icons=auto --sort=name --group-directories-first'
-        alias ld='eza -lhD --icons=auto'
-        alias lt='eza --icons=auto --tree'
-        alias vc='code'
-        alias fastfetch='fastfetch --logo-type kitty'
-
-        # Directory navigation shortcuts
-        alias ..='cd ..'
-        alias ...='cd ../..'
-        alias .3='cd ../../..'
-        alias .4='cd ../../../..'
-        alias .5='cd ../../../../..'
-
-        abbr mkdir 'mkdir -p'
-
         ${lib.optionalString cfg.pokego.enable ''
           pokego --no-title -r 1,3,6
         ''}
@@ -251,12 +232,14 @@ in {
         ''}
       '';
       shellAliases = {
+        c = "clear";
         l = "eza -lh --icons=auto";
         ls = "eza -1 --icons=auto";
         ll = "eza -lha --icons=auto --sort=name --group-directories-first";
         ld = "eza -lhD --icons=auto";
         lt = "eza --icons=auto --tree";
         vc = "code";
+        fastfetch = "fastfetch --logo-type kitty";
       };
       shellAbbrs = {
         ".." = "cd ..";
