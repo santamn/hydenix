@@ -8,3 +8,4 @@ output-*
 .direnv
 .git-hooks
 .hyde-cache
+.serena
