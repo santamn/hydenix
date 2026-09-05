@@ -80,7 +80,7 @@ in {
     */
 
     # applies what it can before graphical.target, think of this like a "first content paint"
-    home.activation.setTheme = lib.hm.dag.entryAfter ["mutableGeneration"] ''
+    home.activation.setTheme = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
       # Define path with required tools
       export PATH="${
         lib.makeBinPath (

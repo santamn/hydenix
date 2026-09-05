@@ -37,7 +37,7 @@ in {
     fonts.fontconfig.enable = true;
 
     # fixes cava from not initializing on boot
-    home.activation.createCavaConfig = lib.hm.dag.entryAfter ["mutableGeneration"] ''
+    home.activation.createCavaConfig = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
       mkdir -p "$HOME/.config/cava"
       touch "$HOME/.config/cava/config"
       chmod 644 "$HOME/.config/cava/config"
