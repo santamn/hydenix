@@ -104,21 +104,27 @@ in {
         )
       }:$HOME/.local/bin:$PATH"
 
-      # Set up logging
-      LOG_FILE="$HOME/.local/state/hyde/theme-switch.log"
-      mkdir -p $HOME/.local/state/hyde
-      # Clear the log file before writing
-      : > "$LOG_FILE"
-      chmod 644 $LOG_FILE
+      # The log file redirections cannot be gated by $DRY_RUN_CMD, so skip the whole
+      # block instead. $DRY_RUN_CMD is "echo" on a dry run and empty otherwise.
+      if [ -n "$DRY_RUN_CMD" ]; then
+        echo "Would set theme to ${cfg.active}"
+      else
+        # Set up logging
+        LOG_FILE="$HOME/.local/state/hyde/theme-switch.log"
+        mkdir -p $HOME/.local/state/hyde
+        # Clear the log file before writing
+        : > "$LOG_FILE"
+        chmod 644 $LOG_FILE
 
-      echo "Setting theme to ${cfg.active}..." | tee -a "$LOG_FILE"
+        echo "Setting theme to ${cfg.active}..." | tee -a "$LOG_FILE"
 
-      export LOG_LEVEL=debug
+        export LOG_LEVEL=debug
 
-      # Run the theme switch commands with the custom runtime dir
-      $HOME/.local/lib/hyde/theme.switch.sh -s "${cfg.active}" >> "$LOG_FILE" 2>&1
+        # Run the theme switch commands with the custom runtime dir
+        $HOME/.local/lib/hyde/theme.switch.sh -s "${cfg.active}" >> "$LOG_FILE" 2>&1
 
-      echo "Theme switch completed. Log saved to $LOG_FILE" | tee -a "$LOG_FILE"
+        echo "Theme switch completed. Log saved to $LOG_FILE" | tee -a "$LOG_FILE"
+      fi
     '';
 
     # sets dconf settings correctly
