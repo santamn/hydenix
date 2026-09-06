@@ -46,8 +46,6 @@ jobs:
             themes
           add-paths: "pkgs/hydenix-themes/*.nix"
 
-      # Merge directly rather than via auto-merge, for the same reason as
-      # update-flake-lock.yml.
       - name: Merge PR
         if: steps.create_pr.outputs.pull-request-number
         run: |

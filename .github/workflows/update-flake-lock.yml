@@ -37,15 +37,19 @@ jobs:
           OUTPUT=$(nix flake check 2>&1)
           EXIT_CODE=$?
 
-          echo "root_check_output<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
+          # PR bodies are capped at 65536 characters, so drop the output on success
+          # and keep only the last 200 lines (where the cause is) on failure.
           if [ $EXIT_CODE -eq 0 ]; then
             echo "ROOT_CHECK_SUCCESS=true" >> "$GITHUB_OUTPUT"
+            OUTPUT="Check passed."
           else
             echo "ROOT_CHECK_SUCCESS=false" >> "$GITHUB_OUTPUT"
+            OUTPUT=$(printf '%s\n' "$OUTPUT" | tail -n 200)
           fi
+
+          echo "root_check_output<<CHECK_OUTPUT_EOF" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "CHECK_OUTPUT_EOF" >> "$GITHUB_OUTPUT"
 
           exit 0
 
@@ -60,15 +64,17 @@ jobs:
           OUTPUT=$(nix flake check 2>&1)
           EXIT_CODE=$?
 
-          echo "template_check_output<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
           if [ $EXIT_CODE -eq 0 ]; then
             echo "TEMPLATE_CHECK_SUCCESS=true" >> "$GITHUB_OUTPUT"
+            OUTPUT="Check passed."
           else
             echo "TEMPLATE_CHECK_SUCCESS=false" >> "$GITHUB_OUTPUT"
+            OUTPUT=$(printf '%s\n' "$OUTPUT" | tail -n 200)
           fi
+
+          echo "template_check_output<<CHECK_OUTPUT_EOF" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "CHECK_OUTPUT_EOF" >> "$GITHUB_OUTPUT"
 
           git checkout flake.nix
           rm -f flake.lock
@@ -112,9 +118,6 @@ jobs:
             ---
         if: always()
 
-      # Both flake checks already passed in this job, so merge directly instead of
-      # waiting on auto-merge: PRs opened with GITHUB_TOKEN never trigger
-      # `pull_request` workflows, and `--auto` errors on an already-mergeable PR.
       - name: Merge PR
         if: ${{ steps.check_root.outputs.ROOT_CHECK_SUCCESS == 'true' && steps.check_template.outputs.TEMPLATE_CHECK_SUCCESS == 'true' && steps.create_pr.outputs.pull-request-number }}
         run: |
