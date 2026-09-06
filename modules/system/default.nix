@@ -70,8 +70,8 @@ in {
     i18n.defaultLocale = lib.mkIf cfg.enable (lib.mkDefault cfg.locale);
     networking.hostName = lib.mkIf cfg.enable (lib.mkDefault cfg.hostname);
 
-    # 注意: こちらは mkDefault が無い。利用者側が別の値を書くと定義衝突になる。
-    # docs-ja/08-improvements.md 参照
-    system.stateVersion = "25.05";
+    # 上と同じく mkDefault 付き。template の configuration.nix が
+    # system.stateVersion を書いているので、これが無いと定義衝突になる
+    system.stateVersion = lib.mkDefault "25.05";
   };
 }

@@ -11,10 +11,10 @@
 # =============================================================================
 final: _prev: {
   # HyDE core packages
+  # かつてここに hyde-gallery もあったが、sha256 が空文字でビルド不能なうえ
+  # 誰も参照していなかったため削除した。テーマは hydenix-themes が個別に取得する
   hyde = final.callPackage ./hyde {}; # HyDE 本体（設定ファイル一式）
   hyde-config = final.callPackage ./hyde-config {}; # config.toml パーサ
-  # 注意: sha256 が空のためビルドできない。誰も参照していないので表面化していない
-  hyde-gallery = final.callPackage ./hyde-gallery {};
   hyde-ipc = final.callPackage ./hyde-ipc {}; # Hyprland のイベント購読・自動化
   hydectl = final.callPackage ./hydectl {}; # HyDE 操作 CLI
   hyprquery = final.callPackage ./hyprquery {}; # hyq: Hyprland 設定値の問い合わせ

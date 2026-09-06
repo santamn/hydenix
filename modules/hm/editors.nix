@@ -119,10 +119,13 @@ in {
         };
       })
 
-      # 注意: Nix の `or` は論理和ではなく「属性が無いときの既定値」を指す演算子。
-      # cfg.vim は常に存在するオプションなので、この式は実質 cfg.vim しか見ていない。
-      # 論理和にしたいなら `||` を使う
-      (lib.mkIf (cfg.vim or cfg.neovim) {
+      # .config/vim/ は vim と neovim が共有するので、どちらか一方でも
+      # 有効なら配置する。
+      # 以前は `cfg.vim or cfg.neovim` と書かれていたが、Nix の `or` は論理和
+      # ではなく「属性が無いときの既定値」を指す演算子。cfg.vim は既定値付きで
+      # 常に存在するため cfg.neovim が読まれず、vim = false; neovim = true;
+      # にすると .config/vim/ ごと消えていた
+      (lib.mkIf (cfg.vim || cfg.neovim) {
         ".config/vim/colors/wallbash.vim" = {
           source = "${pkgs.hyde}/Configs/.config/vim/colors/wallbash.vim";
           force = true;

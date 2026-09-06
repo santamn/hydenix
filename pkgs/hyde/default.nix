@@ -16,11 +16,11 @@
   pkgs,
   lib,
   fetchFromGitHub,
+  # interpreter for the Python scripts HyDE ships; override to add or drop libraries
+  #
   # HyDE 同梱の Python スクリプトを動かすインタプリタ。
-  # Interpreter for the Python scripts HyDE ships. Upstream builds a uv venv at
-  # runtime ($XDG_STATE_HOME/hyde/python_env); on NixOS nothing ever creates it,
-  # so the interpreter is provided from nixpkgs instead. Override this argument
-  # to add or drop libraries.
+  # 上流は実行時に uv で venv ($XDG_STATE_HOME/hyde/python_env) を作る前提だが、
+  # NixOS では誰もそれを作らないので、nixpkgs 側から渡す
   hydePython ?
     pkgs.python3.withPackages (
       ps:
@@ -87,12 +87,12 @@ pkgs.stdenv.mkDerivation {
     # update swaync
     find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
 
+    # point the runtime uv venv interpreter path at hydePython
+    #
     # 実行時 uv venv を指す参照を、すべて Nix のインタプリタへ向け直す。
-    # Point every call to the runtime uv venv at the Nix interpreter.
-    # hyde-shell (run_command), gpuinfo.sh (AMD branch) and gamelauncher.sh all
-    # exec "$XDG_STATE_HOME/hyde/python_env/bin/python" directly; that path does
-    # not exist here, so those commands died before printing anything and their
-    # waybar modules stayed empty.
+    # hyde-shell (run_command) / gpuinfo.sh (AMD 分岐) / gamelauncher.sh は
+    # "$XDG_STATE_HOME/hyde/python_env/bin/python" を直接 exec する。
+    # そのパスは存在しないので、何も出力せずに死んで waybar のモジュールが空になっていた
     find . -type f -print0 | xargs -0 sed -i 's|''${XDG_STATE_HOME:-$HOME/\.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
 
     # fix find commands for symlinks
@@ -155,12 +155,13 @@ pkgs.stdenv.mkDerivation {
     runHook postInstall
   '';
 
+  # inline the env instead of wrapProgram: hyde-shell is also sourced, and a wrapper's exec would kill the sourcing script
+  #
   # hyde-shell は実行されるだけでなく、HyDE のスクリプトから source される。
   # hyprsunset.sh / hyprlock.sh / animations.sh / workflows.sh /
   # wallpaper.mpvpaper.sh はいずれも `source "$(which hyde-shell)"` で始まる。
   # wrapProgram のラッパーは最後に exec するため、source した側のプロセスが
-  # 置き換わってしまい、これらのスクリプトは 1 行目で終了して何も出力しない。
-  # そのためラッパーを被せず、スクリプト自身に環境変数を埋め込んでいる。
+  # 置き換わってしまい、これらのスクリプトは 1 行目で終了して何も出力しない
   postInstall = ''
     hydeShell=$out/Configs/.local/bin/hyde-shell
     {
