@@ -56,6 +56,6 @@ in {
     i18n.defaultLocale = lib.mkIf cfg.enable (lib.mkDefault cfg.locale);
     networking.hostName = lib.mkIf cfg.enable (lib.mkDefault cfg.hostname);
 
-    system.stateVersion = "25.05";
+    system.stateVersion = lib.mkDefault "25.05";
   };
 }
