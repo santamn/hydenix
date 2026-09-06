@@ -50,8 +50,12 @@ in {
   # 追加定義することで、元の定義を壊さずに項目を増やしている。
   # ---------------------------------------------------------------------------
   options = let
-    # 属性集合のリストを 1 つにまとめる（foldl' で順に mergeAttrs していく）
-    mergeAttrsList = builtins.foldl' lib.mergeAttrs {};
+    # 属性集合のリストを 1 つにまとめる。
+    # mergeAttrs（= x: y: x // y）だと最上位のキーしか見ないため、
+    # {xdg.configFile} が {xdg.dataFile} に丸ごと差し替えられて
+    # xdg.configFile.<name>.mutable が未定義になっていた。
+    # 入れ子までマージする recursiveUpdate を使う
+    mergeAttrsList = builtins.foldl' lib.recursiveUpdate {};
 
     # 「ファイル名 → 設定」の属性集合の型。
     # submodule は「入れ子の設定オブジェクト」を表す型で、
@@ -179,9 +183,10 @@ in {
       # シンボリックリンクを張る処理）の直後に実行するよう指定する。
       # 「リンクを張った後にコピーで上書きする」という順序が重要。
       #
-      # 注意: 他モジュール（theme.nix / hyde.nix / hyprland/default.nix）は
-      # ここのエントリ名を "mutableGeneration" と誤って参照している。
-      # 詳細は docs-ja/08-improvements.md を参照
+      # このエントリ名 "mutableFileGeneration" は theme.nix / hyde.nix /
+      # hyprland/default.nix から entryAfter で参照されている。
+      # home-manager の DAG は知らない依存名を黙って捨てるので、
+      # 名前を変えるときは参照側も一緒に直すこと
       lib.hm.dag.entryAfter ["linkGeneration"] command;
   };
 }

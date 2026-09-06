@@ -40,10 +40,10 @@
   config = {
     hydenix.hm.enable = lib.mkDefault false;
 
-    # 注意: mkDefault が付いていないため、利用者側が別の値を書くと定義衝突で
-    # ビルドが落ちる。型が mergeEqualOption なので「同じ値なら通る」。
-    # docs-ja/08-improvements.md 参照
-    home.stateVersion = "25.05";
+    # mkDefault が付いているので、利用者が自分の home-manager モジュールで
+    # home.stateVersion を書けばそちらが勝つ。
+    # 以前は mkDefault が無く、既定と違う値を書くと定義衝突でビルドが落ちていた
+    home.stateVersion = lib.mkDefault "25.05";
 
     # let home-manager control itself
     programs.home-manager.enable = true;

@@ -51,12 +51,15 @@ in {
 
     # fixes cava from not initializing on boot
     # cava（音声ビジュアライザ）は設定ファイルが無いと起動に失敗するため、空ファイルを先に作る。
-    # 依存先の "mutableGeneration" は誤り（正しくは "mutableFileGeneration"）。
-    # docs-ja/08-improvements.md を参照
-    home.activation.createCavaConfig = lib.hm.dag.entryAfter ["mutableGeneration"] ''
-      mkdir -p "$HOME/.config/cava"
-      touch "$HOME/.config/cava/config"
-      chmod 644 "$HOME/.config/cava/config"
+    #
+    # 依存先の名前は mutable.nix が定義する "mutableFileGeneration" と一致させること。
+    # home-manager の DAG は知らない名前を黙って捨てるので、綴りを間違えると
+    # 順序制約が効かないまま toposort 任せの位置で実行される。
+    # $DRY_RUN_CMD は dry-activate のとき実行を空振りさせるための前置き
+    home.activation.createCavaConfig = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/cava"
+      $DRY_RUN_CMD touch "$HOME/.config/cava/config"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/cava/config"
     '';
 
     home.file = {

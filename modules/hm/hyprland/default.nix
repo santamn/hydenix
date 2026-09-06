@@ -68,23 +68,23 @@ in {
     # Hyprland は設定内の `source = ...` が存在しないファイルを指すとエラーを出すため、
     # 初回起動時のエラーを防ぐのが目的。
     #
-    # 依存先の "mutableGeneration" は誤り（正しくは "mutableFileGeneration"）。
-    # docs-ja/08-improvements.md を参照
-    home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableGeneration"] ''
-      mkdir -p "$HOME/.config/hypr/animations"
-      mkdir -p "$HOME/.config/hypr/themes"
-      mkdir -p "$HOME/.config/hypr/shaders"
-      mkdir -p "$HOME/.config/hypr/workflows"
+    # 依存先は mutable.nix が定義する "mutableFileGeneration"。
+    # $DRY_RUN_CMD は dry-activate のとき実行を空振りさせるための前置き
+    home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/animations"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/themes"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/shaders"
+      $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/workflows"
 
-      touch "$HOME/.config/hypr/animations/theme.conf"
-      touch "$HOME/.config/hypr/themes/colors.conf"
-      touch "$HOME/.config/hypr/themes/theme.conf"
-      touch "$HOME/.config/hypr/themes/wallbash.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/animations/theme.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/colors.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/theme.conf"
+      $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/wallbash.conf"
 
-      chmod 644 "$HOME/.config/hypr/animations/theme.conf"
-      chmod 644 "$HOME/.config/hypr/themes/colors.conf"
-      chmod 644 "$HOME/.config/hypr/themes/theme.conf"
-      chmod 644 "$HOME/.config/hypr/themes/wallbash.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/animations/theme.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/themes/colors.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/themes/theme.conf"
+      $DRY_RUN_CMD chmod 644 "$HOME/.config/hypr/themes/wallbash.conf"
     '';
 
     home.file = {

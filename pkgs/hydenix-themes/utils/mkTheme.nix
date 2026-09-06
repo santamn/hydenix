@@ -12,26 +12,18 @@
 # =============================================================================
 {
   pkgs,
+  # Standalone icon/cursor theme packages, keyed by the directory name their bundled tarball unpacks to
+  #
   # hydenix が単体パッケージとしても配布しているアイコン・カーソルテーマ。
-  # キーは HyDE の同梱 tarball が展開されるディレクトリ名。詳細は `relinkShared` を参照
-  sharedAssets ? {},
+  # キーは HyDE の同梱 tarball が展開されるディレクトリ名。詳細は `relinkShared` を参照。
+  # 既定値を持たない必須引数なので、渡し忘れると eval エラーになる
+  sharedAssets,
 }: {
   name,
   src,
   meta,
 }: let
-  /*
-  HyDE themes bundle their icon/cursor themes as tarballs, and some of them
-  carry a theme hydenix already installs on its own -- Catppuccin Mocha ships
-  Tela-circle-dracula, for instance. Since hydenix builds those from nixpkgs
-  sources rather than from HyDE's tarballs, the two copies of
-  `share/icons/<name>` differ, and home-manager's `buildEnv` aborts with a
-  collision as soon as both land in `home.packages`.
-
-  Replacing the bundled copy with a symlink to the standalone package keeps the
-  theme self-contained while making both paths resolve to the same store path,
-  which `buildEnv` accepts.
-  */
+  # Replace bundled copies of shared assets with symlinks so both providers resolve to one store path
   relinkShared = pkgs.lib.concatMapStringsSep "\n" (assetName: ''
     if [ -e "$out/share/icons/${assetName}" ]; then
       echo "Using the standalone ${assetName} package instead of the bundled copy"
@@ -149,9 +141,6 @@
       runHook postInstall
     '';
 
-    # No theme sets `priority`, so it must not be inherited unconditionally:
-    # `buildEnv` reads `meta.priority or <default>`, and an attribute that is
-    # present but throws when forced defeats the `or` fallback.
     meta = with pkgs.lib;
       {
         license = licenses.mit;

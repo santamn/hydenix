@@ -20,7 +20,7 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/f13ff45afd1bb73e640eaa08a7066dbed07e3238";
+    nixpkgs.url = "github:nixos/nixpkgs/2c423e03bbafcff28bfadc6781a4a8257f205cb5";
 
     # Home Manager (for user specific configuration)
     home-manager.url = "github:nix-community/home-manager";
@@ -118,7 +118,7 @@
       hyde-diff-home = pkgs.callPackage ./pkgs/hyde-diff-home {};
 
       # Add hyprquery, hydectl, hyde-ipc, and hyde-config for building
-      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde hyde-gallery;
+      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde;
       inherit (pkgs) pokego pyamdgpuinfo;
     };
 
@@ -127,16 +127,15 @@
     # 整形は CI 側（flint / treefmt）に任せる方針
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
-      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc;
-      inherit (pkgs) hyde Bibata-Modern-Ice Tela-circle-dracula;
+      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde Bibata-Modern-Ice Tela-circle-dracula;
 
-      /*
-      Mirrors how `home.packages` merges every package into a single profile:
-      the standalone icon/cursor themes and the copies bundled in the HyDE
-      themes both land in `share/icons`, and `buildEnv` refuses to merge two
-      directories whose files disagree. Building the default theme set here
-      catches such a collision in CI instead of on a user's rebuild.
-      */
+      # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`
+      #
+      # home.packages が全パッケージを 1 つのプロファイルへ束ねるのと同じことをする。
+      # 単体のアイコン・カーソルテーマと、HyDE テーマに同梱されたコピーは
+      # どちらも share/icons へ入るが、buildEnv は中身の食い違うディレクトリを
+      # マージできない。既定のテーマ集合をここでビルドしておくことで、
+      # 利用者の rebuild ではなく CI で衝突を捕まえる
       theme-assets = pkgs.buildEnv {
         name = "hydenix-theme-assets";
         paths = with pkgs; [

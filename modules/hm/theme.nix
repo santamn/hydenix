@@ -119,11 +119,10 @@ in {
 
     # applies what it can before graphical.target, think of this like a "first content paint"
     #
-    # 注意: 依存先の "mutableGeneration" は存在しないエントリ名。
-    # 正しくは "mutableFileGeneration"（mutable.nix が定義）。
-    # home-manager は不明な依存名を黙って無視するので順序制約が効いていない。
-    # 詳細と修正方針は docs-ja/08-improvements.md を参照
-    home.activation.setTheme = lib.hm.dag.entryAfter ["mutableGeneration"] ''
+    # 依存先は mutable.nix が定義する "mutableFileGeneration"。
+    # テーマ適用スクリプトは mutable なコピーを書き換えるので、
+    # コピーが済んだ後でなければならない
+    home.activation.setTheme = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
       # Define path with required tools
       # activation script は最小限の環境で動くため、必要なコマンドを明示的に PATH へ通す
       export PATH="${
@@ -148,22 +147,27 @@ in {
         )
       }:$HOME/.local/bin:$PATH"
 
-      # Set up logging
-      LOG_FILE="$HOME/.local/state/hyde/theme-switch.log"
-      mkdir -p $HOME/.local/state/hyde
-      # Clear the log file before writing
-      : > "$LOG_FILE"
-      chmod 644 $LOG_FILE
+      if [ -n "$DRY_RUN_CMD" ]; then
+        echo "Would set theme to ${cfg.active}"
+      else
+        # Set up logging
+        LOG_FILE="$HOME/.local/state/hyde/theme-switch.log"
+        mkdir -p $HOME/.local/state/hyde
+        # Clear the log file before writing
+        : > "$LOG_FILE"
+        chmod 644 $LOG_FILE
 
-      echo "Setting theme to ${cfg.active}..." | tee -a "$LOG_FILE"
+        echo "Setting theme to ${cfg.active}..." | tee -a "$LOG_FILE"
 
-      export LOG_LEVEL=debug
+        export LOG_LEVEL=debug
 
-      # Run the theme switch commands with the custom runtime dir
-      # 注: ここは $DRY_RUN_CMD を使っていないので dry-activate でも実際に走ってしまう
-      $HOME/.local/lib/hyde/theme.switch.sh -s "${cfg.active}" >> "$LOG_FILE" 2>&1
+        # Run the theme switch commands with the custom runtime dir
+        # ここはログファイルへリダイレクトする都合で $DRY_RUN_CMD を前置できないため、
+        # 上の if で dry-activate のときはブロックごと飛ばしている
+        $HOME/.local/lib/hyde/theme.switch.sh -s "${cfg.active}" >> "$LOG_FILE" 2>&1
 
-      echo "Theme switch completed. Log saved to $LOG_FILE" | tee -a "$LOG_FILE"
+        echo "Theme switch completed. Log saved to $LOG_FILE" | tee -a "$LOG_FILE"
+      fi
     '';
 
     # sets dconf settings correctly
