@@ -58,7 +58,7 @@ Please see the [upgrading](./upgrading.md) guide for more information on how to 
 ### How do I fix (nix error / system error / bug / etc)?
 
 Please see the [troubleshooting](./troubleshooting.md) guide for more information on how to diagnose and fix issues.
-Or create an issue in the [hydenix GitHub repository](https://github.com/florianvazelle/hydenix/issues).
+Or create an issue in the [hydenix GitHub repository](https://github.com/santamn/hydenix/issues).
 
 ### Common errors
 
@@ -215,7 +215,7 @@ To clear the saved themes, run `rm -rf ~/.config/hydenix/themes/THEME_NAME` for 
 
 ### Requesting features
 
-Please open a [feature request](https://github.com/florianvazelle/hydenix/issues/new?template=feature_request.md) if you have any feature requests.
+Please open a [feature request](https://github.com/santamn/hydenix/issues/new?template=feature_request.md) if you have any feature requests.
 
 ## Other faq
 

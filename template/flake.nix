@@ -9,7 +9,7 @@
 
   inputs = {
     nixpkgs.follows = "hydenix/nixpkgs";
-    hydenix.url = "github:florianvazelle/hydenix";
+    hydenix.url = "github:santamn/hydenix";
     nixos-hardware.follows = "hydenix/nixos-hardware";
   };
 
