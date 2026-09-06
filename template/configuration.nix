@@ -1,6 +1,6 @@
 {pkgs, ...}:
 # Complete setup guide for Hydenix NixOS system configuration
-# Edit the marked REQUIRED sections below, then run: nixos-rebuild switch --flake .
+# Edit the marked REQUIRED sections below, then run: nixos-rebuild switch --flake .#default
 {
   imports = [
     ./modules/system # Custom system-level modules

@@ -53,7 +53,7 @@ Using Git also allows you to **version control and track changes** to your syste
 Build the system and switch to the new configuration:
 
 ```bash
-sudo nixos-rebuild switch --flake .#hydenix
+sudo nixos-rebuild switch --flake .#default
 ```
 
 > [!NOTE]
