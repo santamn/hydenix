@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
   # Required for `create-pull-request` to create a PR directly against the base branch
   # if an existing PR for the branch already exists.
-  # Also required for auto-merging.
+  # Also required for merging the PR.
 
 jobs:
   lockfile:
@@ -112,10 +112,18 @@ jobs:
             ---
         if: always()
 
-      - name: Enable auto-merge on PR
+      # Both flake checks already passed in this job, so merge directly instead of
+      # waiting on auto-merge: PRs opened with GITHUB_TOKEN never trigger
+      # `pull_request` workflows, and `--auto` errors on an already-mergeable PR.
+      - name: Merge PR
         if: ${{ steps.check_root.outputs.ROOT_CHECK_SUCCESS == 'true' && steps.check_template.outputs.TEMPLATE_CHECK_SUCCESS == 'true' && steps.create_pr.outputs.pull-request-number }}
         run: |
-          gh pr merge $PULL_REQUEST --auto --squash
+          # Mergeability is still being computed right after creation, so retry
+          for _ in 1 2 3 4 5; do
+            gh pr merge "$PULL_REQUEST" --squash && exit 0
+            sleep 15
+          done
+          exit 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PULL_REQUEST: ${{ steps.create_pr.outputs.pull-request-number }}
