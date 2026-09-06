@@ -2,6 +2,8 @@
 
 直したほうがよいと判断した箇所の一覧です。上のものほど優先度が高く、下にいくほど仕様として割り切れるものになります。各項目は問題・原因・確認方法・修正方法の順に並べ、必要に応じて実害やリスクの節を挟んでいます。指摘を鵜呑みにせず、まず手元で実行して再現してみてください。
 
+`main` で直したものは節の頭に「解決済み」の印を付けたうえで、本文はそのまま残しています。同じ問題を再度掘り返さないための記録と、確認方法の実例を兼ねているからです。一覧は [E-1](#e-1-このフォークsantamnで直したもの) にあります。
+
 ---
 
 ## 確認方法の共通手順
@@ -56,7 +58,7 @@ HyDE 本家が 2026-07-27 のリリースコミット `b8cc647`（chore: Release
 | `unzip ./Source/arcs/Code_Wallbash.vsix` | ファイルが無く `unzip` が失敗してビルドが落ちる |
 | `for fontarchive in ./Source/arcs/Font_*.tar.gz` | `if [ -f "$fontarchive" ]` に守られているためエラーにならず、**フォントが 0 個の hyde が黙って出来上がる** |
 
-前者はすぐ気づけますが、後者は気づけません。上流追従を再開するなら、先にこの 2 つの入手先を決める必要があります。
+前者はすぐ気づけますが、後者は気づけません。HyDE の rev を上げるなら、先にこの 2 つの入手先を決める必要があります。
 
 #### 確認方法
 
@@ -88,8 +90,8 @@ grep -n 'Code_Wallbash\|Font_\*' pkgs/hyde/default.nix
 
 - `pkgs/Bibata-Modern-Ice.nix` と `pkgs/Tela-circle-dracula.nix` は `raw/refs/heads/...` の `fetchurl` をやめ、nixpkgs の `bibata-cursors` / `tela-circle-icon-theme` からビルドするようになりました（[#3](https://github.com/santamn/hydenix/pull/3)）。前者は nixpkgs が XCursor 形式しか作らないため、`hyprcursor-util` で hyprcursor 版を作り直しています（理由は [#4](https://github.com/santamn/hydenix/pull/4) でコメントとして残してあります）
 - `checks.${system}` に `hyde` / `Bibata-Modern-Ice` / `Tela-circle-dracula` と `theme-assets` が入り、素材パッケージが CI で実際にビルドされるようになりました（[#3](https://github.com/santamn/hydenix/pull/3) / [#5](https://github.com/santamn/hydenix/pull/5)）
-- `flake-check.yml` に `schedule`（毎週月曜 03:00 UTC）が入り、PR の無い期間でも上流のファイル削除に気づけるようになりました
-- 上流の PR #98 が入ったことで `.github/renovate.json` の customManager が `fetchFromGitHub` の `rev` を `github-releases` として拾うようになり、HyDE のタグも renovate の監視対象になりました。つまり次のタグが出れば renovate が PR を作り、その PR の CI が上記の `unzip` 失敗で落ちます。壊れる場所が利用者の実機ではなく PR になったので、この項目は「気づけないまま壊れる」問題から「上げる前に片付ける宿題」に変わっています
+- `flake-check.yml` に `schedule`（毎週月曜 03:00 UTC）が入り、PR の無い期間でも HyDE 側のファイル削除に気づけるようになりました
+- florianvazelle/hydenix の PR #98 を取り込んだことで `.github/renovate.json` の customManager が `fetchFromGitHub` の `rev` を `github-releases` として拾うようになり、HyDE のタグも renovate の監視対象になりました。つまり次のタグが出れば renovate が PR を作り、その PR の CI が上記の `unzip` 失敗で落ちます。壊れる場所が利用者の実機ではなく PR になったので、この項目は「気づけないまま壊れる」問題から「上げる前に片付ける宿題」に変わっています
 
 ```bash
 nix eval --impure --expr '
@@ -98,6 +100,9 @@ nix eval --impure --expr '
 ```
 
 ### A-1. `mutableGeneration` — 存在しない依存名を参照している
+
+> [!NOTE]
+> **解決済み**（[#39](https://github.com/santamn/hydenix/pull/39)）。3 か所とも `mutableFileGeneration` を参照するようになりました。以下は調査の記録として残しています。
 
 #### 問題
 
@@ -163,9 +168,11 @@ nix eval --impure --expr '
 
 リスクはありません。`mutable.nix` の `config` は `enable` フラグで囲われていない（無条件）ので、このエントリは常に存在します。依存先が消えることはありません。
 
-> この修正は上流へ PR を送る価値があります。手順は [09-fork-workflow.md](./09-fork-workflow.md) を参照。
 
 ### A-2. activation script が `$DRY_RUN_CMD` を使っていない
+
+> [!NOTE]
+> **解決済み**（[#40](https://github.com/santamn/hydenix/pull/40)）。`createCavaConfig` と `createHyprConfigs` は `$DRY_RUN_CMD` を前置しました。`setTheme` はログへリダイレクトする都合で前置できないので、`$DRY_RUN_CMD` が空でないときはブロックごと飛ばしています。以下は調査の記録です。
 
 #### 問題
 
@@ -271,9 +278,12 @@ rm -rf ~/.config/hyde ~/.local/share/hyde ~/.cache/hyde
 - 前世代の mutable ファイル一覧を記録し、設定から消えたものを自動削除する
 - generation ロールバック時に mutable ファイルも戻す
 
-3 つ目が本命ですが、ユーザーが手で編集した内容を消してよいかの判断が難しく、設計上の議論が必要です。大きめの変更なので、上流に投げる前に issue で相談するのが無難です。
+3 つ目が本命ですが、ユーザーが手で編集した内容を消してよいかの判断が難しく、設計上の議論が必要です。大きめの変更なので、着手前に issue へ書き出して考えを固めたほうがよいでしょう。
 
 ### A-4. `mutable` オプションが `xdg.configFile` に生えていない
+
+> [!NOTE]
+> **解決済み**（[#41](https://github.com/santamn/hydenix/pull/41)）。`lib.mergeAttrs` を `lib.recursiveUpdate` に変えて、3 つとも `mutable` が生えるようになりました。以下は調査の記録です。
 
 #### 問題
 
@@ -389,13 +399,15 @@ nix eval --impure --expr '
 
 低いです。`xdg.configFile` にオプションが増えるだけで、既存の挙動は変わりません（誰も使っていないため）。ただし `home.file` と `xdg.configFile` の両方に同じパスを書いている設定があると、これまで無視されていた `mutable` が効き始める可能性はあります。修正後に確認方法 2 が 3 つとも `true` になることを確かめてください。
 
-> この修正も上流へ PR を送る価値があります。A-1 と同様、小さく独立した変更です。
 
 ---
 
 ## B. 優先度: 中
 
 ### B-1. `hydectl` の `mainProgram` が間違っている
+
+> [!NOTE]
+> **解決済み**（[#42](https://github.com/santamn/hydenix/pull/42)）。以下は調査の記録です。
 
 #### 問題
 
@@ -431,6 +443,9 @@ darwin 上でも `x86_64-linux` の評価はできます（ビルドはできま
 `mainProgram = "hydectl";` に変更します。1 行で済むので PR 向きの小さな修正です。
 
 ### B-2. `hyde-gallery` の `sha256` が空
+
+> [!NOTE]
+> **解決済み**（[#43](https://github.com/santamn/hydenix/pull/43)）。下の案 2（パッケージごと削除）を採りました。テーマは `pkgs/hydenix-themes/` が個別に取得しています。以下は調査の記録です。
 
 #### 問題
 
@@ -516,6 +531,9 @@ Failed assertions:
 
 ### B-4. `stateVersion` に `mkDefault` が無い
 
+> [!NOTE]
+> **解決済み**（[#44](https://github.com/santamn/hydenix/pull/44)）。`system.stateVersion` と `home.stateVersion` の両方に `mkDefault` が付き、利用者側の値が勝ちます。以下は調査の記録です。
+
 #### 問題
 
 ```nix
@@ -570,7 +588,7 @@ error: The option `home.stateVersion' has conflicting definition values:
 +system.stateVersion = lib.mkDefault "25.05";
 ```
 
-これは利用者の環境に影響し得る変更です。既に `"25.05"` を書いている人には影響しませんが、`mkDefault` にすると hydenix 側の値ではなく利用者側の値が勝つようになります。挙動としては正しい方向ですが、上流には理由を添えて出したほうがよいでしょう。
+これは利用者の環境に影響し得る変更です。既に `"25.05"` を書いている人には影響しませんが、`mkDefault` にすると hydenix 側の値ではなく利用者側の値が勝つようになります。挙動としては正しい方向なので、PR の本文に理由を書いたうえで入れました。
 
 ### B-5. `hyde-diff-upstream` の `sha256` が固定されている
 
@@ -605,6 +623,9 @@ nix-prefetch-git --quiet https://github.com/HyDE-Project/HyDE master | grep hash
 2 が実用的ですが、renovate の設定が複雑になります。現状は使うときに手で更新するで運用できているので、優先度は低めです。
 
 ### B-6. `cfg.vim or cfg.neovim` — `or` が論理和として書かれている
+
+> [!NOTE]
+> **解決済み**（[#45](https://github.com/santamn/hydenix/pull/45)）。`||` になりました。以下は調査の記録です。
 
 #### 問題
 
@@ -782,7 +803,7 @@ Grukai: 95e0b926 -> 3945b4a1
 
 #### 優先度の補足
 
-ビルドは壊れないので B に置いていますが、自動化が存在するのに機能していないという点では A 相当の危うさがあります。上流にもそのまま存在する問題なので、PR を送る価値があります。
+ビルドは壊れないので B に置いていますが、自動化が存在するのに機能していないという点では A 相当の危うさがあります。
 
 ### B-8. `setThemeDconf.service` が存在しないスクリプトを起動している
 
@@ -859,6 +880,9 @@ systemctl --user status setThemeDconf.service  # status=203/EXEC
 壊れて見えるわりに実害が小さいので B に置いています。根本的には HyDE のスクリプト名を Nix 側にハードコードしていることが原因で、これは C-1 で扱う設計課題そのものの実例です。
 
 ### B-9. fish の `$aurhelper` エイリアス 6 個は必ず失敗する
+
+> [!NOTE]
+> **解決済み**（[#46](https://github.com/santamn/hydenix/pull/46)）。あわせて [#47](https://github.com/santamn/hydenix/pull/47) で、残るエイリアスも `interactiveShellInit` のベタ書きから `shellAliases` / `shellAbbrs` の宣言に移しました。以下は調査の記録です。
 
 #### 問題
 
@@ -959,7 +983,6 @@ NixOS 版に置き換えるのは勧めません。`up` に相当するのは `n
 
 同じ `interactiveShellInit` にある `c` / `l` / `ls` / `ll` / `ld` / `lt` / `vc` / `fastfetch` と `..` 系は、すぐ下の `shellAliases` / `shellAbbrs`（`shell.nix:265-280`）と内容が重複しています。`alias` を消して `shellAliases` 側に寄せると、fish ブロックが素直になります。ただし挙動が変わらない整理なので、PR にするなら削除とは分けてください。
 
-> この修正は上流へ PR を送る価値があります。A-1 と同じく小さく独立した変更で、上流の HyDE 自身がコメントアウトしている行を移植時に有効化してしまった、という経緯を本文に書けば説明も短く済みます。
 
 ### B-10. 同名アイコンテーマを複数テーマが「異なる内容」で同梱している
 
@@ -1184,7 +1207,7 @@ mkTheme rec {
 - A-3 の解決にはなりません。減らせるのは上の表の十数件で、mutable ファイル 115 件の大半は wallbash 由来のため残ります。
 - 実機での検証が必須です。GTK4・Qt・カーソルは壊れても気づきにくい割に、壊れたときの体感は悪い部類です。
 
-結論として、設計としては正しい方向ですが、費用に対する効果が限定的です。HyDE のスクリプトをそのまま動かすという現在の方針を捨てて hydenix がテーマ適用を自前で持つ、という方針転換を伴うので、着手するなら上流に issue を立てて合意を取ってからにすべきです。一方、段階 1（B-8）と段階 3（dconf のみ）は方針転換を伴わず単独で価値があるため、そこだけ先に進めるのは十分に現実的です。
+結論として、設計としては正しい方向ですが、費用に対する効果が限定的です。HyDE のスクリプトをそのまま動かすという現在の方針を捨てて hydenix がテーマ適用を自前で持つ、という方針転換を伴うので、着手するなら issue に判断の理由を残してからにすべきです。一方、段階 1（B-8）と段階 3（dconf のみ）は方針転換を伴わず単独で価値があるため、そこだけ先に進めるのは十分に現実的です。
 
 ### C-2. 履歴の環境変数を `shell.nix` へ移す（本家 issue #154）
 
@@ -1349,13 +1372,13 @@ ZSH_AUTOSUGGEST_STRATEGY = "history completion";
 
 `shell.nix:114` で `autosuggestion.enable = true` にしているため、home-manager が `.zshrc` の order 700 で `ZSH_AUTOSUGGEST_STRATEGY=(history)`（既定値）を書き、export した値を潰します。`completion` が落ちるので、補完候補からの提案が効きません。直すなら `programs.zsh.autosuggestion.strategy = ["history" "completion"];` を書き、`xdg.nix` 側の 1 行を消します。HyDE 本家の `terminal.zsh` も `(history completion)` にしているので、意図としてはこちらが正です。
 
-> この修正は上流へ PR を送る価値があります。issue #154 は `shell.nix` へ移すという整理の issue ですが、6 行は読み手が消滅している、3 行は home-manager に上書きされている、という調査結果を添えれば案 2 まで一度に通しやすくなります。案 1 と案 2 を分けて出す必要はありません（案 2 は案 1 を含むため）。
+> 案 1 と案 2 を分けて出す必要はありません（案 2 は案 1 を含むため）。
 
 ---
 
 ## D. dotnix 側で持てばよいもの
 
-hydenix に無くても、利用側（`santamn/dotnix`）で解決できるものです。上流に出す必要はありません。
+hydenix に無くても、利用側（`santamn/dotnix`）で解決できるものです。hydenix 側では扱いません。
 
 | 項目 | 対応 |
 |---|---|
@@ -1369,19 +1392,24 @@ hydenix に無くても、利用側（`santamn/dotnix`）で解決できるも�
 
 ### E-1. このフォーク（santamn）で直したもの
 
-いずれも `main` にマージ済みで、上流へそのまま出せる形になっています。
+いずれも `main` にマージ済みです。当初は上流へそのまま出すつもりで英語で書いていましたが、上流は 2026-08 にアーカイブされたので出し先は無くなりました。
 
 | PR | 項目 | 内容 |
 |---|---|---|
-| [#3](https://github.com/santamn/hydenix/pull/3) | 素材の取得元 | `Bibata-Modern-Ice` / `Tela-circle-dracula` を可変ブランチ ref の `fetchurl` から nixpkgs のソースへ。あわせて `checks` に追加 |
-| [#4](https://github.com/santamn/hydenix/pull/4) | hyprcursor | nixpkgs が XCursor しか作らないため hyprcursor 版を作り直している理由をコメント化 |
-| [#5](https://github.com/santamn/hydenix/pull/5) | `share/icons` の衝突 | `mkTheme` に `sharedAssets` を追加し、テーマ同梱コピーを正準パッケージへの symlink に置換。`checks.theme-assets` で CI 検出 |
 | [#6](https://github.com/santamn/hydenix/pull/6) | `hyprsunset` 未インストール | 設定だけ配置されて本体が無く、毎回 `Executable not found` 通知が出ていた |
-| [#7](https://github.com/santamn/hydenix/pull/7) | `hyde-shell` が source できない | `wrapProgram` の `exec` が source 元プロセスを置き換えるため、`hyprlock.sh` 等が 1 行目で終了していた |
-| [#8](https://github.com/santamn/hydenix/pull/8) | Python インタプリタ不在 | 実行時 uv venv のパスを `hydePython` に置換。waybar の該当モジュールが空になる問題 |
 | [#9](https://github.com/santamn/hydenix/pull/9) | swaync のプロセス名 | `pgrep -x swaync` を `.swaync-wrapped` に置換。通知センターが開かなかった |
+| [#10](https://github.com/santamn/hydenix/pull/10) | 素材の取得元と `share/icons` の衝突 | `Bibata-Modern-Ice` / `Tela-circle-dracula` を可変ブランチ ref の `fetchurl` から nixpkgs のソースへ。あわせて `mkTheme` に `sharedAssets` を追加し、テーマ同梱コピーを正準パッケージへの symlink に置換。`checks.theme-assets` で CI 検出（#3 / #4 / #5 を統合） |
+| [#12](https://github.com/santamn/hydenix/pull/12) | `hyde-shell` と Python インタプリタ | `wrapProgram` の `exec` が source 元プロセスを置き換えるため `hyprlock.sh` 等が 1 行目で終了していた問題と、実行時 uv venv のパスを `hydePython` に置換する修正（#7 / #8 を統合） |
+| [#39](https://github.com/santamn/hydenix/pull/39) | A-1 | activation の依存名を実在する `mutableFileGeneration` へ |
+| [#40](https://github.com/santamn/hydenix/pull/40) | A-2 | `dry-activate` で副作用が出ていた 3 つの activation script |
+| [#41](https://github.com/santamn/hydenix/pull/41) | A-4 | `mutable` が `xdg.configFile` に生えていなかった（`recursiveUpdate` へ） |
+| [#42](https://github.com/santamn/hydenix/pull/42) | B-1 | `hydectl` の `mainProgram` |
+| [#43](https://github.com/santamn/hydenix/pull/43) | B-2 | ビルドできない `hyde-gallery` パッケージを削除 |
+| [#44](https://github.com/santamn/hydenix/pull/44) | B-4 | `stateVersion` に `mkDefault` |
+| [#45](https://github.com/santamn/hydenix/pull/45) | B-6 | vim 設定の配置条件を `or` から `||` へ |
+| [#46](https://github.com/santamn/hydenix/pull/46) / [#47](https://github.com/santamn/hydenix/pull/47) | B-9 | AUR ヘルパー用エイリアスを削除し、残りを `shellAliases` 宣言へ |
 
-### E-2. 本家 → 上流フォークで直ったもの
+### E-2. 本家 → florianvazelle フォークで直ったもの
 
 同じ問題を再度報告しないための記録です。
 

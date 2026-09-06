@@ -4,7 +4,7 @@
 
 > [!IMPORTANT]
 > **この `docs-ja/` とコード中の日本語コメントは `ja` ブランチにのみ存在します。**
-> 上流（florianvazelle/hydenix）へ PR を送るときは `main` から分岐してください。運用手順は [09-fork-workflow.md](./09-fork-workflow.md) を参照。
+> 修正の PR は `main` から分岐してください。`main` は日本語を含まないので、typos の CI が日本語混じりの英単語を誤検出せずに済み、dotnix から参照する先としてもこちらが正になります。運用手順は [09-fork-workflow.md](./09-fork-workflow.md) を参照。
 
 ## 読む順番
 
@@ -21,7 +21,7 @@ Nix 初心者の方は、上から順に読むことをおすすめします。
 | 06 | [06-hyprland-modules.md](./06-hyprland-modules.md) | Hyprland 設定モジュールの設計パターン |
 | 07 | [07-reading-notes.md](./07-reading-notes.md) | コードを読んで気づいた点・落とし穴 |
 | 08 | [08-improvements.md](./08-improvements.md) | **将来加えると良い変更**。修正案と未解決問題の一覧 |
-| 09 | [09-fork-workflow.md](./09-fork-workflow.md) | 上流追従と PR の運用（日本語コメントの扱い） |
+| 09 | [09-fork-workflow.md](./09-fork-workflow.md) | ブランチ構成と PR の運用（日本語コメントの扱い） |
 | 10 | [10-ci.md](./10-ci.md) | CI（GitHub Actions）が何を検証し、何を自動化しているか |
 
 ## 3 分で分かる要約
@@ -46,25 +46,33 @@ hydenix は **Arch Linux 用のデスクトップ設定集である HyDE を、N
 ```
 richen604/hydenix          本家。2026-01-23 を最後に停止（メンテナンスモード）
         ↓ fork
-florianvazelle/hydenix     実質的な後継。nixpkgs / HyDE / Hyprland を追従中
+florianvazelle/hydenix     後継だったが、2026-08 にアーカイブ（読み取り専用）
         ↓ fork
-santamn/hydenix            ← このリポジトリ
+santamn/hydenix            ← このリポジトリ。現在ここが列の先頭
 ```
 
-自分のフォークを挟んでいるのは、florianvazelle 氏が 1 人で保守しているため、止まった場合に即座に自分で前へ進められるようにするためです。普段は `git merge upstream/main` するだけで済みます（[09](./09-fork-workflow.md)）。
+自分のフォークを挟んだのは、florianvazelle 氏が 1 人で保守しているので止まったときに自分で前へ進められるように、という理由でした。その心配が現実になった形です。
+
+追従できる上流はもう無いので、nixpkgs・HyDE・Hyprland の更新は自分で追うしかありません。とはいえ renovate と update-flake-lock が動いているぶん、実作業は壊れた PR を直すところだけです。HyDE 本体（[HyDE-Project/HyDE](https://github.com/HyDE-Project/HyDE)）は今も活発なので、素材の供給が止まったわけではありません。
 
 ## このフォークが加えた修正
 
-`main` には上流追従だけでなく、自分で見つけた不具合の修正も入っています。上流へそのまま出せるよう、英語のコミット・英語のコメントで書いてあります。
+`main` には、自分で見つけた不具合の修正が入っています。英語のコミット・英語のコメントで書いているのは、当初は上流へ出すつもりだったからです。上流がアーカイブされた今も、この書き方は変えていません。読み手が日本語話者だけとは限らないので。
 
 | PR | 内容 |
 |---|---|
-| [#3](https://github.com/santamn/hydenix/pull/3) / [#4](https://github.com/santamn/hydenix/pull/4) | カーソル・アイコンテーマを HyDE の tar.gz ではなく nixpkgs からビルドする（可変ブランチ ref による突然のビルド不能を回避） |
-| [#5](https://github.com/santamn/hydenix/pull/5) | テーマ同梱のアイコンテーマと単体パッケージが `share/icons` で衝突する問題を `sharedAssets` で解消 |
 | [#6](https://github.com/santamn/hydenix/pull/6) | `hyprsunset` の設定だけ配置されて本体が入っていなかった |
-| [#7](https://github.com/santamn/hydenix/pull/7) | `hyde-shell` を `wrapProgram` で包むと `source` できなくなる問題 |
-| [#8](https://github.com/santamn/hydenix/pull/8) | HyDE の Python スクリプトに実在するインタプリタを与える |
 | [#9](https://github.com/santamn/hydenix/pull/9) | swaync のラップ後プロセス名に waybar モジュールを合わせる |
+| [#10](https://github.com/santamn/hydenix/pull/10) | カーソル・アイコンテーマを HyDE の tar.gz ではなく nixpkgs からビルドし、テーマ同梱のコピーとの `share/icons` 衝突を `sharedAssets` で解消（#3 / #4 / #5 をまとめ直したもの） |
+| [#12](https://github.com/santamn/hydenix/pull/12) | `hyde-shell` を `source` できるようにし、HyDE の Python スクリプトに実在するインタプリタを与える（#7 / #8 をまとめ直したもの） |
+| [#39](https://github.com/santamn/hydenix/pull/39) | activation script の依存名を、実在する `mutableFileGeneration` に直す |
+| [#40](https://github.com/santamn/hydenix/pull/40) | `dry-activate` で activation script が実際に副作用を起こしていた |
+| [#41](https://github.com/santamn/hydenix/pull/41) | `mutable` オプションが `xdg.configFile` に生えていなかった（`mergeAttrs` を `recursiveUpdate` に） |
+| [#42](https://github.com/santamn/hydenix/pull/42) | `hydectl` の `mainProgram` が `hyde-ipc` のままだった |
+| [#43](https://github.com/santamn/hydenix/pull/43) | ビルドできない `hyde-gallery` パッケージを削除 |
+| [#44](https://github.com/santamn/hydenix/pull/44) | `stateVersion` に `mkDefault` を付け、利用者側の値を優先する |
+| [#45](https://github.com/santamn/hydenix/pull/45) | vim 設定の配置条件が `or` になっていて `neovim` が読まれていなかった |
+| [#46](https://github.com/santamn/hydenix/pull/46) / [#47](https://github.com/santamn/hydenix/pull/47) | fish のエイリアスを `shellAliases` 宣言に移し、動かない AUR ヘルパー用エイリアスを削除 |
 
 背景と再現方法は [08-improvements.md](./08-improvements.md) の E-1 にまとまっています。未解決の課題も同じファイルにあります。
 
@@ -89,7 +97,7 @@ santamn/hydenix            ← このリポジトリ
 
 - **`git.nix` が削除された** — 本家 issue #169 の型バグをモジュールごと消して解決。git の設定は素の `programs.git` に書く
 - **`swww.nix` → `awww.nix`** — 壁紙デーモンの差し替え
-- **hyprland モジュールが `utils/mkHyprConfig.nix` に一本化された** — `hypridle` / `keybindings` / `monitors` / `nvidia` / `windowrules` は同じ構造だったため、個別ファイルをやめて関数生成に変わった。オプション名と使い方は本家と同じ
+- **hyprland モジュールが `utils/mkHyprConfig.nix` に一本化された** — `hypridle`、`keybindings`、`monitors`、`nvidia`、`windowrules`、`hyprsunset` は同じ構造だったため、個別ファイルをやめて関数生成に変わった。オプション名と使い方は本家と同じ
 - **`hyprsunset` が追加された** — ブルーライト低減
 - **`pyprland` が無効化された** — `default.nix` の imports でコメントアウトされ、オプションも消えている
 - **`hyprland.systemd.*` が追加された** — Hyprland 起動時に環境変数を systemd / D-Bus のユーザ環境へ流し込み、`hyprland-session.target` を起動する
@@ -99,7 +107,7 @@ santamn/hydenix            ← このリポジトリ
 - `nixosModules.default` が **home-manager 本体と `homeModules.default` を自動で配線する**（`home-manager.sharedModules` 経由）。本家より利用者側の記述が減る
 - `homeConfigurations.default` が追加され、home-manager 単体でも使える
 - Hyprland を flake input でバージョン固定し（現在は `v0.56.2`。HyDE が対応する最新版に合わせる）、cachix を `nixConfig` に追加
-- `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）
+- `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）。`system.stateVersion` と `home.stateVersion` も [#44](https://github.com/santamn/hydenix/pull/44) で `mkDefault` になり、利用者が書いた値が勝つ
 
 ### 開発基盤
 
@@ -109,9 +117,9 @@ santamn/hydenix            ← このリポジトリ
 
 ## 公式ドキュメント（英語）
 
-- [インストール手順](https://florianvazelle.github.io/hydenix/installation.html)
-- [設定オプション一覧](https://florianvazelle.github.io/hydenix/options.html)
-- [FAQ](https://florianvazelle.github.io/hydenix/faq.html)
-- [トラブルシューティング](https://florianvazelle.github.io/hydenix/troubleshooting.html)
+- [インストール手順](https://santamn.github.io/hydenix/installation.html)
+- [設定オプション一覧](https://santamn.github.io/hydenix/options.html)
+- [FAQ](https://santamn.github.io/hydenix/faq.html)
+- [トラブルシューティング](https://santamn.github.io/hydenix/troubleshooting.html)
 
-リポジトリ内では [`docs/src/`](../docs/src/) にソースがあります。
+上流がアーカイブされたので、公開先はこのフォークの GitHub Pages に移しました。リポジトリ内では [`docs/src/`](../docs/src/) にソースがあります。

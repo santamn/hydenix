@@ -150,7 +150,7 @@ options.hydenix.hm.theme = {
 
 `mkIf` が重要な理由: 単に `if cond then {...} else {}` と書くと、条件の評価に `config` が必要な場合に**無限再帰**に陥ることがあります。 `mkIf` は評価を遅延させるので安全です。
 
-`mkDefault` の有無は運用に直結します。このフォークでは `networking.hostName` / `time.timeZone` / `i18n.defaultLocale` に `mkDefault` が付いたため、利用者側の指定が素直に優先されるようになりました。一方 `system.stateVersion` / `home.stateVersion` には付いていないので、**利用者が別の値を書くと定義衝突でビルドが落ちます**（[08](./08-improvements.md) 参照）。
+`mkDefault` の有無は運用に直結します。このフォークでは `networking.hostName` / `time.timeZone` / `i18n.defaultLocale` に `mkDefault` が付いたため、利用者側の指定が素直に優先されるようになりました。`system.stateVersion` / `home.stateVersion` にも [#44](https://github.com/santamn/hydenix/pull/44) で付いたので、今はどれも利用者が書いた値が勝ちます。付いていなかった頃は、既定と違う値を書くと定義衝突でビルドが落ちていました（[08](./08-improvements.md) の B-4）。
 
 ### assertions と warnings
 
@@ -214,7 +214,7 @@ pkgs.stdenv.mkDerivation {
 
 `$out` が `/nix/store/<ハッシュ>-hyde` になります。このディレクトリは**書き込み不可**であり、それが [04](./04-mutable-files.md) の話につながります。
 
-`fetchFromGitHub` の `hash` / `sha256` は「内容のハッシュ」です。改ざん検知と再現性のために必須で、値が合わないとビルドが失敗します（`pkgs/hyde-gallery/default.nix` は空のままなのでビルドできません）。
+`fetchFromGitHub` の `hash` / `sha256` は「内容のハッシュ」です。改ざん検知と再現性のために必須で、値が合わないとビルドが失敗します。空文字を書くと全ゼロのハッシュに正規化されるので、取得したものと絶対に一致しません。かつての `pkgs/hyde-gallery/default.nix` がそれで、誰も参照していなかったので表面化しないままでした（[#43](https://github.com/santamn/hydenix/pull/43) で削除）。
 
 ## 5. overlay
 

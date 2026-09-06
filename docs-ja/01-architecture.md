@@ -102,10 +102,10 @@ sequenceDiagram
     AS->>AS: createHyprConfigs / createCavaConfig / setTheme ...
 ```
 
-> [!WARNING]
-> 最後の 3 つは `entryAfter ["mutableGeneration"]` と書かれていますが、
-> **その名前のエントリは存在しません**（正しくは `mutableFileGeneration`）。
-> そのため上の図の順序は保証されていません。詳細は [08](./08-improvements.md)。
+> [!NOTE]
+> 最後の 3 つはかつて `entryAfter ["mutableGeneration"]` と書かれていて、
+> その名前のエントリが存在しないために上の順序が保証されていませんでした。
+> [#39](https://github.com/santamn/hydenix/pull/39) で `mutableFileGeneration` に揃えてあります。
 
 ## オプションの名前空間
 
@@ -148,5 +148,5 @@ enable = lib.mkOption {
   `pkgs/hydenix-themes/utils/mkTheme.nix` → `modules/hm/theme.nix` → [05](./05-theme-system.md)
 - **Hyprland の設定を変えたい**
   `modules/hm/hyprland/options.nix` → `modules/hm/hyprland/utils/mkHyprConfig.nix` → [06](./06-hyprland-modules.md)
-- **上流に PR を送りたい**
-  [08](./08-improvements.md)（何を直すか） → [09](./09-fork-workflow.md)（どう送るか）
+- **修正の PR を出したい**
+  [08](./08-improvements.md)（何を直すか） → [09](./09-fork-workflow.md)（どう出すか）

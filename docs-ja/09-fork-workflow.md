@@ -1,6 +1,10 @@
-# 09. フォークの運用 — 上流追従と PR
+# 09. フォークの運用 — ブランチ構成と PR
 
-日本語コメントを持ちながら、上流（florianvazelle/hydenix）へ英語の PR を送るための運用方法です。
+日本語コメントを持ちながら、英語で PR を出すための運用方法です。
+
+> [!IMPORTANT]
+> 上流の florianvazelle/hydenix は 2026-08 にアーカイブされ、読み取り専用になりました。追従先も PR の出し先も無くなったので、`santamn/hydenix` がこの系譜の先頭です。
+> かつてここに書いてあった「上流へ 2 段目の PR を出す」手順は削除しました。
 
 ## 結論
 
@@ -8,23 +12,21 @@
 
 | ブランチ | 中身 | 用途 |
 |---|---|---|
-| `main` | 上流 + 自分の修正。**日本語は一切入れない** | 上流追従、PR の分岐元、dotnix が参照する先 |
+| `main` | 修正の本体。**日本語は一切入れない** | PR の分岐元、docs の公開元、dotnix が参照する先 |
 | `ja` | `main` + 日本語コメント + `docs-ja/` | 自分がコードを読むとき |
 
-当初 `main` は上流をそのまま追うだけの場所でしたが、現在は自分で見つけた不具合の修正も一度ここに入れています（[08-improvements.md](./08-improvements.md) の E-1）。修正は英語で書き、`fix/...` ブランチから `santamn/hydenix` の `main` へ PR を出してマージする、という手順を踏んでいます。上流へ出すときはその形のまま `base` を `florianvazelle/hydenix` に変えるだけで済みます。
+上流が生きていた頃は、`main` を「上流にそのまま出せる形」に保つのが分離の理由でした。今その理由は消えましたが、分離自体は続けます。`main` に日本語が入ると typos の CI がリポジトリ全体を検査する都合で誤検出しますし、`docs/` を GitHub Pages へ出す先も `main` だからです。
 
 日本語コメントは `ja` ブランチにしか存在しないので、
 `main` から分岐した PR には**構造的に混入しません**。
 「うっかり入れてしまう」事故が起きない、というのがこの方式の要点です。
 
 ```
-upstream/main ──●──●──●───────────────▶  florianvazelle/hydenix
-                 ╲
-                  ╲        fix/... ──●
-                   ╲                  ╲   ← PR 経由でマージ
-   origin/main ─────●──●──●────────────●──▶  santamn/hydenix (main)
-                     ╲                  ╲
-          ja ─────────●──────────────────●──▶  日本語コメント + docs-ja/
+                          fix/... ──●
+                                     ╲   ← PR 経由でマージ
+   origin/main ──●──●──●──────────────●──▶  santamn/hydenix (main)
+                  ╲                    ╲
+          ja ──────●─────────────────────●──▶  日本語コメント + docs-ja/
                                           ▲
                                           └ main が進むたびマージする
 ```
@@ -43,7 +45,7 @@ upstream/main ──●──●──●─────────────
 
 それでも構いませんが、目的が変わります。
 この日本語コメントは「自分が読んで理解するため」のもので、
-上流に必要な粒度（利用者向けの API 説明）とは別物です。
+利用者向けの API 説明として `main` に置く粒度とは別物です。
 混ぜると両方が中途半端になるので、分けたほうが健全です。
 
 ---
@@ -55,10 +57,6 @@ upstream/main ──●──●──●─────────────
 ```bash
 cd ~/Documents/hydenix
 
-# 上流を remote に登録
-git remote add upstream https://github.com/florianvazelle/hydenix.git
-git fetch upstream
-
 # ja ブランチを作る
 git switch -c ja
 ```
@@ -67,8 +65,10 @@ remote の状態は次のようになります。
 
 ```
 origin    → github.com/santamn/hydenix       （自分のフォーク）
-upstream  → github.com/florianvazelle/hydenix（上流）
+upstream  → github.com/florianvazelle/hydenix（アーカイブ済み。履歴を見るときだけ使う）
 ```
+
+`upstream` は残してありますが、もう新しいコミットは来ません。消してしまっても構いません。
 
 ### 2 つを同時に開いておきたい場合
 
@@ -89,14 +89,16 @@ worktree をリポジトリ内に置きたい場合は `.wt/` 以下が使えま
 
 ## 日常の運用
 
-### 1. 上流に追従する
+### 1. 依存を更新する
 
-```bash
-git switch main
-git fetch upstream
-git merge upstream/main       # 自分の修正と同じ行を上流が触らない限り競合しない
-git push origin main
-```
+上流が止まったので、`git merge upstream/main` は無くなりました。代わりに追うのは依存だけです。どちらも自動で PR が立つので、普段の作業は届いた PR を見てマージするだけです。
+
+| 何が動くか | 何を上げるか |
+|---|---|
+| `update-flake-lock.yml`（週次） | `flake.lock`（nixpkgs、home-manager、Hyprland ほか） |
+| `renovate.yml` | GitHub Actions のバージョン、HyDE のタグ、テーマの sha256 |
+
+Hyprland は `flake.nix` で HyDE が対応する版に固定してあるので、renovate が上げてきても HyDE 側の対応版を確認してからマージします。詳細は [10-ci.md](./10-ci.md)。
 
 ### 2. `ja` ブランチを追随させる
 
@@ -108,7 +110,7 @@ git push origin ja
 
 **rebase ではなく merge を使います。** `ja` には日本語コメントとドキュメントの履歴が積み上がっており、rebase で全部書き換えると force push が要るうえ、過去のコミットが指す行番号もずれていきます。merge なら履歴はそのまま残り、push も通常どおりです。
 
-日本語コメントは**行の追加**が中心なので、上流や `main` 側が同じ行を触らない限り競合しません。競合するのはたいてい「英語コメントを日本語に置き換えた行を、`main` 側で書き直した」ケースです。その場合は `main` 側の内容を正として、日本語で書き直します。
+日本語コメントは**行の追加**が中心なので、`main` 側が同じ行を触らない限り競合しません。競合するのはたいてい「英語コメントを日本語に置き換えた行を、`main` 側で書き直した」ケースです。その場合は `main` 側の内容を正として、日本語で書き直します。
 
 ```bash
 # 競合したら
@@ -135,19 +137,14 @@ git commit -am "fix: correct activation dependency name to mutableFileGeneration
 git push -u origin fix/mutable-generation-dag-name
 ```
 
-PR は 2 段構えです。まず自分のフォークの `main` へ出してマージし、上流へ送る準備ができたら同じブランチから `base` だけ変えてもう一度出します。
+上流がアーカイブされる前は、同じブランチから `base` だけ変えて上流へも出す 2 段構えでしたが、今は `santamn/hydenix` の `main` へ 1 回出すだけです。
 
 ```
-# 1 段目（手元で確定させる）
-base:    santamn/hydenix         main
-compare: santamn/hydenix         fix/mutable-generation-dag-name
-
-# 2 段目（上流へ）
-base:    florianvazelle/hydenix  main
-compare: santamn/hydenix         fix/mutable-generation-dag-name
+base:    santamn/hydenix  main
+compare: santamn/hydenix  fix/mutable-generation-dag-name
 ```
 
-1 段目を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを走らせないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に走らせられる場所はここしかありません。
+直接 `main` に push せず PR を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを走らせないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に走らせられる場所はここしかありません。
 
 ### 4. 自分の修正を `ja` にも取り込む
 
@@ -259,7 +256,7 @@ sudo nixos-rebuild switch --flake .#<ホスト名>
 
 ## チェックリスト
 
-上流に PR を送る前に確認します。
+PR を出す前に確認します。
 
 - [ ] `main` から分岐している（`git merge-base --is-ancestor main HEAD` で確認できる）
 - [ ] 日本語が含まれていない（`git diff main... | grep -P '[\x{3000}-\x{9fff}]'` が空）

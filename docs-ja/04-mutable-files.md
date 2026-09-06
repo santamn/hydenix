@@ -87,9 +87,8 @@ mergeAttrsList (
 
 同じことを3回書く代わりにループで生成しています。モジュールシステムが既存のオプション定義とのマージを行うため、問題なくしてくれるからです。 `home.file` の他の性質（`source` や `force` など）は home-manager 本体が定義したものがそのまま残り、そこに `mutable` だけが足されます。
 
-> [!WARNING]
-> **ただし `mergeAttrsList` は浅いマージ（`//`）なので、3 つのうち `xdg.configFile` だけが落ちています。** 実際に `mutable` が生えるのは `home.file` と `xdg.dataFile` の 2 つだけです。
-> 現状 hydenix は `home.file` しか使っていないため実害はありません。詳細と確認方法は [08 の A-4](./08-improvements.md) を参照。
+> [!NOTE]
+> `mergeAttrsList` は以前 `lib.mergeAttrs`（= `//`）を畳み込んでいて、最上位のキーしか見ないために `{xdg.configFile}` が `{xdg.dataFile}` に丸ごと差し替えられ、3 つのうち `xdg.configFile` だけ `mutable` が生えていませんでした。[#41](https://github.com/santamn/hydenix/pull/41) で `lib.recursiveUpdate` に変えて解決しています。経緯は [08 の A-4](./08-improvements.md) を参照。
 
 ### 後半: コピーする activation script を生成
 
@@ -129,8 +128,8 @@ lib.hm.dag.entryAfter ["linkGeneration"] command
 
 home-manager の activation は依存グラフで順序が決まります。 `linkGeneration`（シンボリックリンクを張る処理）の**後**に実行することで、「まずリンクを張る → mutable なものだけコピーで上書きする」という順序を保証しています。
 
-> [!WARNING]
-> **このエントリ名 `mutableFileGeneration` を、他の 3 モジュールが `mutableGeneration` と誤って参照しています。** 詳細は [08](./08-improvements.md)。
+> [!IMPORTANT]
+> このエントリ名 `mutableFileGeneration` は `theme.nix` / `hyde.nix` / `hyprland/default.nix` から `entryAfter` で参照されています。home-manager の DAG は知らない依存名を黙って捨てるので、名前を変えるときは参照側も一緒に直してください。以前は参照側が `mutableGeneration` と綴り違いになっていて順序制約が効いていませんでした（[#39](https://github.com/santamn/hydenix/pull/39) で修正）。
 
 ## `force = true` が必須な理由
 
