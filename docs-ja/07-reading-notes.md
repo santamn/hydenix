@@ -19,18 +19,18 @@ findThemeByName = themeName: pkgs.hydenix-themes.${themeName} or null;
 
 なお、Hyprland の `animations.preset` などは逆に存在しない名前でビルドが失敗します。挙動が統一されていない点に注意してください。
 
-## 2. `cfg.vim or cfg.neovim` は論理和ではない
+## 2. Nix の `or` は論理和ではない
 
 ```nix
 # modules/hm/editors.nix
-(lib.mkIf (cfg.vim or cfg.neovim) {...})
+(lib.mkIf (cfg.vim || cfg.neovim) {...})
 ```
 
-Nix の `or` は**属性が存在しないときの既定値**を指定する演算子であり、論理和ではありません。`cfg.vim` は常に存在する（既定値 `true` のオプション）ため、この式は実質 `cfg.vim` だけを見ています。論理和にしたいなら `||` を使います。
+ここは以前 `cfg.vim or cfg.neovim` と書かれていました。Nix の `or` は**属性が存在しないときの既定値**を指定する演算子であり、論理和ではありません。`cfg.vim` は常に存在する（既定値 `true` のオプション）ので、この式は実質 `cfg.vim` だけを見ていました。
 
-**実害**: `vim = false; neovim = true;` にすると、neovim 用の wallbash 配色ファイルが配置されません。
+**実害**: `vim = false; neovim = true;` にすると、両者が共有する `.config/vim/` が丸ごと配置されませんでした。
 
-修正案は [08-B-6](./08-improvements.md) に書いています。
+[#45](https://github.com/santamn/hydenix/pull/45) で `||` に修正済みです。経緯は [08-B-6](./08-improvements.md) を参照。
 
 ## 3. `home.file` が同じファイル内に 2 回出てくる
 
@@ -83,11 +83,12 @@ alias pl='$aurhelper -Qs'
 # ほかに pa / pc / po の計 6 個
 ```
 
-`$aurhelper` は Arch Linux の AUR ヘルパーを指す変数です。上流 HyDE の `user.fish` には `set aurhelper yay` がありますが、home-manager が `interactiveShellInit` を `status is-interactive; and begin … end` で包むため、スコープ指定の無い `set` はブロックを抜けた時点で消えます。エイリアス（＝関数）だけが残り、プロンプトでは `$aurhelper` が空になります。
+`$aurhelper` は Arch Linux の AUR ヘルパーを指す変数です。HyDE 本体の `user.fish` には `set aurhelper yay` がありますが、home-manager が `interactiveShellInit` を `status is-interactive; and begin … end` で包むため、スコープ指定の無い `set` はブロックを抜けた時点で消えます。エイリアス（＝関数）だけが残り、プロンプトでは `$aurhelper` が空になります。
 
-そもそも `yay` は NixOS にないので、どちらにせよ動きません。なお上流ではこの 6 行はコメントアウトされており、有効化したのは hydenix 側です。
+そもそも `yay` は NixOS にないので、どちらにせよ動きません。なお HyDE 本体ではこの 6 行はコメントアウトされており、有効化したのは hydenix 側です。
 
-削除する修正は [08-B-9](./08-improvements.md) に書いています。
+> [!NOTE]
+> [#46](https://github.com/santamn/hydenix/pull/46) で削除済みです。あわせて [#47](https://github.com/santamn/hydenix/pull/47) で、残りのエイリアスも `interactiveShellInit` のベタ書きから `shellAliases` / `shellAbbrs` の宣言に移しました。経緯は [08-B-9](./08-improvements.md) を参照。
 
 ## 7. シェル履歴の設定が `xdg.nix` にある
 
@@ -160,17 +161,17 @@ src = pkgs.fetchFromGitHub {
 ## 13. VM で試すときの注意
 
 ```bash
-nix run github:florianvazelle/hydenix
+nix run github:santamn/hydenix
 ```
 
 - 設定を変えたら `rm hydenix.qcow2` でディスクイメージを消してから再実行する: 消さないと古い状態が残る
 - KVM が使えない環境ではまともに動きません
-- Hyprland が起動しない場合は[virtio ガイド](https://florianvazelle.github.io/hydenix/faq.html#how-do-i-run-hyprland-in-a-vm) を参照
+- Hyprland が起動しない場合は[virtio ガイド](https://santamn.github.io/hydenix/faq.html#how-do-i-run-hyprland-in-a-vm) を参照
 
-## 14. 本家はメンテナンスモードに入っている
+## 14. 本家も上流も止まった
 
-本家 richen604/hydenix は 2026-01-23 を最後に更新が止まっています。
+本家 richen604/hydenix は 2026-01-23 を最後に更新が止まり、README にメンテナンスモードだと書かれています。実質的な後継だった florianvazelle/hydenix も 2026-08 にアーカイブされ、issue も PR も受け付けません。
 
-このフォークの上流である florianvazelle/hydenix が実質的な後継で、nixpkgs / home-manager / Hyprland / HyDE すべてを追従しています。
+つまり、このフォークが列の先頭です。保守者が 1 人だから止まるかもしれない、と身構えて自分のフォークを挟んでおいた（[09](./09-fork-workflow.md)）のが役に立った形になりました。
 
-ただし保守者は 1 人なので、こちらも止まる可能性はあります。その備えとして自分のフォークを挟んでいます（[09](./09-fork-workflow.md)）。
+HyDE 本体（HyDE-Project/HyDE）は活発なままなので、素材が枯れたわけではありません。止まったのは NixOS へ移植する側だけです。

@@ -228,9 +228,9 @@ hydenix.hm.hyprland.systemd = {
 ## activation script が空ファイルを作る理由
 
 ```nix
-home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableGeneration"] ''
-  mkdir -p "$HOME/.config/hypr/themes"
-  touch "$HOME/.config/hypr/themes/colors.conf"
+home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+  $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/themes"
+  $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/colors.conf"
   ...
 '';
 ```
@@ -238,8 +238,7 @@ home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableGeneration"] 
 これらは**テーマ適用スクリプトが後で書き込む先**のファイルです。Hyprland は設定ファイル内の `source = ...` で存在しないファイルを指すとエラーを出すため、初回起動時のエラーを防ぐために空ファイルを先に用意しています。
 
 > [!NOTE]
-> 依存先に指定されている `"mutableGeneration"` は、`mutable.nix` が実際に定義している名前 `"mutableFileGeneration"` と食い違っています。
-> 詳細は [08-improvements.md](./08-improvements.md) を参照。
+> 依存先の `"mutableFileGeneration"` は `mutable.nix` が定義しているエントリ名です。以前は `"mutableGeneration"` と食い違っており、順序制約が効いていませんでした（[#39](https://github.com/santamn/hydenix/pull/39)）。`$DRY_RUN_CMD` は `nixos-rebuild dry-activate` のときに実行を空振りさせるための前置きで、こちらは [#40](https://github.com/santamn/hydenix/pull/40) で足しました。
 
 ## 設定を変更したときの反映
 
