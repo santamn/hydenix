@@ -37,7 +37,7 @@ in {
       (lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset)
     ];
 
-    home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableGeneration"] ''
+    home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
       mkdir -p "$HOME/.config/hypr/animations"
       mkdir -p "$HOME/.config/hypr/themes"
       mkdir -p "$HOME/.config/hypr/shaders"
