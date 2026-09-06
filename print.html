@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1cda0d12.js";
+            window.path_to_searchindex_js = "searchindex-d3a25117.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -179,6 +179,14 @@
 <p><strong>hydenix</strong> is a <strong>NixOS + Home Manager configuration</strong> for <a href="https://github.com/HyDE-Project/HyDE">HyDE</a>.</p>
 <p>It brings the HyDE desktop experience to NixOS while taking advantage of
 the Nix module system and reproducible configuration management.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>This repository continues a lineage whose earlier links have stopped.</p>
+<pre><code class="language-text">richen604/hydenix             in maintenance mode: no further nixpkgs or HyDE updates
+  └─ florianvazelle/hydenix   archived: read-only
+       └─ santamn/hydenix     &lt;-- this repository
+</code></pre>
+</blockquote>
 <h2 id="features"><a class="header" href="#features">Features</a></h2>
 <ul>
 <li>Declarative configuration via <code>hydenix</code> and <code>hydenix.hm</code> options</li>
@@ -192,7 +200,7 @@ the Nix module system and reproducible configuration management.</p>
 <blockquote class="blockquote-tag blockquote-tag-important">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
 <p>Some familiarity with <strong>functional programming concepts</strong> is recommended.</p>
-<p>If you are new to Nix, check the <a href="#how-do-i-learn-more-about-nix">Nix resources</a> or ask questions in <strong>Discussions</strong> or <strong>Discord</strong>.</p>
+<p>If you are new to Nix, check the <a href="#how-do-i-learn-more-about-nix">Nix resources</a> or ask questions in <strong>Issues</strong> or <strong>Discord</strong>.</p>
 </blockquote>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <ul>
@@ -209,7 +217,7 @@ the Nix module system and reproducible configuration management.</p>
 <p>If your system supports virtualization, you can try <strong>hydenix in a NixOS VM</strong> without installing it on your machine.</p>
 <p>If you encounter issues running Hyprland inside the VM, see the <a href="#how-do-i-run-hyprland-in-a-vm">VirtIO guide</a>.</p>
 <pre><code class="language-bash"># run the flake remotely
-nix run github:florianvazelle/hydenix
+nix run github:santamn/hydenix
 </code></pre>
 <blockquote class="blockquote-tag blockquote-tag-note">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
@@ -231,7 +239,7 @@ Install NixOS first, then follow the steps below.</p>
 mkdir hydenix
 cd hydenix
 
-nix flake init -t github:florianvazelle/hydenix
+nix flake init -t github:santamn/hydenix
 </code></pre>
 <p>This will generate the base configuration files required for hydenix.</p>
 <h2 id="2-configure-your-system"><a class="header" href="#2-configure-your-system">2. Configure your system</a></h2>
@@ -264,7 +272,7 @@ git add .
 <li>Ask the community for help:
 <ul>
 <li>Discord: <a href="https://discord.gg/AYbJ9MJez7">https://discord.gg/AYbJ9MJez7</a></li>
-<li>GitHub Discussions: <a href="https://github.com/florianvazelle/hydenix/discussions">https://github.com/florianvazelle/hydenix/discussions</a></li>
+<li>GitHub Issues: <a href="https://github.com/santamn/hydenix/issues">https://github.com/santamn/hydenix/issues</a></li>
 </ul>
 </li>
 </ul>
@@ -283,37 +291,30 @@ git add .
 <p>hydenix should now be installed and ready to use.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="upgrading"><a class="header" href="#upgrading">Upgrading</a></h1>
-<p>hydenix can be upgraded, downgraded, or version locked easy.
-In your template flake folder, update hydenix to main using:</p>
+<p>hydenix can be upgraded, downgraded, or version locked easy. In your template flake folder, update hydenix to main using:</p>
 <pre><code class="language-bash">nix flake update hydenix
 </code></pre>
-<p>Or define a specific version in your <code>flake.nix</code> template:</p>
+<p>Or pin a specific revision in your <code>flake.nix</code> template:</p>
 <pre><code class="language-nix">inputs = {
     nixpkgs.follows = "hydenix/nixpkgs";
     hydenix = {
       # Available inputs:
-      # Main: github:florianvazelle/hydenix
-      # Commit: github:florianvazelle/hydenix/&lt;commit-hash&gt;
-      # Version: github:florianvazelle/hydenix/v1.0.0
-      url = "github:florianvazelle/hydenix";
+      # Main:   github:santamn/hydenix
+      # Commit: github:santamn/hydenix/&lt;commit-hash&gt;
+      # Branch: github:santamn/hydenix/&lt;branch&gt;
+      url = "github:santamn/hydenix";
     };
   };
 </code></pre>
 <p>Run <code>nix flake update hydenix</code> again to load the update, then rebuild your system to apply the changes.</p>
 <h2 id="when-to-upgrade"><a class="header" href="#when-to-upgrade">When to upgrade</a></h2>
-<p>Starting from your current version (for example v2.3.1) upgrades can come in three flavours:</p>
-<ul>
-<li>a <strong>major</strong> bump, which may introduce breaking changes; always read the release notes for API‑level changes before moving to a new major version,</li>
-<li>a <strong>minor</strong> bump, which brings new features and is generally safe to apply, and</li>
-<li>a <strong>patch</strong> bump, which contains bug fixes and is likewise safe to update.</li>
-</ul>
-<p>In other words, inspect major releases carefully, and you can routinely pull in minor and patch releases without worry.</p>
+<p>This repository does not cut tagged releases; <code>main</code> is the only moving target, and <code>flake.lock</code> is what pins you to a known-good revision. So an upgrade is always “advance the lock to a newer commit on <code>main</code>”, and a rollback is always “restore the previous <code>flake.lock</code>”, so keep that file in version control.</p>
 <blockquote class="blockquote-tag blockquote-tag-important">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
 <ul>
-<li><strong>Always review <a href="https://github.com/florianvazelle/hydenix/releases">release notes</a> for major updates (API changes)</strong></li>
-<li>Update to minor versions for new features</li>
-<li>Keep up with patches for stability</li>
+<li><strong>Read the <a href="https://github.com/santamn/hydenix/commits/main">commit log</a> between your locked revision and the new one before upgrading.</strong> Commits follow <a href="https://www.conventionalcommits.org/">conventional commits</a>, so <code>feat</code> and <code>refactor</code> entries touching <code>modules/</code> are the ones that can change option names.</li>
+<li>Upgrade <code>hydenix</code> on its own (<code>nix flake update hydenix</code>) rather than updating every input at once, so a broken rebuild has one obvious cause.</li>
+<li>If a rebuild fails, <code>git checkout HEAD~1 -- flake.lock</code> puts you back on the previous revision; a NixOS generation rollback recovers an already-switched system.</li>
 </ul>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -329,7 +330,7 @@ In your template flake folder, update hydenix to main using:</p>
 </ul>
 <h2 id="module-documentation"><a class="header" href="#module-documentation">Module documentation</a></h2>
 <p>Going to let you in on a secret: the nix options system <em>is</em> the documentation.<br>Let’s walk through an example. say you want to find info about <code>hydenix.hm.theme</code>.<br>The easiest way is to search the github repo for the options:</p>
-<p><a href="https://github.com/florianvazelle/hydenix/search?q=hydenix.hm.theme">search for <code>hydenix.hm.theme</code></a></p>
+<p><a href="https://github.com/santamn/hydenix/search?q=hydenix.hm.theme">search for <code>hydenix.hm.theme</code></a></p>
 <p>You’ll see the options in the search results, something like this:</p>
 <p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/option-search.png" alt="options search example"><span class="img-wrapper"><img src="assets/option-search.png" alt="options search example"></span></label></p>
 <p>Click on the file to see the actual options definition, which looks something like this:</p>
@@ -613,7 +614,7 @@ You <em>must</em> set these options or else hydenix will not load.</p>
 <p>Please see the <a href="#upgrading">upgrading</a> guide for more information on how to update/upgrade your system.</p>
 <h3 id="how-do-i-fix-nix-error--system-error--bug--etc"><a class="header" href="#how-do-i-fix-nix-error--system-error--bug--etc">How do I fix (nix error / system error / bug / etc)?</a></h3>
 <p>Please see the <a href="#troubleshooting">troubleshooting</a> guide for more information on how to diagnose and fix issues.
-Or create an issue in the <a href="https://github.com/florianvazelle/hydenix/issues">hydenix GitHub repository</a>.</p>
+Or create an issue in the <a href="https://github.com/santamn/hydenix/issues">hydenix GitHub repository</a>.</p>
 <h3 id="common-errors"><a class="header" href="#common-errors">Common errors</a></h3>
 <h4 id="existing-file--is-in-the-way-of-"><a class="header" href="#existing-file--is-in-the-way-of-"><code>Existing file '...' is in the way of '...'</code></a></h4>
 <p>This error occurs when home-manager tries to manage a file that already exists and wasn’t created by home-manager.</p>
@@ -721,7 +722,7 @@ all edits must be done in your flake via nixos &amp; home-manager options</p>
 <p>Themes are saved in <code>~/.config/hydenix/themes</code> so they will still show after you remove them from <code>hydenix.hm.theme.themes</code>.
 To clear the saved themes, run <code>rm -rf ~/.config/hydenix/themes/THEME_NAME</code> for each theme you want to remove.</p>
 <h3 id="requesting-features"><a class="header" href="#requesting-features">Requesting features</a></h3>
-<p>Please open a <a href="https://github.com/florianvazelle/hydenix/issues/new?template=feature_request.md">feature request</a> if you have any feature requests.</p>
+<p>Please open a <a href="https://github.com/santamn/hydenix/issues/new?template=feature_request.md">feature request</a> if you have any feature requests.</p>
 <h2 id="other-faq"><a class="header" href="#other-faq">Other faq</a></h2>
 <h3 id="how-do-i-run-hyprland-in-a-vm"><a class="header" href="#how-do-i-run-hyprland-in-a-vm">How do I run hyprland in a vm?</a></h3>
 <p>Hyprland vm is not well supported. check out <a href="https://wiki.hyprland.org/Getting-Started/Installation/#running-in-a-vm">hyprland - running in a vm</a></p>
@@ -848,7 +849,7 @@ sudo systemctl status home-manager-$HOSTNAME.service   # Home-manager status
 <li><strong>ubuntu/debian</strong>: <code>apt-get install direnv</code></li>
 </ul>
 <p>Then run <code>direnv allow</code> to enable the hooks</p>
-<p>More documentation on the codebase can be found at <a href="template/README.html">template README</a></p>
+<p>More documentation on the codebase can be found at <a href="https://github.com/santamn/hydenix/blob/main/template/README.md">template README</a></p>
 <p>This project enforces <a href="https://www.conventionalcommits.org/">conventional commits</a> format for all commit messages. each commit message must follow this structure:</p>
 <pre><code class="language-bash">type(optional-scope): subject
 
