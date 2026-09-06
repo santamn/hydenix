@@ -23,6 +23,6 @@ buildGoModule {
     license = licenses.gpl3;
     maintainers = [];
     platforms = platforms.linux;
-    mainProgram = "hyde-ipc";
+    mainProgram = "hydectl";
   };
 }
