@@ -8,7 +8,7 @@ This project uses [direnv](https://direnv.net/) for pre-commit hooks. please ins
 
 Then run `direnv allow` to enable the hooks
 
-More documentation on the codebase can be found at [template README](template/README.md)
+More documentation on the codebase can be found at [template README](https://github.com/santamn/hydenix/blob/main/template/README.md)
 
 This project enforces [conventional commits](https://www.conventionalcommits.org/) format for all commit messages. each commit message must follow this structure:
 

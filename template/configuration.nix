@@ -35,7 +35,7 @@
     hostname = "hydenix"; # Network hostname (should be unique on your network)
     timezone = "America/Vancouver"; # See: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
     locale = "en_CA.UTF-8"; # System language and encoding
-    # Additional options available in: ./docs/options.md
+    # Additional options available in: https://santamn.github.io/hydenix/options.html
   };
 
   # NixOS State Version: Ensures compatibility during system upgrades

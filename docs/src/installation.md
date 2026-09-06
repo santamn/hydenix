@@ -13,7 +13,7 @@ Create a new directory for your configuration and initialize the **hydenix flake
 mkdir hydenix
 cd hydenix
 
-nix flake init -t github:florianvazelle/hydenix
+nix flake init -t github:santamn/hydenix
 ```
 
 This will generate the base configuration files required for hydenix.
@@ -64,7 +64,7 @@ sudo nixos-rebuild switch --flake .#default
 > * Search the [faq](./faq.md).
 > * Ask the community for help:
 >   * Discord: <https://discord.gg/AYbJ9MJez7>
->   * GitHub Discussions: <https://github.com/florianvazelle/hydenix/discussions>
+>   * GitHub Issues: <https://github.com/santamn/hydenix/issues>
 
 ## 6. Launch hydenix
 

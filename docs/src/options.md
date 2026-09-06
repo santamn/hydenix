@@ -11,7 +11,7 @@ Going to let you in on a secret: the nix options system *is* the documentation.\
 Let's walk through an example. say you want to find info about `hydenix.hm.theme`.\
 The easiest way is to search the github repo for the options:
 
-[search for `hydenix.hm.theme`](https://github.com/florianvazelle/hydenix/search?q=hydenix.hm.theme)
+[search for `hydenix.hm.theme`](https://github.com/santamn/hydenix/search?q=hydenix.hm.theme)
 
 You'll see the options in the search results, something like this:
 
