@@ -46,14 +46,15 @@ jobs:
             themes
           add-paths: "pkgs/hydenix-themes/*.nix"
 
-      - name: Enable Auto-merge
+      - name: Merge PR
         if: steps.create_pr.outputs.pull-request-number
         run: |
-          if [ -n "$PR_NUMBER" ]; then
-            gh pr merge --auto --rebase "$PR_NUMBER"
-          else
-            echo "::warning:: No pull request was created. Auto-merge skipped."
-          fi
+          # Mergeability is still being computed right after creation, so retry
+          for _ in 1 2 3 4 5; do
+            gh pr merge --rebase "$PR_NUMBER" && exit 0
+            sleep 15
+          done
+          exit 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
