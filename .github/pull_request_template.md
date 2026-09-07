@@ -28,3 +28,8 @@
 - [ ] My changes generate no new warnings
 
 ## Additional context
+
+<!-- 
+  Optional, and usually empty. Delete this section if you have nothing to add.
+  Only for things a reviewer cannot get from the diff or the sections above, e.g. what you deliberately left out of this PR and why.
+-->
