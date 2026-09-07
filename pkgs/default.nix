@@ -7,6 +7,7 @@ final: _prev: {
   hyprquery = final.callPackage ./hyprquery {};
   # Additional packages
   Bibata-Modern-Ice = final.callPackage ./Bibata-Modern-Ice.nix {};
+  code-wallbash = final.callPackage ./code-wallbash.nix {};
   hydenix-themes = final.callPackage ./hydenix-themes {};
   pokego = final.callPackage ./pokego {};
   pyamdgpuinfo = final.callPackage ./pyamdgpuinfo {};
