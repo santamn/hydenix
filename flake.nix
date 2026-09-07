@@ -98,13 +98,13 @@
 
       # Add hyprquery, hydectl, hyde-ipc, and hyde-config for building
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde;
-      inherit (pkgs) pokego pyamdgpuinfo;
+      inherit (pkgs) code-wallbash pokego pyamdgpuinfo;
     };
 
     # for `nix flake check`
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
-      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde Bibata-Modern-Ice Tela-circle-dracula;
+      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde code-wallbash Bibata-Modern-Ice Tela-circle-dracula;
 
       # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`
       theme-assets = pkgs.buildEnv {
