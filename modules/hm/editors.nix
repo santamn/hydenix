@@ -106,9 +106,9 @@ in {
         };
       })
       (lib.mkIf cfg.vscode.wallbash {
-        # Link the wallbash extension from hyde package
-        ".vscode/extensions/prasanthrangan.wallbash" = {
-          source = "${pkgs.hyde}/share/vscode/extensions/prasanthrangan.wallbash";
+        # Link the wallbash extension
+        ".vscode/extensions/thehydeproject.wallbash" = {
+          source = "${pkgs.code-wallbash}/share/vscode/extensions/thehydeproject.wallbash";
           recursive = true;
           mutable = true;
           force = true;

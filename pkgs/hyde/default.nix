@@ -31,7 +31,6 @@ pkgs.stdenv.mkDerivation {
 
   nativeBuildInputs = with pkgs; [
     gnutar
-    unzip
   ];
 
   buildPhase = ''
@@ -73,20 +72,6 @@ pkgs.stdenv.mkDerivation {
 
     # remove pkill command from rofilaunch.sh
     # sed -i '2d' Configs/.local/lib/hyde/rofilaunch.sh
-
-    # BUILD FONTS
-    mkdir -p $out/share/fonts/truetype
-    for fontarchive in ./Source/arcs/Font_*.tar.gz; do
-      if [ -f "$fontarchive" ]; then
-        tar xzf "$fontarchive" -C $out/share/fonts/truetype/
-      fi
-    done
-
-    # BUILD VSCODE EXTENSION
-    mkdir -p $out/share/vscode/extensions/prasanthrangan.wallbash
-    unzip ./Source/arcs/Code_Wallbash.vsix -d $out/share/vscode/extensions/prasanthrangan.wallbash
-    # Ensure extension is readable and executable
-    chmod -R a+rX $out/share/vscode/extensions/prasanthrangan.wallbash
 
     # BUILD GRUB THEMES
     mkdir -p $out/share/grub/themes

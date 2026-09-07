@@ -27,6 +27,13 @@ in {
       hydectl
       hyde-ipc
       hyde-config
+
+      # fonts
+      maple-mono.truetype
+      nerd-fonts.caskaydia-cove
+      nerd-fonts.jetbrains-mono
+      nerd-fonts.mononoki
+      noto-fonts-cjk-sans
     ];
 
     # ensures hyprland config is available in session as per hyde uwsm update
