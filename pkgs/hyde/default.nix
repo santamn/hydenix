@@ -74,14 +74,6 @@ pkgs.stdenv.mkDerivation {
     # remove pkill command from rofilaunch.sh
     # sed -i '2d' Configs/.local/lib/hyde/rofilaunch.sh
 
-    # BUILD FONTS
-    mkdir -p $out/share/fonts/truetype
-    for fontarchive in ./Source/arcs/Font_*.tar.gz; do
-      if [ -f "$fontarchive" ]; then
-        tar xzf "$fontarchive" -C $out/share/fonts/truetype/
-      fi
-    done
-
     # BUILD VSCODE EXTENSION
     mkdir -p $out/share/vscode/extensions/prasanthrangan.wallbash
     unzip ./Source/arcs/Code_Wallbash.vsix -d $out/share/vscode/extensions/prasanthrangan.wallbash
