@@ -1,7 +1,17 @@
-## Description
-<!-- Describe your changes in detail -->
+## What does this PR do?
+
+<!-- Summarise the change in 2-3 sentences -->
+
+## Why is this change needed?
+
+<!-- Link to issue, explain the problem, or describe the requirement -->
+
+## How was this implemented?
+
+<!-- Explain the intent behind each commit, diving into code details when essential for the reviewer's understanding -->
 
 ## Type of change
+
 <!-- Please delete options that are not relevant -->
 
 - [ ] Bug fix (non-breaking change which fixes an issue)
@@ -10,8 +20,11 @@
 - [ ] Documentation update
 
 ## Checklist
+
 <!-- Please check if your PR fulfills these requirements -->
 
 - [ ] My commits follow conventional commit format
 - [ ] I have updated the documentation accordingly
 - [ ] My changes generate no new warnings
+
+## Additional context
