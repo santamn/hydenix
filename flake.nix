@@ -101,6 +101,31 @@
       inherit (pkgs) code-wallbash pokego pyamdgpuinfo;
     };
 
+    # for `nix run .#update-hashes`
+    #
+    # Recompute the hashes of every pinned source. Only nix knows which
+    # attribute owns which hash, so renovate is given an argument-less command
+    # instead of an attribute name it would have to guess from the repository
+    # name. Run it by hand too, after editing a `rev`.
+    apps.${system}.update-hashes = let
+      # nix-update can only repair a package whose `src` is a fetcher
+      updatable =
+        pkgs.lib.filterAttrs
+        (_: package: (package.src or null) ? outputHash)
+        (removeAttrs inputs.self.packages.${system} ["default"]);
+    in {
+      type = "app";
+      program = pkgs.lib.getExe (pkgs.writeShellApplication {
+        name = "update-hashes";
+        runtimeInputs = [pkgs.nix-update pkgs.git];
+        text = ''
+          for attr in ${pkgs.lib.concatStringsSep " " (builtins.attrNames updatable)}; do
+            nix-update "$attr" --flake --version=skip
+          done
+        '';
+      });
+    };
+
     # for `nix flake check`
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
