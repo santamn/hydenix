@@ -30,7 +30,6 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "{{depOwner}}/{{depRepo}}",
-      "packageNameTemplate": "{{depOwner}}/{{depRepo}}",
       "versioningTemplate": "loose"
     },
     {
