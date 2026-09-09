@@ -4,7 +4,6 @@
   unzip,
   vscode-utils,
 }: let
-  # renovate rewrites `rev` and nothing else; `version` is derived from it
   src = fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "code-wallbash";
@@ -17,9 +16,8 @@ in
     pname = "code-wallbash";
     inherit src version;
 
-    # the extension is published as a vsix committed to the repository; unpack
-    # that instead of the checkout, so `src` can stay the fetcher itself and
-    # nix-update can rewrite its hash
+    # the vsix is committed to the repository; unpacking it here keeps `src` a
+    # fetcher, which is what nix-update needs to rewrite the hash
     nativeBuildInputs = [unzip];
     unpackCmd = ''unzip -qq "$curSrc/release/Code_Wallbash.vsix"'';
 

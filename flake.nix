@@ -102,11 +102,6 @@
     };
 
     # for `nix run .#update-hashes`
-    #
-    # Recompute the hashes of every pinned source. Only nix knows which
-    # attribute owns which hash, so renovate is given an argument-less command
-    # instead of an attribute name it would have to guess from the repository
-    # name. Run it by hand too, after editing a `rev`.
     apps.${system}.update-hashes = let
       # nix-update can only repair a package whose `src` is a fetcher
       updatable =

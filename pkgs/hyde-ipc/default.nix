@@ -4,7 +4,6 @@
   lib,
   pkgs,
 }: let
-  # renovate rewrites `rev` and nothing else; `version` is derived from it
   src = fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-ipc";

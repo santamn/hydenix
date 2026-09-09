@@ -4,7 +4,6 @@
   fetchFromGitHub,
   libdrm,
 }: let
-  # renovate rewrites `rev` and nothing else; `version` is derived from it
   src = fetchFromGitHub {
     owner = "mark9064";
     repo = "pyamdgpuinfo";
