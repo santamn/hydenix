@@ -2,13 +2,13 @@
   # Current pinned Hyde version
   hyde-pinned = pkgs.hyde;
 
-  # Latest master Hyde version
+  # Hyde at a commit on master. A fixed hash needs a fixed commit, so `rev` cannot be the branch name itself
   hyde-master = pkgs.hyde.overrideAttrs (_old: {
     src = pkgs.fetchFromGitHub {
       owner = "HyDE-Project";
       repo = "HyDE";
-      rev = "master";
-      sha256 = "sha256-cNOryXKFpVSTiAuzD0VQAV+2GQhJTTs1HBM6Z0cZoFo=";
+      rev = "7c7b832d479620133fb0a2bdec0fe20cf2e7c90a";
+      sha256 = "sha256-+YhLk3J59zThsVVDsbTlSKcBulSxOO/r/HpPZ6Udg1M=";
     };
   });
 in
