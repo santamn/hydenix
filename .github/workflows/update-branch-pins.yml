@@ -41,10 +41,10 @@ jobs:
             Automated by GitHub Actions.
           branch: automated-branch-pin-updates
           delete-branch: true
-          labels: |
-            automated
-            themes
-          add-paths: "pkgs/hydenix-themes/*.nix"
+          labels: automated
+          add-paths: |
+            pkgs/hydenix-themes/*.nix
+            pkgs/hyde-diff-upstream/default.nix
 
       - name: Merge PR
         if: steps.create_pr.outputs.pull-request-number

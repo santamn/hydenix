@@ -130,15 +130,20 @@
         # callPackage adds `override` and `overrideDerivation` alongside the themes
         themes = pkgs.lib.filterAttrs (_: pkgs.lib.isDerivation) pkgs.hydenix-themes;
 
-        # `rev` pins a commit, which cannot tell where newer ones are; the theme's branch does
-        updateTheme = name: theme:
+        # Every commit pin that follows an upstream branch, keyed by the flake attribute path nix-update takes
+        pins =
+          pkgs.lib.mapAttrs' (name: theme: pkgs.lib.nameValuePair "legacyPackages.${system}.hydenix-themes.${builtins.toJSON name}" theme) themes
+          // {"packages.${system}.hyde-diff-upstream.hyde-master" = inputs.self.packages.${system}.hyde-diff-upstream.hyde-master;};
+
+        # `rev` pins a commit, which cannot tell where newer ones are; the pin's branch does
+        updatePin = attrPath: pin:
           pkgs.lib.escapeShellArgs [
             "update"
-            "legacyPackages.${system}.hydenix-themes.${builtins.toJSON name}"
+            attrPath
             (
-              if theme.updateBranch == null
+              if pin.updateBranch == null
               then "branch"
-              else "branch=${theme.updateBranch}"
+              else "branch=${pin.updateBranch}"
             )
           ];
       in {
@@ -154,7 +159,7 @@
               nix-update "$1" --flake --version="$2" || failed+=("$1")
             }
 
-            ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList updateTheme themes)}
+            ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList updatePin pins)}
 
             if [ ''${#failed[@]} -gt 0 ]; then
               printf 'could not update: %s\n' "''${failed[*]}" >&2
