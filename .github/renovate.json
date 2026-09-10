@@ -11,7 +11,9 @@
     "enabled": true
   },
   "lockFileMaintenance": {
-    "enabled": true
+    "enabled": true,
+    "schedule": [],
+    "automerge": true
   },
   "ignorePaths": [
     "**/hydenix-themes/**",
@@ -39,7 +41,7 @@
         "/flake\\.nix$/"
       ],
       "matchStrings": [
-        "(?<depName>\\w+)\\.url = \"github:(?<packageName>[a-zA-Z-]+\/[a-zA-Z-]+)\/(?<currentValue>[^\"]+)\";"
+        "(?<depName>\\w+)\\.url = \"github:(?<packageName>[a-zA-Z-]+\/[a-zA-Z-]+)\/(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\";"
       ],
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
