@@ -26,10 +26,10 @@
         "/^pkgs\/.*\\.nix$/"
       ],
       "matchStrings": [
-        "fetchFromGitHub\\s*{[^}]*owner = \"(?<depOwner>[^\"]+)\";[^}]*repo = \"(?<depName>[^\"]+)\";[^}]*rev = \"(?<currentValue>[^\"]+)\";"
+        "fetchFromGitHub\\s*{[^}]*owner = \"(?<depOwner>[^\"]+)\";[^}]*repo = \"(?<depRepo>[^\"]+)\";[^}]*rev = \"(?<currentValue>[^\"]+)\";"
       ],
       "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "{{depOwner}}/{{depName}}",
+      "depNameTemplate": "{{depOwner}}/{{depRepo}}",
       "versioningTemplate": "loose"
     },
     {
@@ -52,7 +52,7 @@
       ],
       "postUpgradeTasks": {
         "commands": [
-          "nix run github:Mic92/nix-update -- {{depName}} --flake --version {{newVersion}}"
+          "nix run .#update-hashes"
         ],
         "executionMode": "update",
         "fileFilters": [

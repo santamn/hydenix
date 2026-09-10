@@ -48,6 +48,16 @@ Examples:
 - `docs: update installation instructions`
 - `chore: update dependencies`
 
+## Updating pinned sources
+
+Every package under `pkgs/` pins its upstream source with a `rev` and a `hash`. Edit the `rev`, then let nix recompute the hashes:
+
+```bash
+nix run .#update-hashes
+```
+
+`version` is derived from `rev`, so there is nothing else to edit by hand. Renovate runs the same command after bumping a `rev`, so a bot update and a manual one take the same path.
+
 ## Pull requests
 
 1. Fork the repository
