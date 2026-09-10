@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Dracula";
+  branch = "Dracula";
   src = pkgs.fetchFromGitHub {
     owner = "RAprogramm";
     repo = "HyDe-Themes";

@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Windows 11";
+  branch = "Windows-11";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-gallery";

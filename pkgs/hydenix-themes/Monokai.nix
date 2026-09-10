@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Monokai";
+  branch = "Monokai";
   src = pkgs.fetchFromGitHub {
     owner = "mahaveergurjar";
     repo = "Theme-Gallery";

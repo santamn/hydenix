@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Tokyo Night";
+  branch = "Tokyo-Night";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";
