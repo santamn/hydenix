@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Rosé Pine";
+  branch = "Rose-Pine";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

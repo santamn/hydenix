@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Decay Green";
+  branch = "Decay-Green";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";
