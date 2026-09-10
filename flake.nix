@@ -101,24 +101,68 @@
       inherit (pkgs) code-wallbash pokego pyamdgpuinfo;
     };
 
-    # for `nix run .#update-hashes`
-    apps.${system}.update-hashes = let
-      # nix-update can only repair a package whose `src` is a fetcher
-      updatable =
-        pkgs.lib.filterAttrs
-        (_: package: (package.src or null) ? outputHash)
-        (removeAttrs inputs.self.packages.${system} ["default"]);
-    in {
-      type = "app";
-      program = pkgs.lib.getExe (pkgs.writeShellApplication {
-        name = "update-hashes";
-        runtimeInputs = [pkgs.nix-update pkgs.git];
-        text = ''
-          for attr in ${pkgs.lib.concatStringsSep " " (builtins.attrNames updatable)}; do
-            nix-update "$attr" --flake --version=skip
-          done
-        '';
-      });
+    # The update-themes app passes each theme to nix-update using its flake attribute path.
+    legacyPackages.${system} = {inherit (pkgs) hydenix-themes;};
+
+    apps.${system} = {
+      # for `nix run .#update-hashes`
+      update-hashes = let
+        # nix-update can only repair a package whose `src` is a fetcher
+        updatable =
+          pkgs.lib.filterAttrs
+          (_: package: (package.src or null) ? outputHash)
+          (removeAttrs inputs.self.packages.${system} ["default"]);
+      in {
+        type = "app";
+        program = pkgs.lib.getExe (pkgs.writeShellApplication {
+          name = "update-hashes";
+          runtimeInputs = [pkgs.nix-update pkgs.git];
+          text = ''
+            for attr in ${pkgs.lib.concatStringsSep " " (builtins.attrNames updatable)}; do
+              nix-update "$attr" --flake --version=skip
+            done
+          '';
+        });
+      };
+
+      # for `nix run .#update-themes`
+      update-themes = let
+        # callPackage adds `override` and `overrideDerivation` alongside the themes
+        themes = pkgs.lib.filterAttrs (_: pkgs.lib.isDerivation) pkgs.hydenix-themes;
+
+        # `rev` pins a commit, which cannot tell where newer ones are; the theme's branch does
+        updateTheme = name: theme:
+          pkgs.lib.escapeShellArgs [
+            "update"
+            "legacyPackages.${system}.hydenix-themes.${builtins.toJSON name}"
+            (
+              if theme.updateBranch == null
+              then "branch"
+              else "branch=${theme.updateBranch}"
+            )
+          ];
+      in {
+        type = "app";
+        program = pkgs.lib.getExe (pkgs.writeShellApplication {
+          name = "update-themes";
+          runtimeInputs = [pkgs.nix-update pkgs.git];
+          text = ''
+            failed=()
+
+            # One unreachable upstream must not hold back the rest, so collect and report at the end
+            update() {
+              nix-update "$1" --flake --version="$2" || failed+=("$1")
+            }
+
+            ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList updateTheme themes)}
+
+            if [ ''${#failed[@]} -gt 0 ]; then
+              printf 'could not update: %s\n' "''${failed[*]}" >&2
+              exit 1
+            fi
+          '';
+        });
+      };
     };
 
     # for `nix flake check`
