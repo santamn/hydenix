@@ -101,7 +101,7 @@
       inherit (pkgs) code-wallbash pokego pyamdgpuinfo;
     };
 
-    # The update-themes app passes each theme to nix-update using its flake attribute path.
+    # The update-branch-pins app passes each theme to nix-update using its flake attribute path.
     legacyPackages.${system} = {inherit (pkgs) hydenix-themes;};
 
     apps.${system} = {
@@ -125,8 +125,8 @@
         });
       };
 
-      # for `nix run .#update-themes`
-      update-themes = let
+      # for `nix run .#update-branch-pins`
+      update-branch-pins = let
         # callPackage adds `override` and `overrideDerivation` alongside the themes
         themes = pkgs.lib.filterAttrs (_: pkgs.lib.isDerivation) pkgs.hydenix-themes;
 
@@ -144,7 +144,7 @@
       in {
         type = "app";
         program = pkgs.lib.getExe (pkgs.writeShellApplication {
-          name = "update-themes";
+          name = "update-branch-pins";
           runtimeInputs = [pkgs.nix-update pkgs.git];
           text = ''
             failed=()

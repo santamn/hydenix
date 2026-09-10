@@ -1,4 +1,4 @@
-name: Update HyDE Themes
+name: Update Branch Pins
 
 on:
   workflow_dispatch: # Allows manual triggering
@@ -6,7 +6,7 @@ on:
     - cron: "0 0 * * *" # Run daily at midnight UTC
 
 jobs:
-  update-themes:
+  update-branch-pins:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,23 +23,23 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
-      # Create a PR for themes that succeeded without stopping the job, even if some themes failed to update
-      - name: Update themes
+      # Create a PR for pins that succeeded without stopping the job, even if some pins failed to update
+      - name: Update branch pins
         id: update
         continue-on-error: true
-        run: nix run .#update-themes
+        run: nix run .#update-branch-pins
 
       - name: Create Pull Request
         id: create_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore(themes): automated theme updates"
-          title: "chore(themes): Automated HyDE Theme Updates"
+          commit-message: "chore: automated branch pin updates"
+          title: "chore: Automated Branch Pin Updates"
           body: |
-            This PR moves each HyDE theme to the head of the branch it tracks and refreshes its `sha256`.
+            This PR moves each branch pin to the head of the branch it tracks and refreshes its `sha256`.
             Automated by GitHub Actions.
-          branch: automated-theme-updates
+          branch: automated-branch-pin-updates
           delete-branch: true
           labels: |
             automated
@@ -59,6 +59,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
 
-      - name: Fail if any theme could not be updated
+      - name: Fail if any pin could not be updated
         if: steps.update.outcome == 'failure'
         run: exit 1
