@@ -6,7 +6,7 @@
   name,
   src,
   meta,
-}: let
+} @ args: let
   # Replace bundled copies of shared assets with symlinks so both providers resolve to one store path
   relinkShared = pkgs.lib.concatMapStringsSep "\n" (assetName: ''
     if [ -e "$out/share/icons/${assetName}" ]; then
@@ -33,9 +33,8 @@
     }
   '';
 
-  # Combined theme package that includes all arcs
-  pkg = pkgs.stdenv.mkDerivation {
-    inherit name src;
+  # The build recipe every theme shares; the per-theme attrs come straight from the caller
+  buildAttrs = {
     pname = name;
 
     version = "1.0.0";
@@ -130,5 +129,9 @@
       }
       // meta;
   };
+
+  # The theme package combines its HyDE config with the GTK, icon, cursor, and font archives it ships.
+  # `src` must be passed via `args` instead of using `inherit src` here: nix-update rewrites `rev` and `sha256` in whichever file defines `src`, which must be the theme file rather than this helper.
+  pkg = pkgs.stdenv.mkDerivation (args // buildAttrs);
 in
   pkg
