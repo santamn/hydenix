@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d3a25117.js";
+            window.path_to_searchindex_js = "searchindex-d99f2287.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -895,6 +895,11 @@ sudo systemctl status home-manager-$HOSTNAME.service   # Home-manager status
 <li><code>docs: update installation instructions</code></li>
 <li><code>chore: update dependencies</code></li>
 </ul>
+<h2 id="updating-pinned-sources"><a class="header" href="#updating-pinned-sources">Updating pinned sources</a></h2>
+<p>Every package under <code>pkgs/</code> pins its upstream source with a <code>rev</code> and a <code>hash</code>. Edit the <code>rev</code>, then let nix recompute the hashes:</p>
+<pre><code class="language-bash">nix run .#update-hashes
+</code></pre>
+<p><code>version</code> is derived from <code>rev</code>, so there is nothing else to edit by hand. Renovate runs the same command after bumping a <code>rev</code>, so a bot update and a manual one take the same path.</p>
 <h2 id="pull-requests"><a class="header" href="#pull-requests">Pull requests</a></h2>
 <ol>
 <li>Fork the repository</li>
