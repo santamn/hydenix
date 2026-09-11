@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d99f2287.js";
+            window.path_to_searchindex_js = "searchindex-6321f7a8.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -285,6 +285,11 @@ You <em>must</em> set these options or else hydenix will not load.</p>
         extraConfig = ""; # Additional hypridle configuration
         overrideConfig = null; # Complete hypridle configuration override
       };
+      hyprlock = {
+        enable = cfg.enable; # Enable hyprlock configurations
+        extraConfig = ""; # Additional hyprlock configuration
+        overrideConfig = null; # Complete hyprlock configuration override
+      };
       hyprsunset = {
         enable = cfg.enable; # Enable hyprsunset configurations
         extraConfig = ""; # Additional hyprsunset configuration
@@ -337,11 +342,6 @@ You <em>must</em> set these options or else hydenix will not load.</p>
         active = "default"; # Active workflow preset
         overrides = {}; # Override or add custom workflows
       };
-    };
-    lockscreen = {
-      enable = config.hydenix.hm.enable; # Enable lockscreen module
-      hyprlock = true; # Enable hyprlock lockscreen
-      swaylock = false; # Enable swaylock lockscreen
     };
     notifications = {
       enable = config.hydenix.hm.enable; # Enable notifications module
