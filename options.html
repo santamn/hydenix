@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6321f7a8.js";
+            window.path_to_searchindex_js = "searchindex-de4015f7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -249,9 +249,9 @@ You <em>must</em> set these options or else hydenix will not load.</p>
   hostname = config.system.nixos.distroId; # The name of the machine.
   locale = "en_US.UTF-8"; # The default locale.
   network.enable = config.hydenix.enable; # Enable network module
-  nix.enable = true; # Enable nix module
-  sddm.enable = true; # Enable sddm module
-  system.enable = true; # Enable system module
+  nix.enable = config.hydenix.enable; # Enable nix module
+  sddm.enable = config.hydenix.enable; # Enable sddm module
+  system.enable = config.hydenix.enable; # Enable system module
   timezone = null; # The time zone used when displaying times and dates.
   hm = {
     enable = false; # Enable Hydenix home-manager modules globally
