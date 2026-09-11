@@ -216,6 +216,18 @@ pkgs.stdenv.mkDerivation {
 
 `fetchFromGitHub` の `hash` / `sha256` は「内容のハッシュ」です。改ざん検知と再現性のために必須で、値が合わないとビルドが失敗します。空文字を書くと全ゼロのハッシュに正規化されるので、取得したものと絶対に一致しません。かつての `pkgs/hyde-gallery/default.nix` がそれで、誰も参照していなかったので表面化しないままでした（[#43](https://github.com/santamn/hydenix/pull/43) で削除）。
 
+`pkgs/` のパッケージは、`src` を `let` で先に束ねて `version` をその `rev` から導く形にそろえてあります。
+
+```nix
+let
+  src = fetchFromGitHub {rev = "v0.5.2"; hash = "sha256-..."; ...};
+  version = lib.removePrefix "v" src.rev;   # "0.5.2"
+in
+  buildGoModule {inherit src version; ...}
+```
+
+`rev` と `version` を別々に書くと、renovate が `rev` だけを書き換えたときに `version` がずれるからです。`rev` を変えたら `nix run .#update-hashes` で `hash` を計算し直します（[10](./10-ci.md)）。
+
 ## 5. overlay
 
 ```nix
@@ -242,7 +254,7 @@ overlays.default = final: prev:
 
 ## 6. コードスタイル（このリポジトリの規約）
 
-整形は **alejandra** に統一されており、CI で強制されます。
+整形は **alejandra** に統一されています。ただし CI では検査していないので（[10](./10-ci.md)）、手元で `nix fmt` を通してください。
 
 ```bash
 nix fmt          # treefmt 経由で alejandra / deadnix / statix が走る
@@ -257,7 +269,8 @@ alejandra は本家が使っていた nixfmt-rfc-style と見た目が違いま�
 - [NixOS & Flakes Book（日本語訳あり）](https://nixos-and-flakes.thiscute.world/ja/) — flake 前提の解説
 - [Nix 言語 1 時間チュートリアル](https://nix.dev/tutorials/nix-language) — 文法だけ手早く
 - `nix repl` — 手を動かして確認するのが一番早いです
-  ```
+
+  ```text
   nix repl
   nix-repl> :lf .          # このディレクトリの flake を読み込む
   nix-repl> outputs.nixosConfigurations.default.config.hydenix

@@ -64,3 +64,4 @@
 | **zizmor** | GitHub Actions ワークフローの静的解析（セキュリティ） |
 | **commitlint** | コミットメッセージが Conventional Commits に従っているか検査する |
 | **renovate** | 依存関係の更新 PR を自動で作るボット |
+| **nix-update** | パッケージの `rev` や `hash` を書き換えるツール。`nix run .#update-hashes` と `nix run .#update-branch-pins` の中身 |

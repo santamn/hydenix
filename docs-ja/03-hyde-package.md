@@ -12,7 +12,7 @@ HyDE はもともと Arch Linux 用の設定集なので、そのまま NixOS �
 | 設定がシンボリックリンク | `find` がリンクをたどらず、設定ファイルを見つけられない |
 | バイナリの入手方法が違う | Arch は `pacman` 前提。NixOS では Nix パッケージを使う |
 | Python 環境が存在しない | 実行時に `uv` で作る venv が前提だが、NixOS では誰もそれを作らない |
-| アーカイブが未展開 | フォント・アイコン・GRUB テーマが `.tar.gz` のまま同梱されている |
+| アーカイブが未展開 | アイコンや GTK テーマ、GRUB テーマが `.tar.gz` のまま同梱されている |
 
 `buildPhase` は、これらを 1 つずつ潰していく処理です。
 
@@ -92,20 +92,28 @@ HyDE の Python スクリプトは、実行時に `uv` が `$XDG_STATE_HOME/hyde
 ### (6) アーカイブの展開
 
 ```bash
-mkdir -p $out/share/fonts/truetype
-for fontarchive in ./Source/arcs/Font_*.tar.gz; do ... done
+mkdir -p $out/share/grub/themes
+tar xzf ./Source/arcs/Grub_Retroboot.tar.gz -C $out/share/grub/themes
 ```
 
-フォント・VS Code 拡張・GRUB テーマ・アイコン・GTK テーマを `$out/share/` 以下に展開します。これにより、他のモジュールから次のように参照できるようになります。
+GRUB テーマとアイコン、GTK テーマを `$out/share/` 以下に展開します。これにより、他のモジュールから次のように参照できるようになります。
 
 ```nix
 # modules/system/boot.nix
 theme = pkgs.hyde + "/share/grub/themes/Retroboot";
 
-# modules/hm/editors.nix
-".vscode/extensions/prasanthrangan.wallbash".source =
-  "${pkgs.hyde}/share/vscode/extensions/prasanthrangan.wallbash";
+# modules/hm/hyde.nix
+".local/share/icons/Wallbash-Icon".source = "${pkgs.hyde}/share/icons/Wallbash-Icon";
 ```
+
+以前はフォントと VS Code 拡張もここで展開していました。HyDE が 2026-07-27 のリリースで `Source/arcs/` から両方を消したので、[#58](https://github.com/santamn/hydenix/pull/58) で入手先を移しています。
+
+| 素材 | 今の入手先 |
+|---|---|
+| フォント | [`modules/hm/hyde.nix`](../modules/hm/hyde.nix) の `home.packages` で nixpkgs から（`maple-mono` / `nerd-fonts.*` / `noto-fonts-cjk-sans`） |
+| VS Code の wallbash 拡張 | [`pkgs/code-wallbash.nix`](../pkgs/code-wallbash.nix) が `HyDE-Project/code-wallbash` をビルドし、[`modules/hm/editors.nix`](../modules/hm/editors.nix) が `.vscode/extensions/thehydeproject.wallbash` に置く |
+
+拡張のディレクトリ名が `thehydeproject.wallbash` なのは、HyDE の `code.sh` が `*/extensions/thehydeproject*` を探すからです。同梱版の頃の `prasanthrangan.wallbash` はこのパターンに一致していませんでした。
 
 ### (7) installPhase と postInstall
 
@@ -122,15 +130,13 @@ cp -r . $out
 
 ## 完成したパッケージの構造
 
-```
+```text
 /nix/store/xxxx-hyde/
 ├── Configs/                    ← HyDE の元のディレクトリ構造そのまま
 │   ├── .config/hypr/...        ←   各モジュールが source / readFile で参照する
 │   ├── .local/lib/hyde/...     ←   スクリプト群
 │   └── ...
 └── share/                      ← buildPhase で展開したもの
-    ├── fonts/truetype/
-    ├── vscode/extensions/
     ├── grub/themes/
     ├── icons/
     └── themes/
@@ -151,15 +157,17 @@ flowchart LR
 
 ## HyDE を更新するときの手順
 
-`pkgs/hyde/default.nix` の `rev` と `hash` を書き換えるのが基本ですが、 HyDE はスクリプトの塊なので、更新すると壊れやすい部分があります。
+`pkgs/hyde/default.nix` の `rev` を書き換えるのが基本ですが、 HyDE はスクリプトの塊なので、更新すると壊れやすい部分があります。ふだんは HyDE の新しいタグを renovate が見つけ、2 の書き換えまで済ませた PR を作ります。
 
 1. `nix run .#hyde-diff-upstream` で上流の変更を確認する
-2. `rev` / `hash` を更新する
+2. `rev` を書き換え、`nix run .#update-hashes` で `hash` を計算し直す（`version` は `rev` から導かれるので触らない）
 3. `nix run .#hyde-diff-home` で、自分のホーム構成に配置されないファイルが増えていないか確認する（新しい設定ファイルが追加されていたらモジュール側の追従が要る）
 4. VM (`nix run .`) で動作確認する
 
-> [!WARNING]
-> ピン留め中の `v26.7.4` より後の HyDE には `Source/arcs/Code_Wallbash.vsix` と `Font_*.tar.gz` が存在しません。(6) の `unzip` はここで失敗し、フォントのループは `if [ -f ... ]` に守られているためエラーにならず**フォントが 0 個のパッケージが黙って出来上がります**。rev を上げるときは先にこの 2 つの入手先を決めてください。詳しくは [08-improvements.md](./08-improvements.md) の A-0 を参照。
+`hyde-diff-upstream` が比べる master 側は、master 上の commit で固定してあります。`update-branch-pins.yml` が毎晩その commit を先頭へ進めるので、比較相手は最大 1 日遅れの master です（[07](./07-reading-notes.md) の 11）。
+
+> [!NOTE]
+> ピン留め中の `v26.7.4` より後の HyDE には `Source/arcs/Code_Wallbash.vsix` と `Font_*.tar.gz` がありません。以前は rev を上げると (6) の `unzip` が落ち、フォントは 0 個のまま黙ってパッケージが出来上がる状態でしたが、#58 で両方の入手先を移したので、もうここでは壊れません。経緯は [08-improvements.md](./08-improvements.md) の A-0 を参照。
 
 ## 覚えておくとよいこと
 

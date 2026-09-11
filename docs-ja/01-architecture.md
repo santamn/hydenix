@@ -4,7 +4,7 @@ hydenix のファイルがどうつながっているかを俯瞰します。
 
 ## ディレクトリの役割
 
-```
+```text
 hydenix/
 ├── flake.nix              ← 【入口】依存の宣言と、公開するモジュール・パッケージの定義
 ├── flake.lock             ← 依存の正確なバージョン（コミットハッシュ）を固定
@@ -25,9 +25,10 @@ hydenix/
 ├── template/              ← 【利用者向け雛形】nix flake new -t で展開される
 ├── demo/                  ← 【開発用】動作確認用の VM 構成
 ├── docs/                  ← 【公式ドキュメント】mdbook → GitHub Pages
-├── docs-ja/               ← 【この資料】※ ja ブランチにのみ存在
-└── scripts/               ← 【保守用】flake.lock とテーマ sha256 の自動更新
+└── docs-ja/               ← 【この資料】※ ja ブランチにのみ存在
 ```
+
+以前は `scripts/` に flake.lock とテーマ sha256 を更新するスクリプトがありましたが、今はどちらも無く、依存の更新は `flake.nix` の `apps`（`update-hashes` / `update-branch-pins`）と renovate が受け持っています（[10](./10-ci.md)）。
 
 **重要な区別**: `modules/` と `pkgs/` は「ライブラリとして提供する側」、
 `template/` は「利用する側」です。

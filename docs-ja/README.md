@@ -43,7 +43,7 @@ hydenix は **Arch Linux 用のデスクトップ設定集である HyDE を、N
 
 ## このフォークの立ち位置
 
-```
+```text
 richen604/hydenix          本家。2026-01-23 を最後に停止（メンテナンスモード）
         ↓ fork
 florianvazelle/hydenix     後継だったが、2026-08 にアーカイブ（読み取り専用）
@@ -53,7 +53,7 @@ santamn/hydenix            ← このリポジトリ。現在ここが列の先�
 
 自分のフォークを挟んだのは、florianvazelle 氏が 1 人で保守しているので止まったときに自分で前へ進められるように、という理由でした。その心配が現実になった形です。
 
-追従できる上流はもう無いので、nixpkgs・HyDE・Hyprland の更新は自分で追うしかありません。とはいえ renovate と update-flake-lock が動いているぶん、実作業は壊れた PR を直すところだけです。HyDE 本体（[HyDE-Project/HyDE](https://github.com/HyDE-Project/HyDE)）は今も活発なので、素材の供給が止まったわけではありません。
+追従できる上流はもう無いので、nixpkgs・HyDE・Hyprland の更新は自分で追うしかありません。とはいえ renovate と update-branch-pins が動いているぶん、実作業は届いた PR を確かめてマージし、壊れていれば直すところだけです。HyDE 本体（[HyDE-Project/HyDE](https://github.com/HyDE-Project/HyDE)）は今も活発なので、素材の供給が止まったわけではありません。
 
 ## このフォークが加えた修正
 
@@ -73,6 +73,13 @@ santamn/hydenix            ← このリポジトリ。現在ここが列の先�
 | [#44](https://github.com/santamn/hydenix/pull/44) | `stateVersion` に `mkDefault` を付け、利用者側の値を優先する |
 | [#45](https://github.com/santamn/hydenix/pull/45) | vim 設定の配置条件が `or` になっていて `neovim` が読まれていなかった |
 | [#46](https://github.com/santamn/hydenix/pull/46) / [#47](https://github.com/santamn/hydenix/pull/47) | fish のエイリアスを `shellAliases` 宣言に移し、動かない AUR ヘルパー用エイリアスを削除 |
+| [#50](https://github.com/santamn/hydenix/pull/50) / [#51](https://github.com/santamn/hydenix/pull/51) | `docs/` のオプション一覧とインストール手順をコードに合わせ、テンプレートとリンクの参照先をこのフォークに移す |
+| [#52](https://github.com/santamn/hydenix/pull/52) | 自動更新 PR を auto-merge ではなく直接マージする |
+| [#58](https://github.com/santamn/hydenix/pull/58) | HyDE が同梱をやめたフォントと VS Code 拡張を、nixpkgs と `HyDE-Project/code-wallbash` から取る |
+| [#61](https://github.com/santamn/hydenix/pull/61) | renovate の post-upgrade を `nix run .#update-hashes` にし、リポジトリ名を nix の属性名として使うのをやめる |
+| [#66](https://github.com/santamn/hydenix/pull/66) | `flake.lock` の更新を renovate の lockFileMaintenance に一本化し、nixpkgs を `nixos-unstable` 追従にする |
+| [#67](https://github.com/santamn/hydenix/pull/67) | 一度も rev を進めていなかったテーマの自動更新を、nix-update で作り直す |
+| [#69](https://github.com/santamn/hydenix/pull/69) | `hyde-diff-upstream` の master ビルドを commit で固定し、テーマと一緒に毎晩進める |
 
 背景と再現方法は [08-improvements.md](./08-improvements.md) の E-1 にまとまっています。未解決の課題も同じファイルにあります。
 
@@ -91,7 +98,7 @@ santamn/hydenix            ← このリポジトリ。現在ここが列の先�
 | `lib/dev-shell.nix` | `shell.nix` |
 | `lib/hyde-update/` | `pkgs/hyde-diff-upstream/` + `pkgs/hyde-diff-home/` |
 | `template/docs/` | `docs/`（mdbook + GitHub Pages） |
-| nixfmt-rfc-style | **alejandra**（treefmt 経由、CI で強制） |
+| nixfmt-rfc-style | **alejandra**（treefmt 経由。CI では検査していない） |
 
 ### モジュール
 
@@ -112,7 +119,7 @@ santamn/hydenix            ← このリポジトリ。現在ここが列の先�
 ### 開発基盤
 
 - treefmt（alejandra / deadnix / statix）、typos、zizmor による CI
-- renovate による依存自動更新、テーマの sha256 自動更新
+- renovate による依存自動更新と、テーマの自動更新（後者は実際には一度も rev を進めていなかったので、このフォークで作り直した。[10](./10-ci.md)）
 - `docs/` を mdbook 化して GitHub Pages で公開
 
 ## 公式ドキュメント（英語）
