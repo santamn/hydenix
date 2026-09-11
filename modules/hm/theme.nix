@@ -73,10 +73,10 @@ in {
 
     /*
     We require both an activation script and a service to set the theme.
-    theme.set.sh uses dconf partially to set vars, which requires graphical targets to run
+    color.set.sh (run by theme.switch.sh) sources color/dconf.sh, which needs the graphical session to write dconf
     This is only an issue for the *first* rebuild, as dbus has never been started
 
-    #TODO: this works but a more robust implementation is possible. just do what theme.set.sh/dconf.set.sh does and use home.file to set the correct gtk/qt/etc options
+    #TODO: this works but a more robust implementation is possible. just do what color.set.sh/color/dconf.sh does and use home.file to set the correct gtk/qt/etc options
     */
 
     # applies what it can before graphical.target, think of this like a "first content paint"
@@ -125,43 +125,6 @@ in {
       fi
     '';
 
-    # sets dconf settings correctly
-    systemd.user.services.setThemeDconf = {
-      Unit = {
-        Description = "Apply Hyde theme dconf settings";
-        After = [
-          "graphical-session.target"
-          "dbus.service"
-        ];
-        Wants = ["dbus.service"];
-        PartOf = ["graphical-session.target"];
-      };
-      Service = {
-        Type = "oneshot";
-        ExecStart = ''
-          ${config.home.homeDirectory}/.local/lib/hyde/dconf.set.sh
-        '';
-        Path = with pkgs; [
-          dconf
-          glib
-          hyprland
-          util-linux
-          which
-          coreutils
-          imagemagick
-          gawk
-          parallel
-          awww
-          waybar
-          kitty
-          dunst
-          libnotify
-          "${config.home.homeDirectory}/.local/bin"
-        ];
-      };
-      Install.WantedBy = ["graphical-session.target"];
-    };
-
     # reapplies the theme to fix dconf
     systemd.user.services.setTheme = {
       Unit = {
@@ -169,7 +132,6 @@ in {
         After = [
           "graphical-session.target"
           "dbus.service"
-          "setThemeDconf.service"
         ];
         Wants = ["dbus.service"];
         PartOf = ["graphical-session.target"];
