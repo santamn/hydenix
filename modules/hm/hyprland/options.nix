@@ -17,7 +17,7 @@ in {
       description = "Extra config appended to userprefs.conf";
     };
     overrideMain = lib.mkOption {
-      type = lib.types.nullOr lib.types.lines;
+      type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
       description = "Complete override of hyprland.conf";
     };
