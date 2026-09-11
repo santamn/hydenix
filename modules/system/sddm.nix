@@ -9,7 +9,7 @@ in {
   options.hydenix.sddm = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = config.hydenix.enable;
       description = "Enable sddm module";
     };
   };

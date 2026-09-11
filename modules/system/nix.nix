@@ -8,7 +8,7 @@ in {
   options.hydenix.nix = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = config.hydenix.enable;
       description = "Enable nix module";
     };
   };
