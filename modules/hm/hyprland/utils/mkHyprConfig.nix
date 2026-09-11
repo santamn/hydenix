@@ -18,7 +18,7 @@ in {
     };
 
     overrideConfig = lib.mkOption {
-      type = lib.types.nullOr lib.types.lines;
+      type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
       description = "Completely ${name} configuration override";
     };
@@ -31,6 +31,8 @@ in {
   };
 
   config = lib.mkIf (hyprCfg.enable && cfg.enable) {
+    warnings = lib.optional (cfg.overrideConfig != null && !hyprCfg.suppressWarnings) "hydenix.hm.hyprland.${name}.overrideConfig is overriding Hyde defaults. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)";
+
     home.file.".config/hypr/${name}.${extension}" = {
       text =
         if cfg.overrideConfig != null

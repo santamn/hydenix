@@ -15,7 +15,6 @@
 in {
   imports = [
     ./animations.nix
-    ./assertions.nix
     ./options.nix
     ./shaders.nix
     ./workflows.nix
@@ -29,6 +28,8 @@ in {
   ];
 
   config = lib.mkIf cfg.enable {
+    warnings = lib.optional (cfg.overrideMain != null && !cfg.suppressWarnings) "hydenix.hm.hyprland.overrideMain is overriding Hyde's hyprland.conf. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)";
+
     # Always include packages and base setup
     home.packages = [
       pkgs.hyprutils
