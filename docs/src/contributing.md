@@ -8,7 +8,7 @@ This project uses [direnv](https://direnv.net/) for pre-commit hooks. please ins
 
 Then run `direnv allow` to enable the hooks
 
-More documentation on the codebase can be found at [template README](template/README.md)
+More documentation on the codebase can be found at [template README](https://github.com/santamn/hydenix/blob/main/template/README.md)
 
 This project enforces [conventional commits](https://www.conventionalcommits.org/) format for all commit messages. each commit message must follow this structure:
 
@@ -47,6 +47,16 @@ Examples:
 - `fix: correct wallpaper path in material theme`
 - `docs: update installation instructions`
 - `chore: update dependencies`
+
+## Updating pinned sources
+
+Every package under `pkgs/` pins its upstream source with a `rev` and a `hash`. Edit the `rev`, then let nix recompute the hashes:
+
+```bash
+nix run .#update-hashes
+```
+
+`version` is derived from `rev`, so there is nothing else to edit by hand. Renovate runs the same command after bumping a `rev`, so a bot update and a manual one take the same path.
 
 ## Pull requests
 

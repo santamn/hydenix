@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Gruvbox Retro";
+  branch = "Gruvbox-Retro";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

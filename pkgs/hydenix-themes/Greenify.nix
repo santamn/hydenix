@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Greenify";
+  branch = "Greenify";
   src = pkgs.fetchFromGitHub {
     owner = "mahaveergurjar";
     repo = "Theme-Gallery";

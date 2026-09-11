@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "One Dark";
+  branch = "One-Dark";
   src = pkgs.fetchFromGitHub {
     owner = "RAprogramm";
     repo = "HyDe-Themes";

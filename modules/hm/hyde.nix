@@ -40,6 +40,17 @@ in {
       hydectl # HyDE の操作 CLI
       hyde-ipc # Hyprland のイベント購読・自動化
       hyde-config # ~/.config/hyde/config.toml を解析して各設定へ反映するデーモン
+
+      # fonts
+      # 以前は HyDE 同梱の Source/arcs/Font_*.tar.gz を pkgs.hyde が展開していた。
+      # HyDE は 2026-07-27 のリリースでフォントを同梱しなくなり、
+      # Scripts/dots/archives.toml で実行時にダウンロードする方式に移ったので、同じフォントを nixpkgs から入れる。
+      # MaterialDesignIcons は Nerd Fonts に含まれているので入れていない
+      maple-mono.truetype
+      nerd-fonts.caskaydia-cove
+      nerd-fonts.jetbrains-mono
+      nerd-fonts.mononoki
+      noto-fonts-cjk-sans
     ];
 
     # ensures hyprland config is available in session as per hyde uwsm update

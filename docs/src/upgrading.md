@@ -1,23 +1,22 @@
 # Upgrading
 
-hydenix can be upgraded, downgraded, or version locked easy.
-In your template flake folder, update hydenix to main using:
+hydenix can be upgraded, downgraded, or version locked easy. In your template flake folder, update hydenix to main using:
 
 ```bash
 nix flake update hydenix
 ```
 
-Or define a specific version in your `flake.nix` template:
+Or pin a specific revision in your `flake.nix` template:
 
 ```nix
 inputs = {
     nixpkgs.follows = "hydenix/nixpkgs";
     hydenix = {
       # Available inputs:
-      # Main: github:florianvazelle/hydenix
-      # Commit: github:florianvazelle/hydenix/<commit-hash>
-      # Version: github:florianvazelle/hydenix/v1.0.0
-      url = "github:florianvazelle/hydenix";
+      # Main:   github:santamn/hydenix
+      # Commit: github:santamn/hydenix/<commit-hash>
+      # Branch: github:santamn/hydenix/<branch>
+      url = "github:santamn/hydenix";
     };
   };
 ```
@@ -26,16 +25,10 @@ Run `nix flake update hydenix` again to load the update, then rebuild your syste
 
 ## When to upgrade
 
-Starting from your current version (for example v2.3.1) upgrades can come in three flavours:
+This repository does not cut tagged releases; `main` is the only moving target, and `flake.lock` is what pins you to a known-good revision. So an upgrade is always "advance the lock to a newer commit on `main`", and a rollback is always "restore the previous `flake.lock`", so keep that file in version control.
 
-- a **major** bump, which may introduce breaking changes; always read the release notes for API‑level changes before moving to a new major version,
-- a **minor** bump, which brings new features and is generally safe to apply, and
-- a **patch** bump, which contains bug fixes and is likewise safe to update.
-
-In other words, inspect major releases carefully, and you can routinely pull in minor and patch releases without worry.
-
-> [!Important]
+> [!IMPORTANT]
 >
-> - **Always review [release notes](https://github.com/florianvazelle/hydenix/releases) for major updates (API changes)**
-> - Update to minor versions for new features
-> - Keep up with patches for stability
+> - **Read the [commit log](https://github.com/santamn/hydenix/commits/main) between your locked revision and the new one before upgrading.** Commits follow [conventional commits](https://www.conventionalcommits.org/), so `feat` and `refactor` entries touching `modules/` are the ones that can change option names.
+> - Upgrade `hydenix` on its own (`nix flake update hydenix`) rather than updating every input at once, so a broken rebuild has one obvious cause.
+> - If a rebuild fails, `git checkout HEAD~1 -- flake.lock` puts you back on the previous revision; a NixOS generation rollback recovers an already-switched system.

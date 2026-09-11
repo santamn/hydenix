@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Frosted Glass";
+  branch = "Frosted-Glass";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

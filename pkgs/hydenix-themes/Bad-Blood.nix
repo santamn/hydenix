@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Bad Blood";
+  branch = "Bad-Blood";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-gallery";

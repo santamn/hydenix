@@ -1,0 +1,64 @@
+name: Update Branch Pins
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: "0 0 * * *" # Run daily at midnight UTC
+
+jobs:
+  update-branch-pins:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # Fetch all history for auto-merge
+
+      - name: Setup Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      # Create a PR for pins that succeeded without stopping the job, even if some pins failed to update
+      - name: Update branch pins
+        id: update
+        continue-on-error: true
+        run: nix run .#update-branch-pins
+
+      - name: Create Pull Request
+        id: create_pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: automated branch pin updates"
+          title: "chore: Automated Branch Pin Updates"
+          body: |
+            This PR moves each branch pin to the head of the branch it tracks and refreshes its `sha256`.
+            Automated by GitHub Actions.
+          branch: automated-branch-pin-updates
+          delete-branch: true
+          labels: automated
+          add-paths: |
+            pkgs/hydenix-themes/*.nix
+            pkgs/hyde-diff-upstream/default.nix
+
+      - name: Merge PR
+        if: steps.create_pr.outputs.pull-request-number
+        run: |
+          # Mergeability is still being computed right after creation, so retry
+          for _ in 1 2 3 4 5; do
+            gh pr merge --rebase "$PR_NUMBER" && exit 0
+            sleep 15
+          done
+          exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
+
+      - name: Fail if any pin could not be updated
+        if: steps.update.outcome == 'failure'
+        run: exit 1

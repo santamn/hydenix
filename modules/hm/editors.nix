@@ -110,9 +110,12 @@ in {
         };
       })
       (lib.mkIf cfg.vscode.wallbash {
-        # Link the wallbash extension from hyde package
-        ".vscode/extensions/prasanthrangan.wallbash" = {
-          source = "${pkgs.hyde}/share/vscode/extensions/prasanthrangan.wallbash";
+        # Link the wallbash extension
+        # ディレクトリ名は、HyDE の wallbash スクリプト code.sh が探す
+        # */extensions/thehydeproject* に合わせる。以前 pkgs.hyde から入れていた
+        # prasanthrangan.wallbash という名前ではこのパターンに一致しなかった
+        ".vscode/extensions/thehydeproject.wallbash" = {
+          source = "${pkgs.code-wallbash}/share/vscode/extensions/thehydeproject.wallbash";
           recursive = true;
           mutable = true;
           force = true;

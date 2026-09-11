@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Catppuccin Mocha";
+  branch = "Catppuccin-Mocha";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

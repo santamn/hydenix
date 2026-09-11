@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Nordic Blue";
+  branch = "Nordic-Blue";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

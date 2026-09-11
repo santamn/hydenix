@@ -11,7 +11,7 @@ Going to let you in on a secret: the nix options system *is* the documentation.\
 Let's walk through an example. say you want to find info about `hydenix.hm.theme`.\
 The easiest way is to search the github repo for the options:
 
-[search for `hydenix.hm.theme`](https://github.com/florianvazelle/hydenix/search?q=hydenix.hm.theme)
+[search for `hydenix.hm.theme`](https://github.com/santamn/hydenix/search?q=hydenix.hm.theme)
 
 You'll see the options in the search results, something like this:
 
@@ -126,35 +126,52 @@ hydenix = {
         extraConfig = ""; # Additional hypridle configuration
         overrideConfig = null; # Complete hypridle configuration override
       };
+      hyprsunset = {
+        enable = cfg.enable; # Enable hyprsunset configurations
+        extraConfig = ""; # Additional hyprsunset configuration
+        overrideConfig = null; # Complete hyprsunset configuration override
+      };
       keybindings = {
         enable = cfg.enable; # Enable keybindings configurations
         extraConfig = ""; # Additional keybindings configuration
         overrideConfig = null; # Complete keybindings configuration override
       };
       monitors = {
-        enable = cfg.enable; # Enable monitor configurations
-        overrideConfig = null; # Complete monitor configuration override
+        enable = cfg.enable; # Enable monitors configurations
+        extraConfig = ""; # Additional monitors configuration
+        overrideConfig = null; # Complete monitors configuration override
       };
       nvidia = {
-        extraConfig = ""; # Additional NVIDIA configuration
-        overrideConfig = null; # Complete NVIDIA configuration override
+        enable = cfg.enable; # Enable nvidia configurations
+        extraConfig = ""; # Additional nvidia configuration
+        overrideConfig = null; # Complete nvidia configuration override
       };
       overrideMain = null; # Complete override of hyprland.conf
-      pyprland = {
-        enable = cfg.enable; # Enable pyprland configurations
-        extraConfig = ""; # Additional pyprland configuration
-        overrideConfig = null; # Complete pyprland configuration override
-      };
       shaders = {
         enable = cfg.enable; # Enable shader configurations
         active = "disable"; # Active shader preset
         overrides = {}; # Override or add custom shaders
       };
       suppressWarnings = false; # Suppress warnings about configuration overrides
+      systemd = {
+        enable = cfg.enable; # Enable hyprland-session.target on hyprland startup
+        enableXdgAutostart = false; # Enable autostart of applications using systemd-xdg-autostart-generator(8)
+        extraCommands = [
+          "systemctl --user stop hyprland-session.target"
+          "systemctl --user start hyprland-session.target"
+        ]; # Extra commands to be run after D-Bus activation
+        variables = [
+          "DISPLAY"
+          "HYPRLAND_INSTANCE_SIGNATURE"
+          "WAYLAND_DISPLAY"
+          "XDG_CURRENT_DESKTOP"
+          "XDG_SESSION_TYPE"
+        ]; # Environment variables to be imported in the systemd & D-Bus user environment
+      };
       windowrules = {
-        enable = cfg.enable; # Enable window rules configurations
-        extraConfig = ""; # Additional window rules configuration
-        overrideConfig = null; # Complete window rules configuration override
+        enable = cfg.enable; # Enable windowrules configurations
+        extraConfig = ""; # Additional windowrules configuration
+        overrideConfig = null; # Complete windowrules configuration override
       };
       workflows = {
         enable = cfg.enable; # Enable workflow configurations
@@ -167,7 +184,11 @@ hydenix = {
       hyprlock = true; # Enable hyprlock lockscreen
       swaylock = false; # Enable swaylock lockscreen
     };
-    notifications.enable = config.hydenix.hm.enable; # Enable notifications module
+    notifications = {
+      enable = config.hydenix.hm.enable; # Enable notifications module
+      dunst.enable = true; # Enable dunst notification daemon
+      swaync.enable = false; # Enable SwayNC notification daemon
+    };
     qt.enable = config.hydenix.hm.enable; # Enable qt module
     rofi.enable = config.hydenix.hm.enable; # Enable rofi module
     screenshots = {

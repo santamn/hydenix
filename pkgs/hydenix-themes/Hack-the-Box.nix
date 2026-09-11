@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Hack the Box";
+  branch = "Hack-the-Box";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-gallery";

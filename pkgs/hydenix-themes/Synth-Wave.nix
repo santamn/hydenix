@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Synth Wave";
+  branch = "Synth-Wave";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Mac OS";
+  branch = "Mac-Os";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-gallery";
