@@ -19,6 +19,7 @@ in {
     ./shaders.nix
     ./workflows.nix
     (mkHyprConfig {name = "hypridle";})
+    (mkHyprConfig {name = "hyprlock";})
     (mkHyprConfig {name = "keybindings";})
     (mkHyprConfig {name = "monitors";})
     (mkHyprConfig {name = "nvidia";})
@@ -35,6 +36,7 @@ in {
       pkgs.hyprutils
       pkgs.hyprpicker
       pkgs.hyprcursor
+      (lib.mkIf cfg.hyprlock.enable pkgs.hyprlock)
       (lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset)
     ];
 
@@ -79,6 +81,13 @@ in {
       ".config/hypr/userprefs.conf" = {
         text = cfg.extraConfig;
         force = true;
+      };
+
+      ".config/hypr/hyprlock" = lib.mkIf cfg.hyprlock.enable {
+        source = "${pkgs.hyde}/Configs/.config/hypr/hyprlock";
+        recursive = true;
+        force = true;
+        mutable = true;
       };
     };
 

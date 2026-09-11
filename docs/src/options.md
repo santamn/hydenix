@@ -126,6 +126,11 @@ hydenix = {
         extraConfig = ""; # Additional hypridle configuration
         overrideConfig = null; # Complete hypridle configuration override
       };
+      hyprlock = {
+        enable = cfg.enable; # Enable hyprlock configurations
+        extraConfig = ""; # Additional hyprlock configuration
+        overrideConfig = null; # Complete hyprlock configuration override
+      };
       hyprsunset = {
         enable = cfg.enable; # Enable hyprsunset configurations
         extraConfig = ""; # Additional hyprsunset configuration
@@ -178,11 +183,6 @@ hydenix = {
         active = "default"; # Active workflow preset
         overrides = {}; # Override or add custom workflows
       };
-    };
-    lockscreen = {
-      enable = config.hydenix.hm.enable; # Enable lockscreen module
-      hyprlock = true; # Enable hyprlock lockscreen
-      swaylock = false; # Enable swaylock lockscreen
     };
     notifications = {
       enable = config.hydenix.hm.enable; # Enable notifications module

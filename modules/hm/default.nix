@@ -8,7 +8,6 @@
     ./gtk.nix
     ./hyde.nix
     ./hyprland
-    ./lockscreen.nix
     ./mutable.nix
     ./notifications.nix
     ./qt.nix
