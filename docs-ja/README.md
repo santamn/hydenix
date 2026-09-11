@@ -48,44 +48,12 @@ richen604/hydenix          本家。2026-01-23 を最後に停止（メンテナ
         ↓ fork
 florianvazelle/hydenix     後継だったが、2026-08 にアーカイブ（読み取り専用）
         ↓ fork
-santamn/hydenix            ← このリポジトリ。現在ここが列の先頭
+santamn/hydenix            ← このリポジトリ
 ```
-
-自分のフォークを挟んだのは、florianvazelle 氏が 1 人で保守しているので止まったときに自分で前へ進められるように、という理由でした。その心配が現実になった形です。
-
-追従できる上流はもう無いので、nixpkgs・HyDE・Hyprland の更新は自分で追うしかありません。とはいえ renovate と update-branch-pins が動いているぶん、実作業は届いた PR を確かめてマージし、壊れていれば直すところだけです。HyDE 本体（[HyDE-Project/HyDE](https://github.com/HyDE-Project/HyDE)）は今も活発なので、素材の供給が止まったわけではありません。
-
-## このフォークが加えた修正
-
-`main` には、自分で見つけた不具合の修正が入っています。英語のコミット・英語のコメントで書いているのは、当初は上流へ出すつもりだったからです。上流がアーカイブされた今も、この書き方は変えていません。読み手が日本語話者だけとは限らないので。
-
-| PR | 内容 |
-|---|---|
-| [#6](https://github.com/santamn/hydenix/pull/6) | `hyprsunset` の設定だけ配置されて本体が入っていなかった |
-| [#9](https://github.com/santamn/hydenix/pull/9) | swaync のラップ後プロセス名に waybar モジュールを合わせる |
-| [#10](https://github.com/santamn/hydenix/pull/10) | カーソル・アイコンテーマを HyDE の tar.gz ではなく nixpkgs からビルドし、テーマ同梱のコピーとの `share/icons` 衝突を `sharedAssets` で解消（#3 / #4 / #5 をまとめ直したもの） |
-| [#12](https://github.com/santamn/hydenix/pull/12) | `hyde-shell` を `source` できるようにし、HyDE の Python スクリプトに実在するインタプリタを与える（#7 / #8 をまとめ直したもの） |
-| [#39](https://github.com/santamn/hydenix/pull/39) | activation script の依存名を、実在する `mutableFileGeneration` に直す |
-| [#40](https://github.com/santamn/hydenix/pull/40) | `dry-activate` で activation script が実際に副作用を起こしていた |
-| [#41](https://github.com/santamn/hydenix/pull/41) | `mutable` オプションが `xdg.configFile` に生えていなかった（`mergeAttrs` を `recursiveUpdate` に） |
-| [#42](https://github.com/santamn/hydenix/pull/42) | `hydectl` の `mainProgram` が `hyde-ipc` のままだった |
-| [#43](https://github.com/santamn/hydenix/pull/43) | ビルドできない `hyde-gallery` パッケージを削除 |
-| [#44](https://github.com/santamn/hydenix/pull/44) | `stateVersion` に `mkDefault` を付け、利用者側の値を優先する |
-| [#45](https://github.com/santamn/hydenix/pull/45) | vim 設定の配置条件が `or` になっていて `neovim` が読まれていなかった |
-| [#46](https://github.com/santamn/hydenix/pull/46) / [#47](https://github.com/santamn/hydenix/pull/47) | fish のエイリアスを `shellAliases` 宣言に移し、動かない AUR ヘルパー用エイリアスを削除 |
-| [#50](https://github.com/santamn/hydenix/pull/50) / [#51](https://github.com/santamn/hydenix/pull/51) | `docs/` のオプション一覧とインストール手順をコードに合わせ、テンプレートとリンクの参照先をこのフォークに移す |
-| [#52](https://github.com/santamn/hydenix/pull/52) | 自動更新 PR を auto-merge ではなく直接マージする |
-| [#58](https://github.com/santamn/hydenix/pull/58) | HyDE が同梱をやめたフォントと VS Code 拡張を、nixpkgs と `HyDE-Project/code-wallbash` から取る |
-| [#61](https://github.com/santamn/hydenix/pull/61) | renovate の post-upgrade を `nix run .#update-hashes` にし、リポジトリ名を nix の属性名として使うのをやめる |
-| [#66](https://github.com/santamn/hydenix/pull/66) | `flake.lock` の更新を renovate の lockFileMaintenance に一本化し、nixpkgs を `nixos-unstable` 追従にする |
-| [#67](https://github.com/santamn/hydenix/pull/67) | 一度も rev を進めていなかったテーマの自動更新を、nix-update で作り直す |
-| [#69](https://github.com/santamn/hydenix/pull/69) | `hyde-diff-upstream` の master ビルドを commit で固定し、テーマと一緒に毎晩進める |
-
-背景と再現方法は [08-improvements.md](./08-improvements.md) の E-1 にまとまっています。未解決の課題も同じファイルにあります。
 
 ## 本家からの主な変更点
 
-本家（richen604）を読んだことがある人向けの差分です。
+本家（richen604/hydenix）を読んだことがある人向けの差分です。
 
 ### ディレクトリ構成
 
@@ -114,12 +82,12 @@ santamn/hydenix            ← このリポジトリ。現在ここが列の先�
 - `nixosModules.default` が **home-manager 本体と `homeModules.default` を自動で配線する**（`home-manager.sharedModules` 経由）。本家より利用者側の記述が減る
 - `homeConfigurations.default` が追加され、home-manager 単体でも使える
 - Hyprland を flake input でバージョン固定し（現在は `v0.56.2`。HyDE が対応する最新版に合わせる）、cachix を `nixConfig` に追加
-- `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）。`system.stateVersion` と `home.stateVersion` も [#44](https://github.com/santamn/hydenix/pull/44) で `mkDefault` になり、利用者が書いた値が勝つ
+- `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）。`system.stateVersion` と `home.stateVersion` も `mkDefault` なので、利用者が書いた値が勝つ
 
 ### 開発基盤
 
 - treefmt（alejandra / deadnix / statix）、typos、zizmor による CI
-- renovate による依存自動更新と、テーマの自動更新（後者は実際には一度も rev を進めていなかったので、このフォークで作り直した。[10](./10-ci.md)）
+- renovate による依存自動更新と、テーマの自動更新（[10](./10-ci.md)）
 - `docs/` を mdbook 化して GitHub Pages で公開
 
 ## 公式ドキュメント（英語）
@@ -129,4 +97,4 @@ santamn/hydenix            ← このリポジトリ。現在ここが列の先�
 - [FAQ](https://santamn.github.io/hydenix/faq.html)
 - [トラブルシューティング](https://santamn.github.io/hydenix/troubleshooting.html)
 
-上流がアーカイブされたので、公開先はこのフォークの GitHub Pages に移しました。リポジトリ内では [`docs/src/`](../docs/src/) にソースがあります。
+リポジトリ内では [`docs/src/`](../docs/src/) にソースがあります。

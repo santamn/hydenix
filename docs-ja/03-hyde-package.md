@@ -85,7 +85,7 @@ find . -type f -print0 | xargs -0 sed -i \
   's|${XDG_STATE_HOME:-$HOME/.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
 ```
 
-HyDE の Python スクリプトは、実行時に `uv` が `$XDG_STATE_HOME/hyde/python_env` へ作る venv を前提にしています。NixOS ではその venv を作る処理が動かないので、`hyde-shell`（`run_command`）・`gpuinfo.sh` の AMD 分岐・`gamelauncher.sh` が存在しないパスを `exec` して何も出力せずに終了していました。waybar のモジュールが空になる、という形で表面化します。
+HyDE の Python スクリプトは、実行時に `uv` が `$XDG_STATE_HOME/hyde/python_env` へ作る venv を前提にしています。NixOS ではその venv を作る処理が動かないので、`hyde-shell`（`run_command`）・`gpuinfo.sh` の AMD 分岐・`gamelauncher.sh` が存在しないパスを `exec` して何も出力せずに終了していました。
 
 そこで `hydePython` 引数（既定は `inotify-simple` / `loguru` / `pulsectl` / `pygobject3` / `pywayland` / `requests` / `xdg-base-dirs` と `pyamdgpuinfo` を入れた `python3`）を用意し、venv のパスをすべてこれに置換しています。ライブラリを足したり減らしたりしたい場合は、この引数を `overrideAttrs` ではなく `callPackage` の引数として差し替えてください（[santamn/hydenix#8](https://github.com/santamn/hydenix/pull/8)）。
 
@@ -106,14 +106,14 @@ theme = pkgs.hyde + "/share/grub/themes/Retroboot";
 ".local/share/icons/Wallbash-Icon".source = "${pkgs.hyde}/share/icons/Wallbash-Icon";
 ```
 
-以前はフォントと VS Code 拡張もここで展開していました。HyDE が 2026-07-27 のリリースで `Source/arcs/` から両方を消したので、[#58](https://github.com/santamn/hydenix/pull/58) で入手先を移しています。
+フォントと VS Code 拡張は `pkgs/hyde` では扱わず、次の場所から入れています。
 
-| 素材 | 今の入手先 |
+| 素材 | 入手先 |
 |---|---|
 | フォント | [`modules/hm/hyde.nix`](../modules/hm/hyde.nix) の `home.packages` で nixpkgs から（`maple-mono` / `nerd-fonts.*` / `noto-fonts-cjk-sans`） |
 | VS Code の wallbash 拡張 | [`pkgs/code-wallbash.nix`](../pkgs/code-wallbash.nix) が `HyDE-Project/code-wallbash` をビルドし、[`modules/hm/editors.nix`](../modules/hm/editors.nix) が `.vscode/extensions/thehydeproject.wallbash` に置く |
 
-拡張のディレクトリ名が `thehydeproject.wallbash` なのは、HyDE の `code.sh` が `*/extensions/thehydeproject*` を探すからです。同梱版の頃の `prasanthrangan.wallbash` はこのパターンに一致していませんでした。
+拡張のディレクトリ名が `thehydeproject.wallbash` なのは、HyDE の `code.sh` が `*/extensions/thehydeproject*` を探すからです。
 
 ### (7) installPhase と postInstall
 
@@ -164,10 +164,7 @@ flowchart LR
 3. `nix run .#hyde-diff-home` で、自分のホーム構成に配置されないファイルが増えていないか確認する（新しい設定ファイルが追加されていたらモジュール側の追従が要る）
 4. VM (`nix run .`) で動作確認する
 
-`hyde-diff-upstream` が比べる master 側は、master 上の commit で固定してあります。`update-branch-pins.yml` が毎晩その commit を先頭へ進めるので、比較相手は最大 1 日遅れの master です（[07](./07-reading-notes.md) の 11）。
-
-> [!NOTE]
-> ピン留め中の `v26.7.4` より後の HyDE には `Source/arcs/Code_Wallbash.vsix` と `Font_*.tar.gz` がありません。以前は rev を上げると (6) の `unzip` が落ち、フォントは 0 個のまま黙ってパッケージが出来上がる状態でしたが、#58 で両方の入手先を移したので、もうここでは壊れません。経緯は [08-improvements.md](./08-improvements.md) の A-0 を参照。
+`hyde-diff-upstream` が比べる master 側は、master 上の commit で固定してあります。`update-branch-pins.yml` が毎晩その commit を先頭へ進めるので、比較相手は最大 1 日遅れの master です（[07](./07-reading-notes.md) の 9）。
 
 ## 覚えておくとよいこと
 

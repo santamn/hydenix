@@ -12,7 +12,7 @@ home-manager で設定ファイルを配置すると、こうなります。
 ".config/hypr/hyprlock.conf".source = "${pkgs.hyde}/Configs/.config/hypr/hyprlock.conf";
 ```
 
-```
+```text
 ~/.config/hypr/hyprlock.conf
   → /nix/store/xxxx-home-manager-files/.config/hypr/hyprlock.conf
     → /nix/store/yyyy-hyde/Configs/.config/hypr/hyprlock.conf
@@ -30,7 +30,7 @@ home-manager で設定ファイルを配置すると、こうなります。
 
 例：
 
-```
+```text
 theme.switch.sh を実行
   → 壁紙の画像から色を抽出 (wallbash)
     → ~/.config/waybar/theme.css を書き換え
@@ -55,7 +55,7 @@ theme.switch.sh を実行
 
 `mutable = true` を付けると、リンクではなくコピーとして配置され、書き込み権限が付きます。
 
-```
+```text
 【通常】 ~/.config/hypr/hyprlock.conf → /nix/store/... （リンク・読み取り専用）
 【mutable】~/.config/kitty/theme.conf   （実ファイルのコピー・書き込み可能）
 ```
@@ -88,7 +88,7 @@ mergeAttrsList (
 同じことを3回書く代わりにループで生成しています。モジュールシステムが既存のオプション定義とのマージを行うため、問題なくしてくれるからです。 `home.file` の他の性質（`source` や `force` など）は home-manager 本体が定義したものがそのまま残り、そこに `mutable` だけが足されます。
 
 > [!NOTE]
-> `mergeAttrsList` は以前 `lib.mergeAttrs`（= `//`）を畳み込んでいて、最上位のキーしか見ないために `{xdg.configFile}` が `{xdg.dataFile}` に丸ごと差し替えられ、3 つのうち `xdg.configFile` だけ `mutable` が生えていませんでした。[#41](https://github.com/santamn/hydenix/pull/41) で `lib.recursiveUpdate` に変えて解決しています。経緯は [08 の A-4](./08-improvements.md) を参照。
+> `mergeAttrsList` が畳み込むのは `lib.recursiveUpdate` です。`lib.mergeAttrs`（= `//`）は最上位のキーしか見ないので、`{xdg.configFile}` と `{xdg.dataFile}` を重ねると `xdg` ごと後者に差し替えられ、`xdg.configFile` に `mutable` が生えなくなります。
 
 ### 後半: コピーする activation script を生成
 
@@ -128,8 +128,6 @@ lib.hm.dag.entryAfter ["linkGeneration"] command
 
 home-manager の activation は依存グラフで順序が決まります。 `linkGeneration`（シンボリックリンクを張る処理）の**後**に実行することで、「まずリンクを張る → mutable なものだけコピーで上書きする」という順序を保証しています。
 
-> [!IMPORTANT]
-> このエントリ名 `mutableFileGeneration` は `theme.nix` / `hyde.nix` / `hyprland/default.nix` から `entryAfter` で参照されています。home-manager の DAG は知らない依存名を黙って捨てるので、名前を変えるときは参照側も一緒に直してください。以前は参照側が `mutableGeneration` と綴り違いになっていて順序制約が効いていませんでした（[#39](https://github.com/santamn/hydenix/pull/39) で修正）。
 
 ## `force = true` が必須な理由
 

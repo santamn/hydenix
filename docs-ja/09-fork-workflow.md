@@ -2,10 +2,6 @@
 
 日本語コメントを持ちながら、英語で PR を出すための運用方法です。
 
-> [!IMPORTANT]
-> 上流の florianvazelle/hydenix は 2026-08 にアーカイブされ、読み取り専用になりました。追従先も PR の出し先も無くなったので、`santamn/hydenix` がこの系譜の先頭です。
-> かつてここに書いてあった「上流へ 2 段目の PR を出す」手順は削除しました。
-
 ## 結論
 
 ブランチを分けます。
@@ -15,7 +11,7 @@
 | `main` | 修正の本体。**日本語は一切入れない** | PR の分岐元、docs の公開元、dotnix が参照する先 |
 | `ja` | `main` + 日本語コメント + `docs-ja/` | 自分がコードを読むとき |
 
-上流が生きていた頃は、`main` を「上流にそのまま出せる形」に保つのが分離の理由でした。今その理由は消えましたが、分離自体は続けます。`main` に日本語が入ると typos の CI がリポジトリ全体を検査する都合で誤検出しますし、`docs/` を GitHub Pages へ出す先も `main` だからです。
+分けておくのは、`main` に日本語が入ると typos の CI がリポジトリ全体を検査する都合で誤検出しますし、`docs/` を GitHub Pages へ出す先も `main` だからです。
 
 日本語コメントは `ja` ブランチにしか存在しないので、
 `main` から分岐した PR には**構造的に混入しません**。
@@ -40,15 +36,6 @@
 - バックアップされないので、消したら終わり
 
 ブランチにしておけば、履歴として残り、いつでも `main` に追随できます。
-
-### なぜ「コメントを英語で書く」ではダメか
-
-それでも構いませんが、目的が変わります。
-この日本語コメントは「自分が読んで理解するため」のもので、
-利用者向けの API 説明として `main` に置く粒度とは別物です。
-混ぜると両方が中途半端になるので、分けたほうが健全です。
-
----
 
 ## 初期セットアップ
 
@@ -91,7 +78,7 @@ worktree をリポジトリ内に置きたい場合は `.wt/` 以下が使えま
 
 ### 1. 依存を更新する
 
-上流が止まったので、`git merge upstream/main` は無くなりました。代わりに追うのは依存だけです。どれも自動で PR が立ち、一部は自動でマージされます。
+依存の更新はどれも自動で PR が立ち、一部は自動でマージされます。
 
 | 何が動くか | 何を上げるか | マージ |
 |---|---|---|
@@ -132,20 +119,20 @@ git commit
 
 ```bash
 git switch main
-git switch -c fix/mutable-generation-dag-name
+git switch -c fix/<修正内容>
 
 # 修正する（英語のコメントのみ。日本語は書かない）
 
 nix fmt                       # ← 実機または nix のある環境で
-git commit -am "fix: correct activation dependency name to mutableFileGeneration"
-git push -u origin fix/mutable-generation-dag-name
+git commit -am "fix: <英語で要約>"
+git push -u origin fix/<修正内容>
 ```
 
-上流がアーカイブされる前は、同じブランチから `base` だけ変えて上流へも出す 2 段構えでしたが、今は `santamn/hydenix` の `main` へ 1 回出すだけです。
+PR は `santamn/hydenix` の `main` へ出します。
 
 ```text
 base:    santamn/hydenix  main
-compare: santamn/hydenix  fix/mutable-generation-dag-name
+compare: santamn/hydenix  fix/<修正内容>
 ```
 
 直接 `main` に push せず PR を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを走らせないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に走らせられる場所はここしかありません。
@@ -183,7 +170,6 @@ build / chore / ci / docs / feat / fix / perf / refactor / revert / style / test
 例:
 
 ```text
-fix: correct activation dependency name to mutableFileGeneration
 docs: add Japanese reading notes
 refactor(hyprland): generate assertions from mkHyprConfig
 ```
@@ -208,40 +194,11 @@ refactor(hyprland): generate assertions from mkHyprConfig
 | Checklist | Conventional Commits、ドキュメントの更新、新しい警告が出ないこと |
 | Additional context | 任意で、ふだんは節ごと消す。差分と上の節から読み取れないこと（あえて入れなかったものとその理由など）だけを書く |
 
-以前はここで Evidence / Risk / Testing を並べる書き方を勧めていましたが、テンプレートに無い節なので使いません。Additional context の下に足すのもやめます。テンプレートの各節に何を書くかの説明は [#57](https://github.com/santamn/hydenix/pull/57) と [#59](https://github.com/santamn/hydenix/pull/59) で入りました。どう確かめたかを書くなら How の中に、実際に確かめたことだけを書きます。
-
-例（[08-improvements.md](./08-improvements.md) の A-1）:
-
-```markdown
-## What does this PR do?
-
-Point the three activation entries that depend on `mutableGeneration` at `mutableFileGeneration`, the name `modules/hm/mutable.nix` actually defines.
-
-## Why is this change needed?
-
-home-manager silently ignores unknown dependency names in its activation DAG, so the intended ordering ("run after mutable files are copied") is not enforced. Where the entries run depends on the toposort implementation and may change when home-manager is updated.
-
-## How was this implemented?
-
-A string change in three places, all found by `grep -rn 'entryAfter \["mutableGeneration"\]' modules/`. The `config` of `mutable.nix` is unconditional, so the entry always exists.
-
-## Type of change
-
-- [x] Bug fix (non-breaking change which fixes an issue)
-
-## Checklist
-
-- [x] My commits follow conventional commit format
-- [x] I have updated the documentation accordingly
-- [x] My changes generate no new warnings
-```
+どう確かめたかを書くなら How の中に、実際に確かめたことだけを書きます。
 
 ### PR は小さく保つ
 
 1 つの PR に 1 つの修正。関連していても、性質が違うものは分けます。
-
-例: [08](./08-improvements.md) の A-1（文字列 3 か所・リスクゼロ）と
-A-2（`$DRY_RUN_CMD` の追加・挙動が変わる）は**別々の PR にします**。
 
 ---
 
@@ -256,7 +213,7 @@ inputs.hydenix.url = "github:santamn/hydenix";        # = main ブランチ
 修正を実機で検証したいときは、一時的にブランチを指定します。
 
 ```nix
-inputs.hydenix.url = "github:santamn/hydenix/fix/mutable-generation-dag-name";
+inputs.hydenix.url = "github:santamn/hydenix/fix/<修正内容>";
 ```
 
 ```bash
@@ -268,8 +225,7 @@ sudo nixos-rebuild switch --flake .#<ホスト名>
 
 > [!TIP]
 > `ja` ブランチを参照しても動作は同じですが（コメントは挙動に影響しません）、
-> Nix ストアのハッシュが変わって再ビルドが走るので、
-> **dotnix からは `main` を参照してください。**
+> Nix ストアのハッシュが変わって再ビルドが走るので、**dotnix からは `main` を参照してください。**
 
 ---
 
