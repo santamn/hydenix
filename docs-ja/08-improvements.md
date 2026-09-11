@@ -49,6 +49,13 @@ nix eval --impure --expr '
 
 ### A-0. `pkgs/hyde` の rev を上げると素材アーカイブが無くてビルドが落ちる
 
+> [!NOTE]
+> **解決済み**（[#58](https://github.com/santamn/hydenix/pull/58)）。フォントは [`modules/hm/hyde.nix`](../modules/hm/hyde.nix) が nixpkgs から入れるようになり（上流が `Scripts/dots/archives.toml` で実行時に落とすのと同じ顔ぶれ。MaterialDesignIcons は Nerd Fonts に含まれるので入れていない）、VS Code 拡張は拡張の移転先 `HyDE-Project/code-wallbash` を [`pkgs/code-wallbash.nix`](../pkgs/code-wallbash.nix) でビルドするようになりました。`pkgs/hyde` の `buildPhase` からは `unzip` とフォントのループが消えています。`code-wallbash` は `checks` にも入っています。
+>
+> 拡張のディレクトリ名も `prasanthrangan.wallbash` から `thehydeproject.wallbash` に変わりました。HyDE の `code.sh` はしばらく前から `*/extensions/thehydeproject*` を探していたので、同梱版の頃から wallbash の配色は VS Code に届いていなかったことになります。
+>
+> `pkgs/hyde` の rev はまだ `v26.7.4` です。上げる PR は renovate が作り、`flake-check` がその PR で `hyde` をビルドします。以下は調査の記録です。
+
 #### 問題
 
 HyDE 本家が 2026-07-27 のリリースコミット `b8cc647`（chore: Release - rc → master #1731）で `Source/arcs/` から `Code_Wallbash.vsix` と `Font_*.tar.gz` 6 個、それに `Cursor_BibataIce.tar.gz` を削除しました。ピン留め中の `v26.7.4` にはまだ残っているので現状は動きますが、これより後へ rev を上げた瞬間に [`pkgs/hyde/default.nix`](../pkgs/hyde/default.nix) の `buildPhase` が壊れます。
@@ -88,15 +95,15 @@ grep -n 'Code_Wallbash\|Font_\*' pkgs/hyde/default.nix
 
 この項目のうち、可変ブランチ ref から素材を取得していた問題と、CI がそれを検知できない問題は解決済みです。
 
-- `pkgs/Bibata-Modern-Ice.nix` と `pkgs/Tela-circle-dracula.nix` は `raw/refs/heads/...` の `fetchurl` をやめ、nixpkgs の `bibata-cursors` / `tela-circle-icon-theme` からビルドするようになりました（[#3](https://github.com/santamn/hydenix/pull/3)）。前者は nixpkgs が XCursor 形式しか作らないため、`hyprcursor-util` で hyprcursor 版を作り直しています（理由は [#4](https://github.com/santamn/hydenix/pull/4) でコメントとして残してあります）
-- `checks.${system}` に `hyde` / `Bibata-Modern-Ice` / `Tela-circle-dracula` と `theme-assets` が入り、素材パッケージが CI で実際にビルドされるようになりました（[#3](https://github.com/santamn/hydenix/pull/3) / [#5](https://github.com/santamn/hydenix/pull/5)）
-- `flake-check.yml` に `schedule`（毎週月曜 03:00 UTC）が入り、PR の無い期間でも HyDE 側のファイル削除に気づけるようになりました
-- florianvazelle/hydenix の PR #98 を取り込んだことで `.github/renovate.json` の customManager が `fetchFromGitHub` の `rev` を `github-releases` として拾うようになり、HyDE のタグも renovate の監視対象になりました。つまり次のタグが出れば renovate が PR を作り、その PR の CI が上記の `unzip` 失敗で落ちます。壊れる場所が利用者の実機ではなく PR になったので、この項目は「気づけないまま壊れる」問題から「上げる前に片付ける宿題」に変わっています
+- `pkgs/Bibata-Modern-Ice.nix` と `pkgs/Tela-circle-dracula.nix` は `raw/refs/heads/...` の `fetchurl` をやめ、nixpkgs の `bibata-cursors` / `tela-circle-icon-theme` からビルドするようになりました（[#10](https://github.com/santamn/hydenix/pull/10)。最初に入れた #3 / #4 / #5 は一度 revert し、#10 にまとめ直しています）。前者は nixpkgs が XCursor 形式しか作らないため、`hyprcursor-util` で hyprcursor 版を作り直しています
+- `checks.${system}` に `hyde` / `Bibata-Modern-Ice` / `Tela-circle-dracula` と `theme-assets` が入り、素材パッケージが CI で実際にビルドされるようになりました（[#10](https://github.com/santamn/hydenix/pull/10)）。`code-wallbash` は #58 で加わりました
+- `flake-check.yml` の `schedule`（毎週月曜 03:00 UTC）は #3 と一緒に入れましたが、#10 にまとめ直したときに外れ、今は入っていません。PR の無い期間に HyDE 側でファイルが消えても、次の PR が来るまで気づけません
+- florianvazelle/hydenix の PR #98 を取り込んだことで `.github/renovate.json` の customManager が `fetchFromGitHub` の `rev` を `github-releases` として拾うようになり、HyDE のタグも renovate の監視対象になりました。次のタグが出れば renovate が PR を作り、その PR の CI で `hyde` がビルドされます。壊れる場所が利用者の実機ではなく PR になったことで、この項目は「気づけないまま壊れる」問題から「上げる前に片付ける宿題」に変わり、その宿題を #58 で片付けました
 
 ```bash
 nix eval --impure --expr '
   builtins.attrNames (builtins.getFlake (toString ./.)).checks.x86_64-linux'
-# => [ "Bibata-Modern-Ice" "Tela-circle-dracula" "hyde" "hyde-config" "hyde-ipc" "hydectl" "hyprquery" "theme-assets" ]
+# => [ "Bibata-Modern-Ice" "Tela-circle-dracula" "code-wallbash" "hyde" "hyde-config" "hyde-ipc" "hydectl" "hyprquery" "theme-assets" ]
 ```
 
 ### A-1. `mutableGeneration` — 存在しない依存名を参照している
@@ -148,7 +155,7 @@ nix eval --impure --expr '
 
 実行結果:
 
-```
+```text
 { createCavaConfigAfter = [ "mutableGeneration" ];
   setThemeAfter = [ "mutableGeneration" ];
   存在する_mutableFileGeneration = true;
@@ -207,7 +214,7 @@ nix eval --raw --impure --expr '
 
 実行結果:
 
-```
+```text
 mkdir -p "$HOME/.config/cava"
 touch "$HOME/.config/cava/config"
 chmod 644 "$HOME/.config/cava/config"
@@ -378,7 +385,7 @@ nix eval --impure --expr '
 
 実行結果:
 
-```
+```text
 { "home.file" = true; "xdg.configFile" = false; "xdg.dataFile" = true; }
 ```
 
@@ -504,7 +511,7 @@ nix eval --impure --expr '
 
 実行結果（エラー終了しますが、それが期待どおりです）:
 
-```
+```text
 error:
 Failed assertions:
 - hydenix.hm.hyprland.keybindings.overrideConfig is set but empty. …
@@ -571,7 +578,7 @@ nix eval --impure --expr '
   in probe.config.home.stateVersion'
 ```
 
-```
+```text
 error: The option `home.stateVersion' has conflicting definition values:
 - In `<unknown-file>': "25.05"
 - In `<unknown-file>': "24.11"
@@ -591,6 +598,9 @@ error: The option `home.stateVersion' has conflicting definition values:
 これは利用者の環境に影響し得る変更です。既に `"25.05"` を書いている人には影響しませんが、`mkDefault` にすると hydenix 側の値ではなく利用者側の値が勝つようになります。挙動としては正しい方向なので、PR の本文に理由を書いたうえで入れました。
 
 ### B-5. `hyde-diff-upstream` の `sha256` が固定されている
+
+> [!NOTE]
+> **解決済み**（[#69](https://github.com/santamn/hydenix/pull/69)）。`rev` に master の commit（2026-08-21 の `7c7b832`）を書いて hash と対応させ、`passthru.updateBranch = "master"` を付けました。`update-branch-pins.yml` が毎晩この commit を master の先頭へ進めるので、修正方法 2 の自動更新を renovate ではなく nix-update で実現した形です。`overrideAttrs` の中で `src` を定義しているので、nix-update が書き換えるのは `pkgs/hyde-diff-upstream/default.nix` で、`pkgs/hyde` の rev には触りません。以下は調査の記録です。
 
 #### 問題
 
@@ -685,9 +695,17 @@ nix eval --impure --expr '
 
 ### B-7. テーマ自動更新が一度も動いていない
 
+> [!NOTE]
+> **解決済み**（[#67](https://github.com/santamn/hydenix/pull/67)）。修正方法の 2 段構えをほぼそのまま入れました。
+>
+> 1. 追跡先は `src` の中の `ref` ではなく、`mkTheme` の `branch` 引数として持たせました。ブランチ別に分かれた 21 テーマだけが指定し、残り 37 は `null`（既定ブランチ）です。値は `passthru.updateBranch` に入り、derivation の環境には入らないので、テーマのハッシュは変わりません。Red-Stone の homepage も実ブランチ `Red_Stone` に合わせました
+> 2. スクリプトは捨て、`nix run .#update-themes`（[#69](https://github.com/santamn/hydenix/pull/69) で `update-branch-pins` に改名）が各テーマを nix-update に `--version=branch` で渡す形にしました。ブランチの先頭を解決して `rev` と `sha256` をまとめて書き換えるのは nix-update の仕事です。ブランチを解決できないと非ゼロで終わるので、追跡先が壊れればジョブが落ちます
+>
+> nix-update は `src` が定義されている位置のファイルを書き換えるので、`mkTheme` が `inherit src;` していると共通関数のほうが書き換え対象になってしまいます。そのため `mkTheme` は呼び出し側の属性をそのまま `mkDerivation` に通す形に変えました。付随して直すとよい点の `grep -oP` と `nix hash to-sri` は、スクリプトごと消えています。以下は調査の記録です。
+
 #### 問題
 
-[`scripts/update-themes.sh`](../scripts/update-themes.sh) と [`update-themes.yml`](../.github/workflows/update-themes.yml) は、テーマの `rev` / `sha256` を定期更新するための仕組みですが、実際には `rev` も `sha256` も一度も更新されていません。毎日 0:00 UTC に起動して、差分ゼロで PR を作らずに終わっています。
+`scripts/update-themes.sh` と `update-themes.yml`（どちらも #67 で削除）は、テーマの `rev` / `sha256` を定期更新するための仕組みですが、実際には `rev` も `sha256` も一度も更新されていません。毎日 0:00 UTC に起動して、差分ゼロで PR を作らずに終わっています。
 
 #### 原因
 
@@ -749,7 +767,7 @@ done
 
 2026-07 時点の結果は 58 件中 11 件が upstream に遅れていました。
 
-```
+```text
 1-Bit: ee6a1336 -> 84b2f94e            Moonlight:       cc389fdc -> 50f77a6e
 Breezy-Autumn: db980839 -> 959294bf    Obsidian-Purple: d1c90091 -> b73f00b1
 Cosmic-Blue: f5e0e85d -> ad8a9a50      Peace-Of-Mind:   45ee6f24 -> 632fb4a0
@@ -798,7 +816,7 @@ Grukai: 95e0b926 -> 3945b4a1
 
 #### 付随して直すとよい点
 
-- [`update-themes.sh`](../scripts/update-themes.sh) L13-16 の `grep -oP` は GNU grep 依存で、`nix-shell -p` の指定に GNU grep が入っていないため macOS ローカルでは動きません（CI の ubuntu では通るので表面化していない）。`sed -E` で代替するか `gnugrep` を足す
+- `update-themes.sh` L13-16 の `grep -oP` は GNU grep 依存で、`nix-shell -p` の指定に GNU grep が入っていないため macOS ローカルでは動きません（CI の ubuntu では通るので表面化していない）。`sed -E` で代替するか `gnugrep` を足す
 - L51 の `nix hash convert --hash-algo sha256` と L67 の `nix hash to-sri --type sha256` が不統一（出力はどちらも SRI なので実害は無い。`nix hash to-sri` は deprecated）
 
 #### 優先度の補足
@@ -846,7 +864,7 @@ done
 
 実行結果:
 
-```
+```text
 404  dconf.set.sh
 404  theme.set.sh
 200  color/dconf.sh
@@ -1408,6 +1426,13 @@ hydenix に無くても、利用側（`santamn/dotnix`）で解決できるも�
 | [#44](https://github.com/santamn/hydenix/pull/44) | B-4 | `stateVersion` に `mkDefault` |
 | [#45](https://github.com/santamn/hydenix/pull/45) | B-6 | vim 設定の配置条件を `or` から `||` へ |
 | [#46](https://github.com/santamn/hydenix/pull/46) / [#47](https://github.com/santamn/hydenix/pull/47) | B-9 | AUR ヘルパー用エイリアスを削除し、残りを `shellAliases` 宣言へ |
+| [#50](https://github.com/santamn/hydenix/pull/50) / [#51](https://github.com/santamn/hydenix/pull/51) | ドキュメントの参照先 | `docs/` とテンプレートを現状に合わせる。インストール手順が存在しない `.#hydenix` を指していたこと、`template/flake.nix` がアーカイブ済みの上流を指していたことなど |
+| [#52](https://github.com/santamn/hydenix/pull/52) | 自動更新 PR のマージ | 自動更新 PR を auto-merge ではなく直接マージする。`GITHUB_TOKEN` の PR にはチェックが走らず、`gh pr merge --auto` が失敗していた |
+| [#58](https://github.com/santamn/hydenix/pull/58) | A-0 | HyDE が同梱をやめたフォントと VS Code 拡張を、nixpkgs と `HyDE-Project/code-wallbash` から取る |
+| [#61](https://github.com/santamn/hydenix/pull/61) | renovate の hash 更新 | renovate の post-upgrade がリポジトリ名を nix の属性名として使っていた。`nix run .#update-hashes` に置き換え |
+| [#66](https://github.com/santamn/hydenix/pull/66) | `flake.lock` の更新経路 | `flake.lock` の更新を renovate の lockFileMaintenance に一本化し、`update-flake-lock.yml` を削除 |
+| [#67](https://github.com/santamn/hydenix/pull/67) | B-7 | テーマの追跡ブランチを記録し、nix-update で進める |
+| [#69](https://github.com/santamn/hydenix/pull/69) | B-5 | `hyde-diff-upstream` の master ビルドを commit で固定し、毎晩進める |
 
 ### E-2. 本家 → florianvazelle フォークで直ったもの
 
@@ -1415,7 +1440,7 @@ hydenix に無くても、利用側（`santamn/dotnix`）で解決できるも�
 
 | 項目 | フォークでの状態 |
 |---|---|
-| nixpkgs / home-manager / Hyprland / HyDE の陳腐化 | 全て追従（renovate + workflow で自動化） |
+| nixpkgs / home-manager / Hyprland / HyDE の陳腐化 | 全て追従（renovate + workflow で自動化）。このフォークで renovate と `update-branch-pins.yml` の 2 本に整理した（[10](./10-ci.md)） |
 | 本家 issue #169: `programs.git.settings.user.email` の型エラー | `git.nix` をモジュールごと削除 |
 | 行番号決め打ちの `sed`（HyDE 更新で誤爆する） | コメントアウト |
 | standalone home-manager 対応 | `homeConfigurations.default` を追加 |

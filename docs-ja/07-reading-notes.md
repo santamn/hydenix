@@ -130,17 +130,22 @@ setopt_EXTENDED_HISTORY = "true";
 
 フォークでは `imports` のコメントアウトに加えて**オプション定義も無くなった**ため、`hydenix.hm.hyprland.pyprland.*` を書くと未定義エラーで止まります。黙って無視されるよりは親切な挙動です。
 
-## 11. `hyde-diff-upstream` は master を rev に固定している
+## 11. `hyde-diff-upstream` の master は commit で固定されている
 
 ```nix
 # pkgs/hyde-diff-upstream/default.nix
-src = pkgs.fetchFromGitHub {
-  rev = "master";
-  sha256 = "sha256-cNOryXKFpVSTiAuzD0VQAV+2GQhJTTs1HBM6Z0cZoFo=";
-};
+hyde-master = pkgs.hyde.overrideAttrs (old: {
+  src = pkgs.fetchFromGitHub {
+    rev = "7c7b832d479620133fb0a2bdec0fe20cf2e7c90a";   # master 上の commit
+    sha256 = "sha256-+YhLk3J59zThsVVDsbTlSKcBulSxOO/r/HpPZ6Udg1M=";
+  };
+  passthru = (old.passthru or {}) // {updateBranch = "master";};
+});
 ```
 
-`rev = "master"` は動く標的なので、上流が進むとハッシュが合わずビルドが失敗します。使うときは `sha256` の更新が必要です（意図的に「その時点の master」を取る設計です）。
+以前は `rev = "master"` に固定の `sha256` を組み合わせていたので、上流が master に push した時点でハッシュが合わなくなり、`nix run .#hyde-diff-upstream` はビルドできなくなっていました。今は commit を書き、`passthru.updateBranch = "master"` で追っているブランチを示しています。`update-branch-pins.yml` が毎晩この commit を master の先頭へ進めるので、比較相手は最大 1 日遅れの master です（[#69](https://github.com/santamn/hydenix/pull/69)）。
+
+nix-update は `src` を定義しているファイルを書き換えます。ここでは `overrideAttrs` の中で `src` を定義しているので、書き換わるのはこのファイルで、`pkgs/hyde` の rev はそのままです。
 
 ## 12. 名前の紛らわしい重複
 

@@ -22,6 +22,7 @@ hydenix のテーマは2層に分かれて管理されています。
 {pkgs, mkTheme}:
 mkTheme rec {
   name = "Decay Green";
+  branch = "Decay-Green";   # 追っているブランチ（1 リポジトリにテーマをブランチ別に置いている場合だけ）
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";
@@ -33,11 +34,13 @@ mkTheme rec {
 }
 ```
 
+`rev` は commit で固定したまま、`update-branch-pins.yml` が毎晩 `branch` の先頭へ進めます。`branch` を書いていないテーマ（テーマ専用リポジトリの 37 個）はリポジトリの既定ブランチを追います。`branch` は更新ツールが読むだけの情報なので、`mkTheme` は derivation には渡しません（[10](./10-ci.md)）。
+
 ### mkTheme.nix によるビルド
 
 [`utils/mkTheme.nix`](../pkgs/hydenix-themes/utils/mkTheme.nix) が実際のビルド処理を担当し、次のレイアウトを持つパッケージを作ります。
 
-```
+```text
 $out/share/
 ├── hyde/themes/<テーマ名>/   ← HyDE が読む設定一式（wallbash の色定義など）
 ├── themes/                   ← GTK テーマ
@@ -63,7 +66,7 @@ mkTheme = import ./utils/mkTheme.nix {
 };
 ```
 
-CI では `flake.nix` の `checks.theme-assets` が `Bibata-Modern-Ice` / `Tela-circle-dracula` / Catppuccin Mocha / Catppuccin Latte を 1 つの `buildEnv` に束ねており、同じ衝突が起きれば PR の時点で落ちます（[santamn/hydenix#5](https://github.com/santamn/hydenix/pull/5)）。
+CI では `flake.nix` の `checks.theme-assets` が `Bibata-Modern-Ice` / `Tela-circle-dracula` / Catppuccin Mocha / Catppuccin Latte を 1 つの `buildEnv` に束ねており、同じ衝突が起きれば PR の時点で落ちます（[santamn/hydenix#10](https://github.com/santamn/hydenix/pull/10)）。
 
 なお `modules/hm/theme.nix` が使う `symlinkJoin` は `buildEnv` と違い、同名パスの 2 つ目を**警告してスキップする**だけでエラーにしません。テーマ同士が同名アイコンテーマを別ビルドで同梱しているケースはこの経路を通るため検出されません。詳しくは [08-improvements.md](./08-improvements.md) の B-10 を参照してください。
 

@@ -8,7 +8,7 @@
 
 ## 結論
 
-**ブランチを分けます。**
+ブランチを分けます。
 
 | ブランチ | 中身 | 用途 |
 |---|---|---|
@@ -21,7 +21,7 @@
 `main` から分岐した PR には**構造的に混入しません**。
 「うっかり入れてしまう」事故が起きない、というのがこの方式の要点です。
 
-```
+```text
                           fix/... ──●
                                      ╲   ← PR 経由でマージ
    origin/main ──●──●──●──────────────●──▶  santamn/hydenix (main)
@@ -63,7 +63,7 @@ git switch -c ja
 
 remote の状態は次のようになります。
 
-```
+```text
 origin    → github.com/santamn/hydenix       （自分のフォーク）
 upstream  → github.com/florianvazelle/hydenix（アーカイブ済み。履歴を見るときだけ使う）
 ```
@@ -91,14 +91,18 @@ worktree をリポジトリ内に置きたい場合は `.wt/` 以下が使えま
 
 ### 1. 依存を更新する
 
-上流が止まったので、`git merge upstream/main` は無くなりました。代わりに追うのは依存だけです。どちらも自動で PR が立つので、普段の作業は届いた PR を見てマージするだけです。
+上流が止まったので、`git merge upstream/main` は無くなりました。代わりに追うのは依存だけです。どれも自動で PR が立ち、一部は自動でマージされます。
 
-| 何が動くか | 何を上げるか |
-|---|---|
-| `update-flake-lock.yml`（週次） | `flake.lock`（nixpkgs、home-manager、Hyprland ほか） |
-| `renovate.yml` | GitHub Actions のバージョン、HyDE のタグ、テーマの sha256 |
+| 何が動くか | 何を上げるか | マージ |
+|---|---|---|
+| `renovate.yml`（週次）の lockFileMaintenance | `flake.lock`（nixpkgs、home-manager ほか） | チェックが通れば renovate が自動で |
+| `renovate.yml`（週次） | `pkgs/` の `rev`（HyDE やツール類のタグ）、`flake.nix` の Hyprland のタグ | 手動 |
+| `update-branch-pins.yml`（毎日） | テーマ 58 個と HyDE master（`hyde-diff-upstream` 用）の commit 固定 | ワークフローが直接 |
+| Dependabot（毎日） | GitHub Actions のバージョン | 手動 |
 
-Hyprland は `flake.nix` で HyDE が対応する版に固定してあるので、renovate が上げてきても HyDE 側の対応版を確認してからマージします。詳細は [10-ci.md](./10-ci.md)。
+手動でマージするものが普段の作業です。Hyprland は `flake.nix` で HyDE が対応する版に固定してあるので、renovate が上げてきても HyDE 側の対応版を確認してからマージします。詳細は [10-ci.md](./10-ci.md)。
+
+`pkgs/` の `rev` を手で書き換えたときは、`nix run .#update-hashes` で `hash` を計算し直します。renovate も同じコマンドを使うので、手動の更新と bot の更新は同じ経路を通ります。`version` は `rev` から導かれるので触りません。
 
 ### 2. `ja` ブランチを追随させる
 
@@ -139,7 +143,7 @@ git push -u origin fix/mutable-generation-dag-name
 
 上流がアーカイブされる前は、同じブランチから `base` だけ変えて上流へも出す 2 段構えでしたが、今は `santamn/hydenix` の `main` へ 1 回出すだけです。
 
-```
+```text
 base:    santamn/hydenix  main
 compare: santamn/hydenix  fix/mutable-generation-dag-name
 ```
@@ -159,9 +163,9 @@ git switch ja && git merge main
 
 ## PR を出すときの決まりごと
 
-このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が強制し、整形はレビューで担保する運用です。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
+このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が検査し、整形はレビューで担保する運用です。ブランチ保護ではどのチェックも必須にしていないので、落ちていてもマージ自体はできてしまいます。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
 
-| 項目 | ツール | CI で強制 | 内容 |
+| 項目 | ツール | CI で検査 | 内容 |
 |---|---|---|---|
 | 整形 | treefmt（alejandra / deadnix / statix） | されない | `nix fmt` を通すこと |
 | コミットメッセージ | commitlint | される | **Conventional Commits 必須**。72 文字以内、末尾のピリオド禁止 |
@@ -172,13 +176,13 @@ git switch ja && git merge main
 
 コミットメッセージの型は次のどれかです。
 
-```
+```text
 build / chore / ci / docs / feat / fix / perf / refactor / revert / style / test
 ```
 
 例:
 
-```
+```text
 fix: correct activation dependency name to mutableFileGeneration
 docs: add Japanese reading notes
 refactor(hyprland): generate assertions from mkHyprConfig
@@ -193,29 +197,44 @@ refactor(hyprland): generate assertions from mkHyprConfig
 
 ### PR 本文の書き方
 
-英語で、次の 5 点を含めます。
+英語で、[`.github/pull_request_template.md`](../.github/pull_request_template.md) の見出しをそのまま使います。見出しを足したり名前を変えたりはしません。
 
-- **What**: 何が問題か
-- **Why it matters**: なぜ直すべきか（放置するとどうなるか）
-- **Evidence**: 根拠となるコード箇所
-- **Risk**: 変更のリスク
-- **Testing**: どう確認したか（**実際に確認してから書くこと**）
+| 見出し | 書くこと |
+|---|---|
+| What does this PR do? | 変更の要約を 2〜3 文で |
+| Why is this change needed? | 何が問題で、放置するとどうなるか。issue があればリンクする |
+| How was this implemented? | コミットごとの意図。レビューに要る範囲でコードの細部にも触れる |
+| Type of change | 当てはまらない選択肢は消す |
+| Checklist | Conventional Commits、ドキュメントの更新、新しい警告が出ないこと |
+| Additional context | 任意で、ふだんは節ごと消す。差分と上の節から読み取れないこと（あえて入れなかったものとその理由など）だけを書く |
+
+以前はここで Evidence / Risk / Testing を並べる書き方を勧めていましたが、テンプレートに無い節なので使いません。Additional context の下に足すのもやめます。テンプレートの各節に何を書くかの説明は [#57](https://github.com/santamn/hydenix/pull/57) と [#59](https://github.com/santamn/hydenix/pull/59) で入りました。どう確かめたかを書くなら How の中に、実際に確かめたことだけを書きます。
 
 例（[08-improvements.md](./08-improvements.md) の A-1）:
 
-> **What**: Three activation entries depend on `mutableGeneration`, which does not exist.
-> `modules/hm/mutable.nix` defines the entry as `mutableFileGeneration`.
->
-> **Why it matters**: home-manager silently ignores unknown dependency names in its
-> activation DAG, so the intended ordering ("run after mutable files are copied") is
-> not enforced. The actual execution position depends on the toposort implementation
-> and may change when home-manager is updated.
->
-> **Evidence**: `grep -rn 'entryAfter \["mutableGeneration"\]' modules/`
->
-> **Risk**: None. `mutable.nix`'s `config` is unconditional, so the entry always exists.
->
-> **Testing**: Rebuilt on my NixOS machine; theme applies correctly on a clean profile.
+```markdown
+## What does this PR do?
+
+Point the three activation entries that depend on `mutableGeneration` at `mutableFileGeneration`, the name `modules/hm/mutable.nix` actually defines.
+
+## Why is this change needed?
+
+home-manager silently ignores unknown dependency names in its activation DAG, so the intended ordering ("run after mutable files are copied") is not enforced. Where the entries run depends on the toposort implementation and may change when home-manager is updated.
+
+## How was this implemented?
+
+A string change in three places, all found by `grep -rn 'entryAfter \["mutableGeneration"\]' modules/`. The `config` of `mutable.nix` is unconditional, so the entry always exists.
+
+## Type of change
+
+- [x] Bug fix (non-breaking change which fixes an issue)
+
+## Checklist
+
+- [x] My commits follow conventional commit format
+- [x] I have updated the documentation accordingly
+- [x] My changes generate no new warnings
+```
 
 ### PR は小さく保つ
 
