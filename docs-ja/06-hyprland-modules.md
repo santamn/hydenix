@@ -4,7 +4,7 @@
 
 ## ファイル構成
 
-```
+```text
 hyprland/
 ├── default.nix      ← 入口。imports と hyprland.conf / userprefs.conf の配置
 ├── options.nix      ← オプションの定義（ここだけ読めば何ができるか分かる）
@@ -45,7 +45,7 @@ imports = [
 ];
 ```
 
-`mkHyprConfig` が用意するのは設定ファイルの配置だけで、コマンド本体は入りません。`hyprsunset` はこれが問題になっていました。`~/.config/hypr/hyprsunset.conf` は置かれ、waybar にも `custom/hyprsunset` ボタンが出るのに、パッケージ自体はどこからもインストールされていなかったのです。HyDE の `startup.conf` は毎回これを `exec` するため、ログインのたびに `Executable not found: 'hyprsunset'` という critical 通知が出て、ブルーライト低減も効きませんでした。現在は `default.nix` の `home.packages` に `lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset` を足し、`lockscreen.nix` が hyprlock / swaylock を設定と対で入れているのと同じ形にしてあります（[santamn/hydenix#6](https://github.com/santamn/hydenix/pull/6)）。
+`mkHyprConfig` が用意するのは設定ファイルの配置だけで、コマンド本体は入りません。`hyprsunset` の本体は `default.nix` の `home.packages` に `lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset` を足して入れています。`lockscreen.nix` が hyprlock / swaylock を設定と対で入れているのと同じ形です。
 
 `mkHyprConfig {name = "keybindings";}` を呼ぶと、次のモジュールが返ります。
 
@@ -96,7 +96,7 @@ hydenix.hm.hyprland.keybindings.overrideConfig = ''
 
 `override` 系を使うと `assertions.nix` が rebuild のたびに警告を出します。
 
-```
+```text
 hydenix.hm.hyprland: The following configs are overriding Hyde defaults.
 Note this may break hydenix, hope you know what you're doing!
 (set suppressWarnings = true to hide this warning): keybindings.overrideConfig
@@ -210,7 +210,7 @@ hydenix.hm.hyprland.extraConfig = ''
 
 `hyprland.conf` の末尾に、次の 1 行が自動で足されます。
 
-```
+```text
 exec-once = <dbus>/bin/dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target
 ```
 
@@ -238,7 +238,7 @@ home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneratio
 これらは**テーマ適用スクリプトが後で書き込む先**のファイルです。Hyprland は設定ファイル内の `source = ...` で存在しないファイルを指すとエラーを出すため、初回起動時のエラーを防ぐために空ファイルを先に用意しています。
 
 > [!NOTE]
-> 依存先の `"mutableFileGeneration"` は `mutable.nix` が定義しているエントリ名です。以前は `"mutableGeneration"` と食い違っており、順序制約が効いていませんでした（[#39](https://github.com/santamn/hydenix/pull/39)）。`$DRY_RUN_CMD` は `nixos-rebuild dry-activate` のときに実行を空振りさせるための前置きで、こちらは [#40](https://github.com/santamn/hydenix/pull/40) で足しました。
+> 依存先の `"mutableFileGeneration"` は `mutable.nix` が定義しているエントリ名です。`$DRY_RUN_CMD` は `nixos-rebuild dry-activate` のときに実行を空振りさせるための前置きです。
 
 ## 設定を変更したときの反映
 

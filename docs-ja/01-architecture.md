@@ -28,7 +28,7 @@ hydenix/
 └── docs-ja/               ← 【この資料】※ ja ブランチにのみ存在
 ```
 
-以前は `scripts/` に flake.lock とテーマ sha256 を更新するスクリプトがありましたが、今はどちらも無く、依存の更新は `flake.nix` の `apps`（`update-hashes` / `update-branch-pins`）と renovate が受け持っています（[10](./10-ci.md)）。
+依存の更新は `flake.nix` の `apps`（`update-hashes` / `update-branch-pins`）と renovate が受け持っています（[10](./10-ci.md)）。
 
 **重要な区別**: `modules/` と `pkgs/` は「ライブラリとして提供する側」、
 `template/` は「利用する側」です。
@@ -102,11 +102,6 @@ sequenceDiagram
     AS->>AS: writeBoundary（実ファイル書き込みの境界）
     AS->>AS: createHyprConfigs / createCavaConfig / setTheme ...
 ```
-
-> [!NOTE]
-> 最後の 3 つはかつて `entryAfter ["mutableGeneration"]` と書かれていて、
-> その名前のエントリが存在しないために上の順序が保証されていませんでした。
-> [#39](https://github.com/santamn/hydenix/pull/39) で `mutableFileGeneration` に揃えてあります。
 
 ## オプションの名前空間
 
