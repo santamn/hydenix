@@ -20,6 +20,7 @@ final: _prev: {
   hyprquery = final.callPackage ./hyprquery {}; # hyq: Hyprland 設定値の問い合わせ
   # Additional packages
   Bibata-Modern-Ice = final.callPackage ./Bibata-Modern-Ice.nix {};
+  code-wallbash = final.callPackage ./code-wallbash.nix {}; # wallbash の配色を VS Code に当てる拡張
   hydenix-themes = final.callPackage ./hydenix-themes {};
   pokego = final.callPackage ./pokego {};
   pyamdgpuinfo = final.callPackage ./pyamdgpuinfo {};

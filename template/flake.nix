@@ -8,10 +8,10 @@
   };
 
   inputs = {
-    # hydenix が固定している nixpkgs に揃える。
+    # hydenix の flake.lock が固定している nixpkgs に揃える。
     # 独自の nixpkgs を使うと hydenix 側とパッケージが二重になり不具合が出る
     nixpkgs.follows = "hydenix/nixpkgs";
-    hydenix.url = "github:florianvazelle/hydenix";
+    hydenix.url = "github:santamn/hydenix";
     nixos-hardware.follows = "hydenix/nixos-hardware";
   };
 

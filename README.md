@@ -4,14 +4,23 @@
 # hydenix
 
 [![NixOS Unstable](https://img.shields.io/badge/NixOS-unstable-ebbcba.svg?style=flat-square&logo=NixOS&logoColor=white)](https://nixos.org)
-[![Github Pages](https://img.shields.io/github/actions/workflow/status/florianvazelle/hydenix/pages.yml?style=flat-square&color=c79bf0&label=docs&logo=mdbook&logoColor=white)](https://github.com/florianvazelle/hydenix/actions/workflows/flake-check.yml)
-[![Last Commit](https://img.shields.io/github/last-commit/florianvazelle/hydenix/main?style=flat-square&color=ebbcba)](https://github.com/florianvazelle/hydenix/commits/main)
-[![Nix Flake Check](https://img.shields.io/github/actions/workflow/status/florianvazelle/hydenix/flake-check.yml?style=flat-square&color=c79bf0&label=flake%20check)](https://github.com/florianvazelle/hydenix/actions/workflows/flake-check.yml)
+[![Github Pages](https://img.shields.io/github/actions/workflow/status/santamn/hydenix/pages.yml?style=flat-square&color=c79bf0&label=docs&logo=mdbook&logoColor=white)](https://github.com/santamn/hydenix/actions/workflows/pages.yml)
+[![Last Commit](https://img.shields.io/github/last-commit/santamn/hydenix/main?style=flat-square&color=ebbcba)](https://github.com/santamn/hydenix/commits/main)
+[![Nix Flake Check](https://img.shields.io/github/actions/workflow/status/santamn/hydenix/flake-check.yml?style=flat-square&color=c79bf0&label=flake%20check)](https://github.com/santamn/hydenix/actions/workflows/flake-check.yml)
 
 **hydenix** is a **NixOS + Home Manager configuration** for [HyDE](https://github.com/HyDE-Project/HyDE).
 
 It brings the HyDE desktop experience to NixOS while taking advantage of
 the Nix module system and reproducible configuration management.
+
+> [!NOTE]
+> This repository continues a lineage whose earlier links have stopped.
+>
+> ```text
+> richen604/hydenix             in maintenance mode: no further nixpkgs or HyDE updates
+>   └─ florianvazelle/hydenix   archived: read-only
+>        └─ santamn/hydenix     <-- this repository
+> ```
 
 ## ✨ Features
 
@@ -25,7 +34,7 @@ the Nix module system and reproducible configuration management.
 
 > [!IMPORTANT]
 > Some familiarity with **functional programming concepts** is recommended.  
-> If you are new to Nix, check the [Nix resources](https://florianvazelle.github.io/hydenix/faq.html#how-do-i-learn-more-about-nix) or ask questions in **Discussions** or **Discord**.
+> If you are new to Nix, check the [Nix resources](https://santamn.github.io/hydenix/faq.html#how-do-i-learn-more-about-nix) or ask questions in **Issues** or **Discord**.
 
 ## 🚀 Getting Started
 
@@ -36,7 +45,7 @@ import the provided NixOS / Home‑Manager modules in your own
 You can bootstrap a new project using the **hydenix template**:
 
 ```bash
-nix flake new -t github:florianvazelle/hydenix my-hydenix-config
+nix flake new -t github:santamn/hydenix my-hydenix-config
 cd my-hydenix-config
 ```
 
@@ -44,24 +53,24 @@ This creates a pre-configured flake with hydenix already integrated, allowing yo
 
 ## 📚 Documentation
 
-- [Installation](https://florianvazelle.github.io/hydenix/installation.html)
-- [Upgrading](https://florianvazelle.github.io/hydenix/upgrading.html)
-- [Module Options](https://florianvazelle.github.io/hydenix/options.html)
-- [FAQ](https://florianvazelle.github.io/hydenix/faq.html)
-- [Troubleshooting & Issues](https://florianvazelle.github.io/hydenix/troubleshooting.html)
-- [Contributing](https://florianvazelle.github.io/hydenix/contributing.html)
-- [Community Configurations](https://florianvazelle.github.io/hydenix/community.html)
+- [Installation](https://santamn.github.io/hydenix/installation.html)
+- [Upgrading](https://santamn.github.io/hydenix/upgrading.html)
+- [Module Options](https://santamn.github.io/hydenix/options.html)
+- [FAQ](https://santamn.github.io/hydenix/faq.html)
+- [Troubleshooting & Issues](https://santamn.github.io/hydenix/troubleshooting.html)
+- [Contributing](https://santamn.github.io/hydenix/contributing.html)
+- [Community Configurations](https://santamn.github.io/hydenix/community.html)
 <!-- - [Roadmap / Upcoming Features](./TODO.md) -->
 
 ## 🖥️ hydenix VM
 
 If your system supports virtualization, you can try **hydenix in a NixOS VM** without installing it on your machine.
 
-If you encounter issues running Hyprland inside the VM, see the [VirtIO guide](https://florianvazelle.github.io/hydenix/faq.html#how-do-i-run-hyprland-in-a-vm).
+If you encounter issues running Hyprland inside the VM, see the [VirtIO guide](https://santamn.github.io/hydenix/faq.html#how-do-i-run-hyprland-in-a-vm).
 
 ```bash
 # run the flake remotely
-nix run github:florianvazelle/hydenix
+nix run github:santamn/hydenix
 ```
 
 > [!NOTE]

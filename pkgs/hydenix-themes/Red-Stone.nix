@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Red Stone";
+  branch = "Red_Stone";
   src = pkgs.fetchFromGitHub {
     owner = "mahaveergurjar";
     repo = "Theme-Gallery";
@@ -13,6 +14,6 @@ mkTheme rec {
   };
   meta = {
     description = "HyDE Theme: Red Stone";
-    homepage = "https://github.com/mahaveergurjar/Theme-Gallery/tree/Red-Stone";
+    homepage = "https://github.com/mahaveergurjar/Theme-Gallery/tree/Red_Stone";
   };
 }

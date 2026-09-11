@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Material Sakura";
+  branch = "Material-Sakura";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

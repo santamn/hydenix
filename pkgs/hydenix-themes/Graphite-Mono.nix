@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Graphite Mono";
+  branch = "Graphite-Mono";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

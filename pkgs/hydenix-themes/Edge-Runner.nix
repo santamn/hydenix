@@ -4,6 +4,7 @@
 }:
 mkTheme rec {
   name = "Edge Runner";
+  branch = "Edge-Runner";
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-themes";

@@ -5,6 +5,15 @@
 It brings the HyDE desktop experience to NixOS while taking advantage of
 the Nix module system and reproducible configuration management.
 
+> [!NOTE]
+> This repository continues a lineage whose earlier links have stopped.
+>
+> ```text
+> richen604/hydenix             in maintenance mode: no further nixpkgs or HyDE updates
+>   └─ florianvazelle/hydenix   archived: read-only
+>        └─ santamn/hydenix     <-- this repository
+> ```
+
 ## Features
 
 - Declarative configuration via `hydenix` and `hydenix.hm` options
@@ -18,7 +27,7 @@ the Nix module system and reproducible configuration management.
 > [!IMPORTANT]  
 > Some familiarity with **functional programming concepts** is recommended.  
 >
-> If you are new to Nix, check the [Nix resources](./faq.md#how-do-i-learn-more-about-nix) or ask questions in **Discussions** or **Discord**.
+> If you are new to Nix, check the [Nix resources](./faq.md#how-do-i-learn-more-about-nix) or ask questions in **Issues** or **Discord**.
 
 ## Documentation
 
@@ -39,7 +48,7 @@ If you encounter issues running Hyprland inside the VM, see the [VirtIO guide](.
 
 ```bash
 # run the flake remotely
-nix run github:florianvazelle/hydenix
+nix run github:santamn/hydenix
 ```
 
 > [!NOTE]
