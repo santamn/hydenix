@@ -24,10 +24,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       # Create a PR for pins that succeeded without stopping the job, even if some pins failed to update
+      # `shell: bash` adds pipefail so `tee` cannot swallow the exit status this step is judged on
       - name: Update branch pins
         id: update
         continue-on-error: true
-        run: nix run .#update-branch-pins
+        shell: bash
+        run: nix run .#update-branch-pins 2>&1 | tee "$RUNNER_TEMP/update-branch-pins.log"
 
       - name: Create Pull Request
         id: create_pr
@@ -59,6 +61,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
 
+      # A step that only exits 1 annotates the job with nothing but "exit code 1", so restate the
+      # failure where the run page shows it: update-branch-pins repeats every failure after the
+      # 'could not update:' line, so the tail of its log needs no parsing
       - name: Fail if any pin could not be updated
         if: steps.update.outcome == 'failure'
-        run: exit 1
+        run: |
+          detail=$(awk '/^could not update:/,0' "$RUNNER_TEMP/update-branch-pins.log")
+          printf '::error title=Branch pin update failed::%s\n' "$(head -n 1 <<<"$detail")"
+          cat >>"$GITHUB_STEP_SUMMARY" <<EOF
+          ## Branch pins that could not be updated
+
+          \`\`\`
+          $detail
+          \`\`\`
+          EOF
+          exit 1

@@ -166,16 +166,29 @@
           runtimeInputs = [nix-update pkgs.git];
           text = ''
             failed=()
+            failureLog=$(mktemp)
+            trap 'rm -f "$failureLog"' EXIT
 
             # One unreachable upstream must not hold back the rest, so collect and report at the end
             update() {
-              nix-update "$1" --flake --version="$2" || failed+=("$1")
+              local log
+              log=$(mktemp)
+              if ! nix-update "$1" --flake --version="$2" 2>&1 | tee "$log"; then
+                failed+=("$1")
+                {
+                  printf '\n----- %s -----\n' "$1"
+                  cat "$log"
+                } >>"$failureLog"
+              fi
+              rm -f "$log"
             }
 
             ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList updatePin pins)}
 
             if [ ''${#failed[@]} -gt 0 ]; then
+              # Repeat the failures here; in a full run they are buried under the pins that worked
               printf 'could not update: %s\n' "''${failed[*]}" >&2
+              cat "$failureLog" >&2
               exit 1
             fi
           '';
