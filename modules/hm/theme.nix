@@ -11,6 +11,9 @@
 
   # Filter out themes that don't have corresponding packages
   availableThemes = lib.filter (themeName: findThemeByName themeName != null) cfg.themes;
+
+  # Icons, GTK themes and fonts of the enabled themes, bundled into one tree
+  themeAssets = pkgs.hydenix-theme-assets (map findThemeByName availableThemes);
 in {
   options.hydenix.hm.theme = {
     enable = lib.mkOption {
@@ -36,17 +39,9 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    # Create a combined theme package using symlinkJoin with only selected themes
-    home.packages = [
-      (pkgs.symlinkJoin {
-        name = "hydenix-themes";
-        paths = lib.filter (p: p != null) (map findThemeByName availableThemes);
-        meta = {
-          description = "Combined HyDE themes package";
-          platforms = pkgs.lib.platforms.all;
-        };
-      })
-    ];
+    # The icon themes that share a name with another theme's go to the profile, which both GTK and
+    # Qt search last, so ~/.local/share/icons below still provides the index.theme
+    home.packages = [themeAssets.altIcons];
 
     # walks through the themes and creates symlinks in the hyde themes directory
     home.file = let
@@ -58,9 +53,23 @@ in {
         })
         availableThemes
       );
+
+      # HyDE's theme.patch.sh unpacks into the same directories, and `recursive` links entry by
+      # entry, so the theme switcher and themes imported at runtime can still write there
+      assetDirs = lib.listToAttrs (
+        map (
+          kind:
+            lib.nameValuePair ".local/share/${kind}" {
+              source = "${themeAssets.main}/${kind}";
+              force = true;
+              recursive = true;
+            }
+        ) ["icons" "themes" "fonts"]
+      );
     in
       lib.mkMerge (
-        map (theme: {
+        [assetDirs]
+        ++ map (theme: {
           ".config/hyde/themes/${theme.name}" = {
             source = "${theme.pkg}/share/hyde/themes/${theme.name}";
             force = true;
