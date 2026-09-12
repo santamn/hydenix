@@ -108,7 +108,12 @@ in {
       enable = true;
       enableCompletion = true;
       autosuggestion.enable = true;
+      autosuggestion.strategy = ["history" "completion"];
       syntaxHighlighting.enable = true;
+      history = {
+        extended = true;
+        expireDuplicatesFirst = true;
+      };
       oh-my-zsh = {
         enable = true;
         inherit (cfg.zsh) plugins;
