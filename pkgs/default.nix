@@ -8,6 +8,7 @@ final: _prev: {
   # Additional packages
   Bibata-Modern-Ice = final.callPackage ./Bibata-Modern-Ice.nix {};
   code-wallbash = final.callPackage ./code-wallbash.nix {};
+  hydenix-theme-assets = final.callPackage ./hydenix-theme-assets.nix {};
   hydenix-themes = final.callPackage ./hydenix-themes {};
   pokego = final.callPackage ./pokego {};
   pyamdgpuinfo = final.callPackage ./pyamdgpuinfo {};

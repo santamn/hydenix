@@ -175,14 +175,18 @@
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde code-wallbash Bibata-Modern-Ice Tela-circle-dracula;
 
-      # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`
+      # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`.
+      # `altIcons` pulls in the whole asset tree, so this builds the merge as well
       theme-assets = pkgs.buildEnv {
         name = "hydenix-theme-assets";
         paths = with pkgs; [
           Bibata-Modern-Ice
           Tela-circle-dracula
-          hydenix-themes."Catppuccin Mocha"
-          hydenix-themes."Catppuccin Latte"
+          (hydenix-theme-assets [
+            hydenix-themes."Catppuccin Mocha"
+            hydenix-themes."Catppuccin Latte"
+          ])
+          .altIcons
         ];
       };
     };
