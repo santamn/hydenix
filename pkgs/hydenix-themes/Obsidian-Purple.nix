@@ -7,9 +7,9 @@ mkTheme rec {
   src = pkgs.fetchFromGitHub {
     owner = "amit-0i";
     repo = "Obsidian-Purple";
-    rev = "d1c90091117da83ad121027d2d32c6cd9b72b55f";
+    rev = "b73f00b1202f9891473572f038fa52efaa622951";
     inherit name;
-    sha256 = "sha256-wmply5k/FP1QKobCp+ZeaCzdHIlURAxdur3xXAF7qD0=";
+    sha256 = "sha256-kNpAcelCY06MdbFUQHxJxwfCpZh1E65Y+9T27gJSWfg=";
   };
   meta = {
     inherit name;
