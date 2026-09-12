@@ -38,6 +38,19 @@
 
     # Eval the treefmt modules from ./treefmt.nix
     treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+
+    # nix-update splices the attribute path into a Nix expression through `json.dumps`, which
+    # escapes non-ASCII as `\uXXXX`. Nix reads `\u` as a plain `u`, so a theme named
+    # "Rosé Pine" is looked up as "Rosu00e9 Pine" and the hash refresh fails.
+    nix-update = pkgs.nix-update.overrideAttrs (prev: {
+      postPatch =
+        (prev.postPatch or "")
+        + ''
+          substituteInPlace nix_update/options.py \
+            --replace-fail '".".join(map(json.dumps, self.attribute_path))' \
+              '".".join(json.dumps(part, ensure_ascii=False) for part in self.attribute_path)'
+        '';
+    });
   in {
     # Define custom NixOS modules
     nixosModules.default = {...}: {
@@ -116,7 +129,7 @@
         type = "app";
         program = pkgs.lib.getExe (pkgs.writeShellApplication {
           name = "update-hashes";
-          runtimeInputs = [pkgs.nix-update pkgs.git];
+          runtimeInputs = [nix-update pkgs.git];
           text = ''
             for attr in ${pkgs.lib.concatStringsSep " " (builtins.attrNames updatable)}; do
               nix-update "$attr" --flake --version=skip
@@ -150,7 +163,7 @@
         type = "app";
         program = pkgs.lib.getExe (pkgs.writeShellApplication {
           name = "update-branch-pins";
-          runtimeInputs = [pkgs.nix-update pkgs.git];
+          runtimeInputs = [nix-update pkgs.git];
           text = ''
             failed=()
 
