@@ -38,6 +38,19 @@
 
     # Eval the treefmt modules from ./treefmt.nix
     treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+
+    # nix-update splices the attribute path into a Nix expression through `json.dumps`, which
+    # escapes non-ASCII as `\uXXXX`. Nix reads `\u` as a plain `u`, so a theme named
+    # "Rosé Pine" is looked up as "Rosu00e9 Pine" and the hash refresh fails.
+    nix-update = pkgs.nix-update.overrideAttrs (prev: {
+      postPatch =
+        (prev.postPatch or "")
+        + ''
+          substituteInPlace nix_update/options.py \
+            --replace-fail '".".join(map(json.dumps, self.attribute_path))' \
+              '".".join(json.dumps(part, ensure_ascii=False) for part in self.attribute_path)'
+        '';
+    });
   in {
     # Define custom NixOS modules
     nixosModules.default = {...}: {
@@ -116,7 +129,7 @@
         type = "app";
         program = pkgs.lib.getExe (pkgs.writeShellApplication {
           name = "update-hashes";
-          runtimeInputs = [pkgs.nix-update pkgs.git];
+          runtimeInputs = [nix-update pkgs.git];
           text = ''
             for attr in ${pkgs.lib.concatStringsSep " " (builtins.attrNames updatable)}; do
               nix-update "$attr" --flake --version=skip
@@ -150,19 +163,32 @@
         type = "app";
         program = pkgs.lib.getExe (pkgs.writeShellApplication {
           name = "update-branch-pins";
-          runtimeInputs = [pkgs.nix-update pkgs.git];
+          runtimeInputs = [nix-update pkgs.git];
           text = ''
             failed=()
+            failureLog=$(mktemp)
+            trap 'rm -f "$failureLog"' EXIT
 
             # One unreachable upstream must not hold back the rest, so collect and report at the end
             update() {
-              nix-update "$1" --flake --version="$2" || failed+=("$1")
+              local log
+              log=$(mktemp)
+              if ! nix-update "$1" --flake --version="$2" 2>&1 | tee "$log"; then
+                failed+=("$1")
+                {
+                  printf '\n----- %s -----\n' "$1"
+                  cat "$log"
+                } >>"$failureLog"
+              fi
+              rm -f "$log"
             }
 
             ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList updatePin pins)}
 
             if [ ''${#failed[@]} -gt 0 ]; then
+              # Repeat the failures here; in a full run they are buried under the pins that worked
               printf 'could not update: %s\n' "''${failed[*]}" >&2
+              cat "$failureLog" >&2
               exit 1
             fi
           '';
