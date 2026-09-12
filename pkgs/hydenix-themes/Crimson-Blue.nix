@@ -7,9 +7,9 @@ mkTheme rec {
   src = pkgs.fetchFromGitHub {
     owner = "amit-0i";
     repo = "Crimson-Blue";
-    rev = "5bc78a51f22b0cf4895bb3eda5bab8db412740fb";
+    rev = "ee6da6ffe1d8e2a14d1ee993ea1e5074f3158c44";
     inherit name;
-    sha256 = "sha256-MP2uTpH0rayCwHM2gWIaCbB0tARbMKLY9CUAZXPkM4U=";
+    sha256 = "sha256-jox9sKIUp+8+46ziq24Eezry7XA2lExvedYIz8z5Ks4=";
   };
   meta = {
     inherit name;

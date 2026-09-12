@@ -8,9 +8,9 @@ mkTheme rec {
     owner = "Maroc02";
     repo = "Timeless-Dream";
     # locking commit
-    rev = "8a10d655dd42ea175e2196b60c57c21d53f96fbd";
+    rev = "5104d77cb46a3968b5d55c5c864fb722268c5bb5";
     inherit name;
-    sha256 = "sha256-QZnGiMjuL+rgDm0puTwIexeaL/x6lf6SsZ8/dLWvTf4=";
+    sha256 = "sha256-A6GIRUDUGf/1MBsvNu23DmU7bp+x4pXSayDb79A1nEU=";
   };
   meta = {
     inherit name;
