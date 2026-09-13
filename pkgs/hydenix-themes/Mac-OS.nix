@@ -8,9 +8,9 @@ mkTheme rec {
   src = pkgs.fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyde-gallery";
-    rev = "2ce4d3eae646b96133df919c87dc052152033a1d";
+    rev = "f276fd5914a8e45e356a21ad8a7f705710b13f26";
     inherit name;
-    sha256 = "sha256-QmM3JaSLCQn9eqKqSNL13b2DrsxIGiCztbxobsHbbq0=";
+    sha256 = "sha256-larDxuslmWA3fOGIQc4VNWq/nlIqRGkfnyKp057O90g=";
   };
   meta = {
     description = "HyDE Theme: Mac OS";
