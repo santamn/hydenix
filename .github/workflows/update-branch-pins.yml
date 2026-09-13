@@ -23,11 +23,13 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
-      # Create a PR for pins that succeeded without stopping the job, even if some pins failed to update
       - name: Update branch pins
         id: update
-        continue-on-error: true
-        run: nix run .#update-branch-pins
+        shell: bash
+        run: |
+          if ! nix run .#update-branch-pins 2>&1 | tee "$RUNNER_TEMP/update-branch-pins.log"; then
+            echo failed=true >>"$GITHUB_OUTPUT"
+          fi
 
       - name: Create Pull Request
         id: create_pr
@@ -59,6 +61,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
 
-      - name: Fail if any pin could not be updated
-        if: steps.update.outcome == 'failure'
-        run: exit 1
+      - name: Notify failed pin updates
+        if: steps.update.outputs.failed == 'true'
+        run: |
+          log=$RUNNER_TEMP/update-branch-pins.log
+          detail=$(awk '/^could not update:/,0' "$log")
+          if [ -n "$detail" ]; then
+            message=$(head -n 1 <<<"$detail")
+          else
+            message='update-branch-pins stopped before reporting; see the tail below or the Update branch pins log'
+            detail=$(tail -n 50 "$log")
+          fi
+          printf '::error title=Branch pin update failed::%s\n' "$message"
+          cat >>"$GITHUB_STEP_SUMMARY" <<EOF
+          ## Branch pin update failed
+
+          \`\`\`
+          $detail
+          \`\`\`
+          EOF
+          exit 1
