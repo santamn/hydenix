@@ -6,8 +6,8 @@
   src = fetchFromGitHub {
     owner = "rubiin";
     repo = "pokego";
-    rev = "v0.5.2";
-    hash = "sha256-GBKQ9YV98znhTP9QsvAAyva8dNohFS8dbQ4FAG5IDig=";
+    rev = "v0.5.7";
+    hash = "sha256-IeO+mMo29LEhOSf1PmE0BWryK6zGa46azXm5DqWDZiw=";
   };
   version = lib.removePrefix "v" src.rev;
 in
