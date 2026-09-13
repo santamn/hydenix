@@ -72,7 +72,7 @@ Example:
 Existing file '/home/user/.config/kitty/kitty.conf' is in the way of '/nix/store/...-home-manager-files/.config/kitty/kitty.conf'
 ```
 
-**Solution 1: remove existing files (recommended)**
+##### Solution 1: remove existing files (recommended)
 
 Remove the conflicting files and let home-manager recreate them:
 
@@ -84,7 +84,7 @@ rm ~/.config/kitty/kitty.conf
 rm -rf ~/.config/kitty/
 ```
 
-**Solution 2: backup existing files**
+##### Solution 2: backup existing files
 
 If you want to preserve your existing configuration:
 
@@ -95,21 +95,6 @@ mv ~/.config/kitty/kitty.conf ~/.config/kitty/kitty.conf.backup
 # Then rebuild to let home-manager create the new file
 sudo nixos-rebuild switch
 ```
-
-**Solution 3: force home-manager to backup automatically**
-
-Add this to your `configuration.nix` to automatically backup conflicting files:
-
-```nix
-{
-  home-manager.backupFileExtension = "backup";
-}
-```
-
-This will automatically rename existing files with a `.backup` extension when home-manager encounters conflicts, allowing the rebuild to proceed without manual intervention only once.
-
-> [!WARNING]
-> If there is a conflict again, home-manager will error for you to manually resolve it. i don't include this by default as automating backups may not be ideal for users and it does not really solve the issue with managing backups
 
 ### What are the module options?
 
@@ -193,15 +178,16 @@ See [home.file options](https://home-manager-options.extranix.com/?query=home.fi
 
 - Extends `home.file`, `xdg.configFile`, and `xdg.dataFile` with a `mutable` option
 - Files marked as `mutable = true` (and `force = true`) will be writable
-- Changes persist across rebuilds
+- Every rebuild copies them again, so edits made at runtime are overwritten
+- Removing one from your configuration deletes it on the next rebuild, and rolling back to an older generation restores the files of that generation
 - Useful for programs that need runtime configuration changes
 
 Example usage in scripts:
 
 ```nix
 home.activation = {
-    example = lib.hm.dag.entryAfter [ "mutableGeneration" ] ''
-        $DRY_RUN_CMD echo "example"
+    example = lib.hm.dag.entryAfter [ "mutableFileGeneration" ] ''
+        run echo "example"
     '';
 }
 ```
