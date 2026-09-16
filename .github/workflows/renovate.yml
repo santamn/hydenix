@@ -60,10 +60,9 @@ jobs:
     if: ${{ !cancelled() && github.actor != 'dependabot[bot]' && needs.changes.outputs.runner != 'false' }}
     runs-on: ubuntu-latest
     environment: renovate
+    # Renovate writes with RENOVATE_TOKEN, so GITHUB_TOKEN only needs to check out
     permissions:
-      contents: write
-      pull-requests: write
-      statuses: write
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -77,7 +76,6 @@ jobs:
         uses: renovatebot/github-action@37beffda261423addd537c33f2d126df7f6ffbab # v46.2.6
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
-          configurationFile: .github/renovate.json
           docker-cmd-file: .github/renovate-entrypoint.sh
           docker-user: root
         env:
