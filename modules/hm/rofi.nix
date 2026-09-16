@@ -30,8 +30,8 @@ in {
     };
 
     home.activation.hydeRofiThemes = lib.hm.dag.entryAfter ["writeBoundary"] ''
-      $DRY_RUN_CMD mkdir -p "$HOME/.local/share/rofi/themes"
-      $DRY_RUN_CMD find "$HOME/.local/share/hyde/rofi/themes" -type f -o -type l -exec ln -snf {} "$HOME/.local/share/rofi/themes/" \; 2>/dev/null || true
+      run mkdir -p "$HOME/.local/share/rofi/themes"
+      run find "$HOME/.local/share/hyde/rofi/themes" -type f -o -type l -exec ln -snf {} "$HOME/.local/share/rofi/themes/" \; 2>/dev/null || true
     '';
 
     home.file = {

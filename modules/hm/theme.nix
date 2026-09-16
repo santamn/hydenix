@@ -113,7 +113,7 @@ in {
         )
       }:$HOME/.local/bin:$PATH"
 
-      if [ -n "$DRY_RUN_CMD" ]; then
+      if [[ -v DRY_RUN ]]; then
         echo "Would set theme to ${cfg.active}"
       else
         # Set up logging
