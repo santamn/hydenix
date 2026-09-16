@@ -25,8 +25,6 @@ jobs:
 
   renovate-local:
     runs-on: ubuntu-latest
-    # Dependabot runs cannot read the repository secrets, so the dry run would
-    # only fail on an empty RENOVATE_TOKEN.
     if: github.actor != 'dependabot[bot]'
     environment: renovate
     permissions:
