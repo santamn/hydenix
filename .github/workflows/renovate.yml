@@ -77,7 +77,6 @@ jobs:
         uses: renovatebot/github-action@37beffda261423addd537c33f2d126df7f6ffbab # v46.2.6
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
-          configurationFile: .github/renovate.json
           docker-cmd-file: .github/renovate-entrypoint.sh
           docker-user: root
         env:
