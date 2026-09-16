@@ -1,6 +1,7 @@
 {
   lib,
-  buildGoModule,
+  # pokego from v0.5.7 needs Go >= 1.27.1, newer than nixpkgs' default Go
+  buildGo127Module,
   fetchFromGitHub,
 }: let
   src = fetchFromGitHub {
@@ -11,7 +12,7 @@
   };
   version = lib.removePrefix "v" src.rev;
 in
-  buildGoModule {
+  buildGo127Module {
     pname = "pokego";
     inherit src version;
 
