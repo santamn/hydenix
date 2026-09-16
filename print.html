@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-de4015f7.js";
+            window.path_to_searchindex_js = "searchindex-e3fa5599.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -621,7 +621,7 @@ Or create an issue in the <a href="https://github.com/santamn/hydenix/issues">hy
 <p>Example:</p>
 <pre><code class="language-bash">Existing file '/home/user/.config/kitty/kitty.conf' is in the way of '/nix/store/...-home-manager-files/.config/kitty/kitty.conf'
 </code></pre>
-<p><strong>Solution 1: remove existing files (recommended)</strong></p>
+<h5 id="solution-1-remove-existing-files-recommended"><a class="header" href="#solution-1-remove-existing-files-recommended">Solution 1: remove existing files (recommended)</a></h5>
 <p>Remove the conflicting files and let home-manager recreate them:</p>
 <pre><code class="language-bash"># Remove the specific file
 rm ~/.config/kitty/kitty.conf
@@ -629,7 +629,7 @@ rm ~/.config/kitty/kitty.conf
 # Or remove entire config directory if needed (careful not to delete important files)
 rm -rf ~/.config/kitty/
 </code></pre>
-<p><strong>Solution 2: backup existing files</strong></p>
+<h5 id="solution-2-backup-existing-files"><a class="header" href="#solution-2-backup-existing-files">Solution 2: backup existing files</a></h5>
 <p>If you want to preserve your existing configuration:</p>
 <pre><code class="language-bash"># Create backup
 mv ~/.config/kitty/kitty.conf ~/.config/kitty/kitty.conf.backup
@@ -637,17 +637,6 @@ mv ~/.config/kitty/kitty.conf ~/.config/kitty/kitty.conf.backup
 # Then rebuild to let home-manager create the new file
 sudo nixos-rebuild switch
 </code></pre>
-<p><strong>Solution 3: force home-manager to backup automatically</strong></p>
-<p>Add this to your <code>configuration.nix</code> to automatically backup conflicting files:</p>
-<pre><code class="language-nix">{
-  home-manager.backupFileExtension = "backup";
-}
-</code></pre>
-<p>This will automatically rename existing files with a <code>.backup</code> extension when home-manager encounters conflicts, allowing the rebuild to proceed without manual intervention only once.</p>
-<blockquote class="blockquote-tag blockquote-tag-warning">
-<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p>
-<p>If there is a conflict again, home-manager will error for you to manually resolve it. i don’t include this by default as automating backups may not be ideal for users and it does not really solve the issue with managing backups</p>
-</blockquote>
 <h3 id="what-are-the-module-options"><a class="header" href="#what-are-the-module-options">What are the module options?</a></h3>
 <p>Visit <a href="#module-options">options.md</a> for more information on the module options.</p>
 <h3 id="what-if-i-want-to-customize-hydenix"><a class="header" href="#what-if-i-want-to-customize-hydenix">What if I want to customize hydenix?</a></h3>
@@ -707,13 +696,14 @@ all edits must be done in your flake via nixos &amp; home-manager options</p>
 <ul>
 <li>Extends <code>home.file</code>, <code>xdg.configFile</code>, and <code>xdg.dataFile</code> with a <code>mutable</code> option</li>
 <li>Files marked as <code>mutable = true</code> (and <code>force = true</code>) will be writable</li>
-<li>Changes persist across rebuilds</li>
+<li>Every rebuild copies them again, so edits made at runtime are overwritten</li>
+<li>Removing one from your configuration deletes it on the next rebuild, and rolling back to an older generation restores the files of that generation</li>
 <li>Useful for programs that need runtime configuration changes</li>
 </ul>
 <p>Example usage in scripts:</p>
 <pre><code class="language-nix">home.activation = {
-    example = lib.hm.dag.entryAfter [ "mutableGeneration" ] ''
-        $DRY_RUN_CMD echo "example"
+    example = lib.hm.dag.entryAfter [ "mutableFileGeneration" ] ''
+        run echo "example"
     '';
 }
 </code></pre>
