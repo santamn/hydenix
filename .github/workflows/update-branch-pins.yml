@@ -50,8 +50,6 @@ jobs:
 
       - name: Merge PR
         if: steps.create_pr.outputs.pull-request-number
-        # Merging here would close the PR before its checks start, so hand the
-        # merge to GitHub and let it wait for them.
         run: gh pr merge --auto --rebase "$PR_NUMBER"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
