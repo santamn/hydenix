@@ -9,7 +9,38 @@ on:
 permissions: {}
 
 jobs:
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      config: ${{ steps.diff.outputs.config }}
+      runner: ${{ steps.diff.outputs.runner }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE...$HEAD" --jq '.files[] | .filename, .previous_filename // empty')
+          if grep -qE '^\.github/(renovate\.json|workflows/renovate\.yml)$' <<<"$files"; then
+            echo config=true >>"$GITHUB_OUTPUT"
+          else
+            echo config=false >>"$GITHUB_OUTPUT"
+          fi
+          # The dry run reads renovate.json from main, so on a PR it only tests how Renovate is launched
+          if grep -qE '^\.github/(renovate-entrypoint\.sh|workflows/renovate\.yml)$' <<<"$files"; then
+            echo runner=true >>"$GITHUB_OUTPUT"
+          else
+            echo runner=false >>"$GITHUB_OUTPUT"
+          fi
+
   renovate-config-validator:
+    needs: changes
+    # Also runs when `changes` fails
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.config != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,8 +55,10 @@ jobs:
         run: nix-shell -p renovate --run "renovate-config-validator --strict"
 
   renovate-local:
+    needs: changes
+    # Also runs when `changes` fails or is skipped
+    if: ${{ !cancelled() && github.actor != 'dependabot[bot]' && needs.changes.outputs.runner != 'false' }}
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
     environment: renovate
     permissions:
       contents: write
