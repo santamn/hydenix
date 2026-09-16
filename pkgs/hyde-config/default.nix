@@ -1,5 +1,5 @@
 {
-  buildGoModule,
+  buildGoLatestModule,
   fetchFromGitHub,
   lib,
 }: let
@@ -11,7 +11,7 @@
   };
   version = lib.removePrefix "v" src.rev;
 in
-  buildGoModule {
+  buildGoLatestModule {
     pname = "hyde-config";
     inherit src version;
 
