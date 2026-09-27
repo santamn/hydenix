@@ -6,8 +6,8 @@
   src = fetchFromGitHub {
     owner = "rubiin";
     repo = "pokego";
-    rev = "v0.5.8";
-    hash = "sha256-pZGxE58Jfi7oRkYph36XEFXBsxctJ3wAD8YvjEp6l18=";
+    rev = "v0.6.0";
+    hash = "sha256-0zlOyEsgdFmWzQg8/O9VYkM5kZM3c63DHH9rqhLhG70=";
   };
   version = lib.removePrefix "v" src.rev;
 in
@@ -15,7 +15,7 @@ in
     pname = "pokego";
     inherit src version;
 
-    vendorHash = "sha256-Ip2GuQDOolMyDvfmXcJRlY2rMp1amS8owkqcNMOR1+Y=";
+    vendorHash = "sha256-7K17JaXFsjf163g5PXCb5ng2gYdotnZ2IDKk8KFjNj0=";
 
     # Install shell completions
     postInstall = ''
