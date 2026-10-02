@@ -58,6 +58,18 @@ nix run .#update-hashes
 
 `version` is derived from `rev`, so there is nothing else to edit by hand. Renovate runs the same command after bumping a `rev`, so a bot update and a manual one take the same path.
 
+## Updating the supported Hyprland version
+
+Hyprland comes from nixpkgs rather than its own flake, so it moves whenever `nixpkgs` is updated. `supportedHyprland` in `modules/system/system.nix` records the Hyprland release series (e.g. `"0.56"`) that HyDE's configs are written for, and an assertion fails the build when `programs.hyprland.package` is from a different series.
+
+Nothing bumps `supportedHyprland` automatically; Renovate does not track it. When HyDE moves to a new Hyprland release:
+
+1. Bump the `rev` of `pkgs/hyde` to the HyDE commit that supports it, as described above
+2. Update `supportedHyprland` to the new release series
+3. Update `nixpkgs` (`nix flake update nixpkgs`) if it does not ship that series yet
+
+If the assertion fails after a `nixpkgs` update instead, nixpkgs has moved past what HyDE supports. Keep the previous `nixpkgs` lock until HyDE catches up.
+
 ## Pull requests
 
 1. Fork the repository
