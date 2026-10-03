@@ -1,6 +1,5 @@
 {
   lib,
-  stdenv,
   cmake,
   pkg-config,
   spdlog,
@@ -18,7 +17,8 @@
   };
   version = lib.removePrefix "v" src.rev;
 in
-  stdenv.mkDerivation {
+  # nixpkgs builds hyprlang with a newer GCC than the default stdenv, and linking it against an older libstdc++ fails
+  hyprlang.stdenv.mkDerivation {
     pname = "hyprquery";
     inherit src version;
 
