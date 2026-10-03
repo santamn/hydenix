@@ -6,7 +6,6 @@
   nlohmann_json,
   cli11,
   hyprlang,
-  autoPatchelfHook,
   fetchFromGitHub,
 }: let
   src = fetchFromGitHub {
@@ -25,7 +24,6 @@ in
     nativeBuildInputs = [
       cmake
       pkg-config
-      autoPatchelfHook
     ];
 
     buildInputs = [
@@ -45,6 +43,14 @@ in
       "-DUSE_SYSTEM_SPDLOG=ON"
       "-DUSE_SYSTEM_HYPRLANG=ON"
     ];
+
+    # A wrong libstdc++ in the RUNPATH still links, but fails as soon as the binary is loaded
+    doInstallCheck = true;
+    installCheckPhase = ''
+      runHook preInstallCheck
+      $out/bin/hyq --help >/dev/null
+      runHook postInstallCheck
+    '';
 
     meta = with lib; {
       description = "A command-line utility for querying configuration values from Hyprland";
