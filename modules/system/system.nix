@@ -5,6 +5,10 @@
   ...
 }: let
   cfg = config.hydenix.system;
+
+  # The latest Hyprland release series HyDE's configs are written for; bump it together with HyDE
+  supportedHyprland = "0.56";
+  hyprlandVersion = lib.versions.majorMinor config.programs.hyprland.package.version;
 in {
   options.hydenix.system = {
     enable = lib.mkOption {
@@ -15,6 +19,14 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    # Hyprland follows nixpkgs, so a nixpkgs update can move it past what HyDE supports
+    assertions = [
+      {
+        assertion = hyprlandVersion == supportedHyprland;
+        message = "hydenix: Hyprland ${config.programs.hyprland.package.version} is not supported, HyDE expects ${supportedHyprland}.x. Update supportedHyprland in hydenix together with HyDE, or pin nixpkgs to a revision with Hyprland ${supportedHyprland}.x.";
+      }
+    ];
+
     environment.systemPackages = with pkgs; [
       parallel # Shell tool for executing jobs in parallel
       jq # Command-line JSON processor
