@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cbb5c059.js";
+            window.path_to_searchindex_js = "searchindex-f8cce776.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -326,6 +326,7 @@ all edits must be done in your flake via nixos &amp; home-manager options</p>
 <li>Files marked as <code>mutable = true</code> (and <code>force = true</code>) will be writable</li>
 <li>Every rebuild copies them again, so edits made at runtime are overwritten</li>
 <li>Removing one from your configuration deletes it on the next rebuild, and rolling back to an older generation restores the files of that generation</li>
+<li>The copy follows links, so every link under a mutable file has to resolve to a path in the Nix store. A link to any other path fails the build with the file’s name</li>
 <li>Useful for programs that need runtime configuration changes</li>
 </ul>
 <p>Example usage in scripts:</p>
