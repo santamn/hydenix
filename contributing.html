@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e3fa5599.js";
+            window.path_to_searchindex_js = "searchindex-cbb5c059.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -233,6 +233,16 @@
 <pre><code class="language-bash">nix run .#update-hashes
 </code></pre>
 <p><code>version</code> is derived from <code>rev</code>, so there is nothing else to edit by hand. Renovate runs the same command after bumping a <code>rev</code>, so a bot update and a manual one take the same path.</p>
+<h2 id="updating-the-supported-hyprland-version"><a class="header" href="#updating-the-supported-hyprland-version">Updating the supported Hyprland version</a></h2>
+<p>Hyprland comes from nixpkgs rather than its own flake, so it moves whenever <code>nixpkgs</code> is updated. <code>supportedHyprland</code> in <code>modules/system/system.nix</code> records the Hyprland release series (e.g. <code>"0.56"</code>) that HyDE’s configs are written for, and an assertion fails the build when <code>programs.hyprland.package</code> is from a different series.</p>
+<p>Nothing bumps <code>supportedHyprland</code> automatically. HyDE targets whatever Hyprland Arch Linux currently ships and does not declare a supported version anywhere a tool could read it, so deciding when HyDE supports a new release is left to a maintainer.</p>
+<p>The Flake Check workflow evaluates the demo system, so the assertion holds <code>nixpkgs</code> back by itself. When nixpkgs moves Hyprland to a new release series, Renovate’s lock file maintenance PR fails the check, and Renovate does not automerge it. Every input in <code>flake.lock</code> stays at its current revision until that PR is resolved:</p>
+<ol>
+<li>Check whether HyDE supports the new release, e.g. in its <a href="https://github.com/HyDE-Project/HyDE/commits/master">commits</a> and <a href="https://github.com/HyDE-Project/HyDE/issues">issues</a></li>
+<li>If it does, open a PR that makes the move in one go: run <code>nix flake update</code>, bump the <code>rev</code> of <code>pkgs/hyde</code> to a HyDE commit that supports the release as described above, and set <code>supportedHyprland</code> to the new release series. The lock and <code>supportedHyprland</code> have to land together, since either one without the other fails the assertion. Close the lock file maintenance PR once this one merges</li>
+<li>If it does not, leave the lock file maintenance PR open. It keeps failing on each Renovate run until HyDE catches up</li>
+</ol>
+<p>A Hyprland release that nixpkgs does not ship yet cannot be used, as Hyprland is no longer pulled in from its own flake.</p>
 <h2 id="pull-requests"><a class="header" href="#pull-requests">Pull requests</a></h2>
 <ol>
 <li>Fork the repository</li>
