@@ -44,7 +44,25 @@ in {
     # The targets this generation copies, read by its own activation and by the next one.
     home.extraBuilderCommands = let
       manifest = pkgs.writeText "mutable-files" (lib.concatLines (map (file: file.target) mutableFiles));
-    in "ln -s ${manifest} $out/mutable-files";
+    in ''
+      ln -s ${manifest} $out/mutable-files
+
+      function checkMutableLinks() {
+        local target link resolved failed=0
+        while IFS= read -r target; do
+          while IFS= read -r -d "" link; do
+            resolved="$(realpath -m -- "$link")"
+            if [[ $resolved != ${builtins.storeDir}/* || ! -e $resolved ]]; then
+              echo "error: the mutable file ~/''${link#"$out/home-files/"} links to $resolved, which is not an existing path in the Nix store" >&2
+              failed=1
+            fi
+          done < <(find -L "$out/home-files/$target" -xtype l -print0)
+        done < ${manifest}
+        return "$failed"
+      }
+
+      checkMutableLinks
+    '';
 
     # Turns copies the new generation no longer makes back into links of the old generation,
     # so that linkGeneration deletes or relinks them like any other.

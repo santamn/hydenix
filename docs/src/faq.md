@@ -180,6 +180,7 @@ See [home.file options](https://home-manager-options.extranix.com/?query=home.fi
 - Files marked as `mutable = true` (and `force = true`) will be writable
 - Every rebuild copies them again, so edits made at runtime are overwritten
 - Removing one from your configuration deletes it on the next rebuild, and rolling back to an older generation restores the files of that generation
+- The copy follows links, so every link under a mutable file has to resolve to a path in the Nix store. A link to any other path fails the build with the file's name
 - Useful for programs that need runtime configuration changes
 
 Example usage in scripts:
