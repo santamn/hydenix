@@ -61,6 +61,8 @@
 
       cp -r Configs/.config/hyde/themes/"${name}"/. $out/share/hyde/themes/"${name}"/
 
+      rm -f $out/share/hyde/themes/"${name}"/wall.set $out/share/hyde/themes/"${name}"/wall.*.png
+
       # Install GTK theme if available
       for gtk_archive in ./Source/arcs/Gtk_* ./Source/Gtk_*; do
         if [ -f "$gtk_archive" ]; then
