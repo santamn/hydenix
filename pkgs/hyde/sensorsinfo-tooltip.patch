@@ -9,7 +9,7 @@
  import time
  import sys
  
-@@ -42,24 +44,26 @@
+@@ -42,24 +44,23 @@
      )
  
  
@@ -31,9 +31,7 @@
 -                row.append("")
 -        rows.append("\t".join(row))
 -    return rows
-+def core_labels():
-+    """coretemp の物理コア ID ("Core 8" など) を論理 CPU 番号の表記に読み替える表"""
-+    # ponytail: ソケットが 1 つの前提。複数ソケットでは physical_package_id も見る必要がある
++def core_to_cpu_labels():
 +    cpus = {}
 +    for path in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/topology/core_id"):
 +        cpu = int(re.search(r"cpu(\d+)/topology", path).group(1))
@@ -43,7 +41,6 @@
 +
 +
 +def relabel_cores(data, labels):
-+    """コアの温度を論理 CPU 番号の表記と順序に並べ直す。対応がない項目は先頭に残す"""
 +    renamed = {labels.get(sensor, sensor): values for sensor, values in data.items()}
 +
 +    def order(sensor):
@@ -54,11 +51,11 @@
  
  
  PAGE_SIZE = 5
-@@ -128,8 +132,11 @@
+@@ -128,8 +129,11 @@
      device_data = {}
  
      # Extract top-level sensor data
-+    labels = core_labels()
++    labels = core_to_cpu_labels()
      for device in sorted(sensors_data.keys()):
          data = sensors_data[device]
 +        if device.startswith("coretemp"):
@@ -66,7 +63,7 @@
          device_data[device] = {
              "temperatures": [],
              "fan_speeds": [],
-@@ -171,25 +178,25 @@
+@@ -171,25 +175,25 @@
          has_data = False
          if data["temperatures"]:
              has_data = True

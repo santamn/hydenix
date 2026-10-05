@@ -30,7 +30,6 @@ in
     name = "hyde";
     inherit src version;
 
-    # sensorsinfo のツールチップを縦一列にし、物理コア ID の飛び番を論理 CPU 番号に置き換える
     patches = [
       ./sensorsinfo-tooltip.patch
     ];
