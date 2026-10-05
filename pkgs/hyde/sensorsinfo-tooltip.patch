@@ -1,0 +1,96 @@
+--- a/Configs/.local/lib/hyde/sensorsinfo.py	2026-10-06 01:16:12.239011471 +0900
++++ b/Configs/.local/lib/hyde/sensorsinfo.py	2026-10-06 01:23:20.000556206 +0900
+@@ -20,6 +20,8 @@
+ import subprocess
+ import os
+ import argparse
++import glob
++import re
+ import time
+ import sys
+ 
+@@ -42,24 +44,23 @@
+     )
+ 
+ 
+-def format_columns(data, max_entries_per_column=15):
+-    if not data:
+-        return []
+-    columns = []
+-    for i in range(0, len(data), max_entries_per_column):
+-        columns.append(data[i : i + max_entries_per_column])
+-    # Merge columns into rows
+-    rows = []
+-    max_rows = max(len(col) for col in columns)
+-    for i in range(max_rows):
+-        row = []
+-        for col in columns:
+-            if i < len(col):
+-                row.append(col[i])
+-            else:
+-                row.append("")
+-        rows.append("\t".join(row))
+-    return rows
++def core_to_cpu_labels():
++    cpus = {}
++    for path in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/topology/core_id"):
++        cpu = int(re.search(r"cpu(\d+)/topology", path).group(1))
++        with open(path, encoding="utf-8") as f:
++            cpus.setdefault(f"Core {int(f.read())}", []).append(cpu)
++    return {core: "CPU " + ",".join(map(str, sorted(ids))) for core, ids in cpus.items()}
++
++
++def relabel_cores(data, labels):
++    renamed = {labels.get(sensor, sensor): values for sensor, values in data.items()}
++
++    def order(sensor):
++        match = re.match(r"CPU (\d+)", sensor)
++        return (1, int(match.group(1))) if match else (0, 0)
++
++    return dict(sorted(renamed.items(), key=lambda item: order(item[0])))
+ 
+ 
+ PAGE_SIZE = 5
+@@ -128,8 +129,11 @@
+     device_data = {}
+ 
+     # Extract top-level sensor data
++    labels = core_to_cpu_labels()
+     for device in sorted(sensors_data.keys()):
+         data = sensors_data[device]
++        if device.startswith("coretemp"):
++            data = relabel_cores(data, labels)
+         device_data[device] = {
+             "temperatures": [],
+             "fan_speeds": [],
+@@ -171,25 +175,25 @@
+         has_data = False
+         if data["temperatures"]:
+             has_data = True
+-            temp_columns = format_columns(data["temperatures"])
++            temp_columns = data["temperatures"]
+             device_parts.append(
+                 "        Temperatures:\n        " + "\n        ".join(temp_columns)
+             )
+         if data["fan_speeds"]:
+             has_data = True
+-            fan_columns = format_columns(data["fan_speeds"])
++            fan_columns = data["fan_speeds"]
+             device_parts.append("        Fan Speeds:\n        " + "\n        ".join(fan_columns))
+         if data["voltages"]:
+             has_data = True
+-            volt_columns = format_columns(data["voltages"])
++            volt_columns = data["voltages"]
+             device_parts.append("        Voltages:\n        " + "\n        ".join(volt_columns))
+         if data["currents"]:
+             has_data = True
+-            curr_columns = format_columns(data["currents"])
++            curr_columns = data["currents"]
+             device_parts.append("        Currents:\n        " + "\n        ".join(curr_columns))
+         if data["powers"]:
+             has_data = True
+-            power_columns = format_columns(data["powers"])
++            power_columns = data["powers"]
+             device_parts.append("       臘 Powers:\n        " + "\n        ".join(power_columns))
+         if has_data:
+             tooltip_parts.append("\n".join(device_parts))

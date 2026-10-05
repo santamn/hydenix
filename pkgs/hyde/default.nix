@@ -30,6 +30,10 @@ in
     name = "hyde";
     inherit src version;
 
+    patches = [
+      ./sensorsinfo-tooltip.patch
+    ];
+
     nativeBuildInputs = with pkgs; [
       gnutar
     ];
