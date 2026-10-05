@@ -127,6 +127,10 @@ in {
 
         export LOG_LEVEL=debug
 
+        # Import the session's XDG_SESSION_DESKTOP so that waybar.py restarts the session's bar
+        eval "$(systemctl --user show-environment 2>/dev/null | grep '^XDG_SESSION_DESKTOP=')"
+        export XDG_SESSION_DESKTOP
+
         # Run the theme switch commands with the custom runtime dir
         $HOME/.local/lib/hyde/theme.switch.sh -s "${cfg.active}" >> "$LOG_FILE" 2>&1
 
