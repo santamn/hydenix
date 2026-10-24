@@ -14,12 +14,12 @@ in {
     extraConfig = lib.mkOption {
       type = lib.types.lines;
       default = "";
-      description = "Extra config appended to userprefs.conf";
+      description = "Extra Lua appended to ~/.config/hypr/hyprland.lua, which HyDE loads after its own config";
     };
     overrideMain = lib.mkOption {
       type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
-      description = "Complete override of hyprland.conf";
+      description = "Complete override of ~/.config/hypr/hyprland.lua, the Lua file HyDE loads after its own config";
     };
     suppressWarnings = lib.mkOption {
       type = lib.types.bool;
@@ -46,8 +46,10 @@ in {
 
       variables = lib.mkOption {
         type = with lib.types; listOf str;
+        # HYPRLAND_CONFIG lets the theme switch that setTheme.service runs at login apply the theme's GTK, icon and cursor settings
         default = [
           "DISPLAY"
+          "HYPRLAND_CONFIG"
           "HYPRLAND_INSTANCE_SIGNATURE"
           "WAYLAND_DISPLAY"
           "XDG_CURRENT_DESKTOP"
@@ -84,24 +86,22 @@ in {
       preset = lib.mkOption {
         type = lib.types.str;
         default = "standard";
-        description = "Animation preset to use";
+        description = "Animation preset to use, by the name of its file under ~/.local/share/hypr/lua/animations or its name in overrides";
         example = lib.literalExpression ''
-          "standard" # any string in overrides or default: "LimeFrenzy", "classic", "diablo-1", "diablo-2", "disable", "dynamic", "end4", "fast", "high", "ja", "me-1", "me-2", "minimal-1", "minimal-2", "moving", "optimized", "standard", "vertical"
+          "standard" # any name in overrides or default: "00-disable", "01-default", "classic", "diablo-1", "diablo-2", "end4", "fast", "gnome", "ja", "limefrenzy", "macos", "me-1", "me-2", "minimal-2", "moving", "optimized", "standard", "vertical"
         '';
-      };
-      extraConfig = lib.mkOption {
-        type = lib.types.lines;
-        default = "";
-        description = "Additional animation configuration";
       };
       overrides = lib.mkOption {
         type = lib.types.attrsOf lib.types.lines;
         default = {};
-        description = "Override specific animation files by name";
+        description = "Additional animation presets in Lua, by a name without dots. HyDE's own preset wins over one that reuses its name";
         example = lib.literalExpression ''
           {
-            "classic" = '''
-              animation = windows, 1, 5, default
+            "my-animations" = '''
+              if not hl then
+                return { name = "My animations" }
+              end
+              hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "default" })
             ''';
           }
         '';
@@ -120,7 +120,7 @@ in {
         default = "disable";
         description = "Active shader preset";
         example = lib.literalExpression ''
-          "disable" # any string in overrides or default: "blue-light-filter", "color-vision", "custom", "grayscale", "invert-colors", "oled", "oled-saver", "paper", "vibrance", "wallbash"
+          "disable" # any string in overrides or default: "blue-light-filter", "color-vision", "custom", "grayscale", "invert-colors", "oled-saver", "paper", "vibrance", "wallbash"
         '';
       };
       overrides = lib.mkOption {
@@ -148,19 +148,22 @@ in {
       active = lib.mkOption {
         type = lib.types.str;
         default = "default";
-        description = "Active workflow preset";
+        description = "Active workflow, by the name of its file under ~/.local/share/hypr/lua/workflows (\"default\" also selects 01-default) or its name in overrides";
         example = lib.literalExpression ''
-          "default" # any string in overrides or default: "editing", "gaming", "powersaver", "snappy"
+          "default" # any name in overrides or default: "editing", "gaming", "powersaver", "snappy"
         '';
       };
       overrides = lib.mkOption {
         type = lib.types.attrsOf lib.types.lines;
         default = {};
-        description = "Override or add custom workflows";
+        description = "Additional workflows in Lua, by a name without dots. HyDE's own workflow wins over one that reuses its name";
         example = lib.literalExpression ''
           {
-            "my-workflow.conf" = '''
-              // Custom workflow configuration
+            "my-workflow" = '''
+              if not hl then
+                return { name = "My workflow" }
+              end
+              hl.config({ general = { gaps_out = 0 } })
             ''';
           }
         '';

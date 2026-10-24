@@ -265,7 +265,7 @@ in {
         };
         ".config/zsh/completions/hyde-shell.zsh" = {
           force = true;
-          source = "${pkgs.hyde}/Configs/.config/zsh/completions/hyde-shell.zsh";
+          source = "${pkgs.hyde}/Configs/.local/lib/hyde/completions/hyde-shell.zsh";
         };
         ".config/zsh/.p10k.zsh" = {
           source = "${pkgs.hyde}/Configs/.config/zsh/.p10k.zsh";
@@ -320,7 +320,7 @@ in {
         # Fish configs
         ".config/fish/completions/hyde-shell.fish" = {
           force = true;
-          source = "${pkgs.hyde}/Configs/.config/fish/completions/hyde-shell.fish";
+          source = "${pkgs.hyde}/Configs/.local/lib/hyde/completions/hyde-shell.fish";
         };
         ".config/fish/conf.d/hyde.fish" = {
           force = true;
@@ -329,6 +329,11 @@ in {
         ".config/fish/functions/bind_M_n_history.fish" = {
           force = true;
           source = "${pkgs.hyde}/Configs/.config/fish/functions/bind_M_n_history.fish";
+        };
+        # ffe and ffec open files through it
+        ".config/fish/functions/_hyde_editor.fish" = {
+          force = true;
+          source = "${pkgs.hyde}/Configs/.config/fish/functions/_hyde_editor.fish";
         };
         ".config/fish/functions/fzf/ffcd.fish" = {
           force = true;

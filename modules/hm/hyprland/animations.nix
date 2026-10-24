@@ -6,66 +6,33 @@
 }: let
   cfg = config.hydenix.hm.hyprland;
 
-  animationPresets = [
-    "LimeFrenzy"
-    "classic"
-    "diablo-1"
-    "diablo-2"
-    "disable"
-    "dynamic"
-    "end4"
-    "fast"
-    "high"
-    "ja"
-    "me-1"
-    "me-2"
-    "minimal-1"
-    "minimal-2"
-    "moving"
-    "optimized"
-    "standard"
-    "vertical"
-    "theme"
-  ];
+  # the selector matches names ignoring case
+  presets = map lib.toLower ((import ./presets.nix).animations ++ lib.attrNames cfg.animations.overrides);
 in {
   config = lib.mkIf (cfg.enable && cfg.animations.enable) {
-    home.file = lib.mkMerge [
-      # Active animation preset
+    assertions = [
       {
-        ".config/hypr/animations.conf" =
-          if cfg.animations.overrides ? ${cfg.animations.preset}
-          then {
-            text = ''
-              ${cfg.animations.overrides.${cfg.animations.preset}}
-              ${cfg.animations.extraConfig}
-            '';
-            force = true;
-            mutable = true;
-          }
-          else {
-            source = "${pkgs.hyde}/Configs/.config/hypr/animations/${cfg.animations.preset}.conf";
-            force = true;
-            mutable = true;
-          };
+        assertion = lib.elem (lib.toLower cfg.animations.preset) presets;
+        message = "hydenix.hm.hyprland.animations.preset: unknown preset \"${cfg.animations.preset}\"; use one of ${lib.concatStringsSep ", " presets}";
       }
-
-      # All animation presets (with overrides)
-      (lib.listToAttrs (
-        map (preset: {
-          name = ".config/hypr/animations/${preset}.conf";
-          value =
-            if cfg.animations.overrides ? ${preset}
-            then {
-              text = cfg.animations.overrides.${preset};
-              force = true;
-            }
-            else {
-              source = "${pkgs.hyde}/Configs/.config/hypr/animations/${preset}.conf";
-              force = true;
-            };
-        })
-        animationPresets
-      ))
+      {
+        # HyDE loads the preset with Lua's require, which reads a dot as a directory separator
+        assertion = lib.all (name: builtins.match "[^./]+" name != null) (lib.attrNames cfg.animations.overrides);
+        message = "hydenix.hm.hyprland.animations.overrides: names must not contain '.' or '/'";
+      }
     ];
+
+    # The selector lists these alongside HyDE's presets in ~/.local/share/hypr/lua/animations
+    home.file = lib.mapAttrs' (name: text:
+      lib.nameValuePair ".config/hypr/lua/animations/${name}.lua" {
+        inherit text;
+        force = true;
+      })
+    cfg.animations.overrides;
+
+    # The selector writes the state that Hyprland loads
+    home.activation.setAnimationPreset = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+      run ${pkgs.hyde}/Configs/.local/bin/hyde-shell animations --set ${lib.escapeShellArg cfg.animations.preset}
+    '';
   };
 }

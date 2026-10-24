@@ -76,7 +76,7 @@
              has_data = True
 -            fan_columns = format_columns(data["fan_speeds"])
 +            fan_columns = data["fan_speeds"]
-             device_parts.append("        Fan Speeds:\n        " + "\n        ".join(fan_columns))
+             device_parts.append("       󰈐 Fan Speeds:\n        " + "\n        ".join(fan_columns))
          if data["voltages"]:
              has_data = True
 -            volt_columns = format_columns(data["voltages"])
