@@ -1,0 +1,18 @@
+diff --git a/Configs/.local/lib/hyde/cpuinfo.sh b/Configs/.local/lib/hyde/cpuinfo.sh
+index fcf372f..eb3d25a 100755
+--- a/Configs/.local/lib/hyde/cpuinfo.sh
++++ b/Configs/.local/lib/hyde/cpuinfo.sh
+@@ -26,11 +26,11 @@ map_floor() {
+ init_query() {
+     [[ -f $cpuinfo_file ]] && source "$cpuinfo_file"
+     if [[ -z $CPUINFO_MODEL ]]; then
+-        CPUINFO_MODEL=$(lscpu | awk -F': ' '/Model name/ {gsub(/^ *| *$| CPU.*/,"",$2); print $2}')
++        CPUINFO_MODEL=$(LC_ALL=C lscpu | awk -F': ' '/Model name/ {gsub(/^ *| *$| CPU.*/,"",$2); print $2}')
+         echo "CPUINFO_MODEL=\"$CPUINFO_MODEL\"" >>"$cpuinfo_file"
+     fi
+     if [[ -z $CPUINFO_MAX_FREQ ]]; then
+-        CPUINFO_MAX_FREQ=$(lscpu | awk '/CPU max MHz/ { sub(/\..*/,"",$4); print $4}')
++        CPUINFO_MAX_FREQ=$(LC_ALL=C lscpu | awk '/CPU max MHz/ { sub(/\..*/,"",$4); print $4}')
+         echo "CPUINFO_MAX_FREQ=\"$CPUINFO_MAX_FREQ\"" >>"$cpuinfo_file"
+     fi
+     statFile=$(head -1 /proc/stat)
