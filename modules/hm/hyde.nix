@@ -36,10 +36,17 @@ in {
       noto-fonts-cjk-sans
     ];
 
-    # ensures hyprland config is available in session as per hyde uwsm update
+    # Hyprland starts from HyDE's Lua entry point, which loads ~/.config/hypr/hyprland.lua after HyDE's own config
     home.sessionVariables = {
-      HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyprland.conf";
+      HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyde.lua";
     };
+    # HyDE runs hyde-shell by name; its hyprlang config put ~/.local/bin on Hyprland's PATH, and the Lua one no longer does
+    home.sessionPath = ["$HOME/.local/bin"];
+
+    # At boot, home-manager-<user>.service runs before /run/user/$UID exists, and hyde-shell exits when it cannot create $XDG_RUNTIME_DIR/hyde
+    home.activation.hydeRuntimeDir = lib.hm.dag.entryBetween ["setAnimationPreset" "setShader" "setTheme" "setWorkflow"] ["mutableFileGeneration"] ''
+      [ -w "''${XDG_RUNTIME_DIR:-/run/user/$UID}" ] || export XDG_RUNTIME_DIR="$(mktemp -d)"
+    '';
 
     fonts.fontconfig.enable = true;
 
@@ -57,35 +64,6 @@ in {
         recursive = true;
         force = true;
         mutable = true;
-      };
-
-      ".config/systemd/user/hyde-config.service" = {
-        text = ''
-          [Unit]
-          Description=HyDE Configuration Parser Service
-          Documentation=https://github.com/HyDE-Project/hyde-config
-          After=graphical-session.target
-          PartOf=graphical-session.target
-
-          [Service]
-          Type=simple
-          ExecStart=%h/.local/lib/hyde/hyde-config
-          Restart=on-failure
-          RestartSec=5s
-          Environment="DISPLAY=:0"
-
-          # Make sure the required directories exist
-          ExecStartPre=/usr/bin/env mkdir -p %h/.config/hyde
-          ExecStartPre=/usr/bin/env mkdir -p %h/.local/state/hyde
-
-          [Install]
-          WantedBy=graphical-session.target
-        '';
-        force = true;
-      };
-      ".config/systemd/user/hyde-ipc.service" = {
-        source = "${pkgs.hyde}/Configs/.config/systemd/user/hyde-ipc.service";
-        force = true;
       };
 
       ".local/bin/hyde-shell" = {

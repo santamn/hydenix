@@ -9,9 +9,26 @@
 
   variables = builtins.concatStringsSep " " cfg.systemd.variables;
   extraCommands = builtins.concatStringsSep " " (map (f: "&& ${f}") cfg.systemd.extraCommands);
+  # Lua's exec-once: Hyprland fires hyprland.start once, and a reload drops the handler without firing it again
   systemdActivation = ''
-    exec-once = ${pkgs.dbus}/bin/dbus-update-activation-environment --systemd ${variables} ${extraCommands}
+    hl.on("hyprland.start", function()
+      hl.exec_cmd(${builtins.toJSON "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd ${variables} ${extraCommands}"})
+    end)
   '';
+
+  # A syntax error skips the whole file, including the hyprland.start handler, and Hyprland reports it only at login
+  luaFile = text:
+    pkgs.writeTextFile {
+      name = "hyprland.lua";
+      inherit text;
+      checkPhase = ''
+        ${pkgs.lua5_5}/bin/luac -p "$target" || {
+          cat -n "$target" >&2
+          echo "hydenix.hm.hyprland: hyprland.lua above is not valid Lua; since HyDE v26.08.21, extraConfig and overrideMain take Lua (see HyDE's MIGRATION-LUA.md)" >&2
+          exit 1
+        }
+      '';
+    };
 in {
   imports = [
     ./animations.nix
@@ -20,16 +37,12 @@ in {
     ./workflows.nix
     (mkHyprConfig {name = "hypridle";})
     (mkHyprConfig {name = "hyprlock";})
-    (mkHyprConfig {name = "keybindings";})
-    (mkHyprConfig {name = "monitors";})
-    (mkHyprConfig {name = "nvidia";})
     # (mkHyprConfig {name = "pyprland"; extension = "toml";})
-    (mkHyprConfig {name = "windowrules";})
     (mkHyprConfig {name = "hyprsunset";})
   ];
 
   config = lib.mkIf cfg.enable {
-    warnings = lib.optional (cfg.overrideMain != null && !cfg.suppressWarnings) "hydenix.hm.hyprland.overrideMain is overriding Hyde's hyprland.conf. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)";
+    warnings = lib.optional (cfg.overrideMain != null && !cfg.suppressWarnings) "hydenix.hm.hyprland.overrideMain is overriding hydenix's hyprland.lua. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)";
 
     # Always include packages and base setup
     home.packages = [
@@ -40,21 +53,11 @@ in {
       (lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset)
     ];
 
+    # hyprlock sources the colors wallbash writes here
     home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
-      run mkdir -p "$HOME/.config/hypr/animations"
       run mkdir -p "$HOME/.config/hypr/themes"
-      run mkdir -p "$HOME/.config/hypr/shaders"
-      run mkdir -p "$HOME/.config/hypr/workflows"
-
-      run touch "$HOME/.config/hypr/animations/theme.conf"
       run touch "$HOME/.config/hypr/themes/colors.conf"
-      run touch "$HOME/.config/hypr/themes/theme.conf"
-      run touch "$HOME/.config/hypr/themes/wallbash.conf"
-
-      run chmod 644 "$HOME/.config/hypr/animations/theme.conf"
       run chmod 644 "$HOME/.config/hypr/themes/colors.conf"
-      run chmod 644 "$HOME/.config/hypr/themes/theme.conf"
-      run chmod 644 "$HOME/.config/hypr/themes/wallbash.conf"
     '';
 
     home.file = {
@@ -64,24 +67,27 @@ in {
         force = true;
       };
 
-      ".config/hypr/hyprland.conf" =
+      # The user layer that hyde.lua, HyDE's entry point, loads after its own config
+      ".config/hypr/hyprland.lua" =
         if cfg.overrideMain != null
         then {
-          text = cfg.overrideMain;
+          source = luaFile cfg.overrideMain;
           force = true;
         }
         else {
-          text = ''
-            ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/hyprland.conf"}
-            ${systemdActivation}
+          source = luaFile ''
+            -- Hyprland starts from this file only when started without -c or HYPRLAND_CONFIG.
+            -- hyde.lua then loads this file again as its user layer, so stop here instead of running it twice.
+            if not hyde then
+              dofile((os.getenv("XDG_DATA_HOME") or os.getenv("HOME") .. "/.local/share") .. "/hypr/hyde.lua")
+              return
+            end
+
+            ${lib.optionalString cfg.systemd.enable systemdActivation}
+            ${cfg.extraConfig}
           '';
           force = true;
         };
-
-      ".config/hypr/userprefs.conf" = {
-        text = cfg.extraConfig;
-        force = true;
-      };
 
       ".config/hypr/hyprlock" = lib.mkIf cfg.hyprlock.enable {
         source = "${pkgs.hyde}/Configs/.config/hypr/hyprlock";

@@ -116,11 +116,10 @@ hydenix = {
       enable = config.hydenix.hm.enable; # Enable hyprland module
       animations = {
         enable = cfg.enable; # Enable animation configurations
-        extraConfig = ""; # Additional animation configuration
-        overrides = {}; # Override specific animation files by name
-        preset = "standard"; # Animation preset to use
+        overrides = {}; # Additional animation presets in Lua, by a name without dots. HyDE's own preset wins over one that reuses its name
+        preset = "standard"; # Animation preset to use, by the name of its file under ~/.local/share/hypr/lua/animations or its name in overrides
       };
-      extraConfig = ""; # Extra config appended to userprefs.conf
+      extraConfig = ""; # Extra Lua appended to ~/.config/hypr/hyprland.lua, which HyDE loads after its own config
       hypridle = {
         enable = cfg.enable; # Enable hypridle configurations
         extraConfig = ""; # Additional hypridle configuration
@@ -136,22 +135,7 @@ hydenix = {
         extraConfig = ""; # Additional hyprsunset configuration
         overrideConfig = null; # Complete hyprsunset configuration override
       };
-      keybindings = {
-        enable = cfg.enable; # Enable keybindings configurations
-        extraConfig = ""; # Additional keybindings configuration
-        overrideConfig = null; # Complete keybindings configuration override
-      };
-      monitors = {
-        enable = cfg.enable; # Enable monitors configurations
-        extraConfig = ""; # Additional monitors configuration
-        overrideConfig = null; # Complete monitors configuration override
-      };
-      nvidia = {
-        enable = cfg.enable; # Enable nvidia configurations
-        extraConfig = ""; # Additional nvidia configuration
-        overrideConfig = null; # Complete nvidia configuration override
-      };
-      overrideMain = null; # Complete override of hyprland.conf
+      overrideMain = null; # Complete override of ~/.config/hypr/hyprland.lua, the Lua file HyDE loads after its own config
       shaders = {
         enable = cfg.enable; # Enable shader configurations
         active = "disable"; # Active shader preset
@@ -167,21 +151,17 @@ hydenix = {
         ]; # Extra commands to be run after D-Bus activation
         variables = [
           "DISPLAY"
+          "HYPRLAND_CONFIG"
           "HYPRLAND_INSTANCE_SIGNATURE"
           "WAYLAND_DISPLAY"
           "XDG_CURRENT_DESKTOP"
           "XDG_SESSION_TYPE"
         ]; # Environment variables to be imported in the systemd & D-Bus user environment
       };
-      windowrules = {
-        enable = cfg.enable; # Enable windowrules configurations
-        extraConfig = ""; # Additional windowrules configuration
-        overrideConfig = null; # Complete windowrules configuration override
-      };
       workflows = {
         enable = cfg.enable; # Enable workflow configurations
-        active = "default"; # Active workflow preset
-        overrides = {}; # Override or add custom workflows
+        active = "default"; # Active workflow, by the name of its file under ~/.local/share/hypr/lua/workflows ("default" also selects 01-default) or its name in overrides
+        overrides = {}; # Additional workflows in Lua, by a name without dots. HyDE's own workflow wins over one that reuses its name
       };
     };
     notifications = {
