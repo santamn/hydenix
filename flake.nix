@@ -189,6 +189,38 @@
       # "formatting" = treefmtEval.config.build.check inputs.self;
       inherit (pkgs) hyprquery hydectl hyde-config hyde code-wallbash Bibata-Modern-Ice Tela-circle-dracula;
 
+      # Hyprland loads HyDE's Lua config with the hyprland.lua hydenix writes, from both entry points a session can take
+      hyprland-config = let
+        inherit (inputs.self.homeConfigurations.default) config;
+        cfg = config.hydenix.hm.hyprland;
+        hydeShell = "${pkgs.hyde}/Configs/.local/bin/hyde-shell";
+        presets = import ./modules/hm/hyprland/presets.nix;
+        # The preset names the modules accept must be the ones pkgs.hyde ships
+        sameNames = names: dir: ext: "diff <(printf '%s\\n' ${toString names}) <(ls ${dir} | sed -n 's/\\${ext}$//p')";
+      in
+        pkgs.runCommand "hyprland-config" {nativeBuildInputs = [pkgs.hyprland];} ''
+          ${sameNames presets.animations "${pkgs.hyde}/Configs/.local/share/hypr/lua/animations" ".lua"}
+          ${sameNames presets.workflows "${pkgs.hyde}/Configs/.local/share/hypr/lua/workflows" ".lua"}
+          ${sameNames presets.shaders "${pkgs.hyde}/Configs/.config/hypr/shaders" ".frag"}
+
+          export HOME=$PWD/home XDG_RUNTIME_DIR=$PWD/run
+          mkdir -p $HOME/.config/hypr $HOME/.local/lib $HOME/.local/share $XDG_RUNTIME_DIR
+          ln -s ${pkgs.hyde}/Configs/.local/lib/hyde $HOME/.local/lib/hyde
+          ln -s ${pkgs.hyde}/Configs/.local/share/hypr $HOME/.local/share/hypr
+          ln -s ${pkgs.hyde}/Configs/.config/hypr/shaders $HOME/.config/hypr/shaders
+          ln -s ${config.home.file.".config/hypr/hyprland.lua".source} $HOME/.config/hypr/hyprland.lua
+
+          # What activation runs; the selectors and open.lua load hydeLua's rocks and lgi, and Hyprland loads the state they write
+          ${hydeShell} animations --set ${cfg.animations.preset}
+          ${hydeShell} workflows --set ${cfg.workflows.active}
+          ${hydeShell} shaders --set ${cfg.shaders.active}
+          ${hydeShell} open --help >/dev/null
+
+          HYPRLAND_CONFIG=$HOME/.local/share/hypr/hyde.lua Hyprland --verify-config
+          Hyprland --verify-config
+          touch $out
+        '';
+
       # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`.
       # `altIcons` pulls in the whole asset tree, so this builds the merge as well
       theme-assets = pkgs.buildEnv {
