@@ -97,8 +97,8 @@
       # Helper tool to manage HyDE updates by comparing the pinned package with a built home configuration
       hyde-diff-home = pkgs.callPackage ./pkgs/hyde-diff-home {};
 
-      # Add hyprquery, hydectl, hyde-ipc, and hyde-config for building
-      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde;
+      # Add hyprquery, hydectl, and hyde-config for building
+      inherit (pkgs) hyprquery hydectl hyde-config hyde;
       inherit (pkgs) code-wallbash pokego pyamdgpuinfo;
     };
 
@@ -187,7 +187,7 @@
     # for `nix flake check`
     checks.${system} = {
       # "formatting" = treefmtEval.config.build.check inputs.self;
-      inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde code-wallbash Bibata-Modern-Ice Tela-circle-dracula;
+      inherit (pkgs) hyprquery hydectl hyde-config hyde code-wallbash Bibata-Modern-Ice Tela-circle-dracula;
 
       # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`.
       # `altIcons` pulls in the whole asset tree, so this builds the merge as well

@@ -25,7 +25,6 @@ in {
       pyamdgpuinfo
       hyprquery
       hydectl
-      hyde-ipc
       hyde-config
 
       # fonts
