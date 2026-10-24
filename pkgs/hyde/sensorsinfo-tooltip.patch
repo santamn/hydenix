@@ -1,6 +1,8 @@
---- a/Configs/.local/lib/hyde/sensorsinfo.py	2026-10-06 01:16:12.239011471 +0900
-+++ b/Configs/.local/lib/hyde/sensorsinfo.py	2026-10-06 01:23:20.000556206 +0900
-@@ -20,6 +20,8 @@
+diff --git a/Configs/.local/lib/hyde/sensorsinfo.py b/Configs/.local/lib/hyde/sensorsinfo.py
+index a33e22a..3a7aa18 100755
+--- a/Configs/.local/lib/hyde/sensorsinfo.py
++++ b/Configs/.local/lib/hyde/sensorsinfo.py
+@@ -20,6 +20,8 @@ import json
  import subprocess
  import os
  import argparse
@@ -9,7 +11,7 @@
  import time
  import sys
  
-@@ -42,24 +44,23 @@
+@@ -42,24 +44,23 @@ def get_device_glyph(device_name):
      )
  
  
@@ -51,7 +53,7 @@
  
  
  PAGE_SIZE = 5
-@@ -128,8 +129,11 @@
+@@ -128,8 +129,11 @@ def get_sensor_data(result_sensors, page=0):
      device_data = {}
  
      # Extract top-level sensor data
@@ -63,7 +65,7 @@
          device_data[device] = {
              "temperatures": [],
              "fan_speeds": [],
-@@ -171,25 +175,25 @@
+@@ -171,26 +175,26 @@ def get_sensor_data(result_sensors, page=0):
          has_data = False
          if data["temperatures"]:
              has_data = True
@@ -90,7 +92,9 @@
          if data["powers"]:
              has_data = True
 -            power_columns = format_columns(data["powers"])
+-            device_parts.append("       臘 Powers:\n        " + "\n        ".join(power_columns))
 +            power_columns = data["powers"]
-             device_parts.append("       臘 Powers:\n        " + "\n        ".join(power_columns))
++            device_parts.append("       󰐧 Powers:\n        " + "\n        ".join(power_columns))
          if has_data:
              tooltip_parts.append("\n".join(device_parts))
+             tooltip_parts.append("\n")  # Add a newline after each device's information
