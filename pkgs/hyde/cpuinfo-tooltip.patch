@@ -1,5 +1,5 @@
 diff --git a/Configs/.local/lib/hyde/cpuinfo.sh b/Configs/.local/lib/hyde/cpuinfo.sh
-index fcf372f..eb3d25a 100755
+index fcf372f..bc5b2ad 100755
 --- a/Configs/.local/lib/hyde/cpuinfo.sh
 +++ b/Configs/.local/lib/hyde/cpuinfo.sh
 @@ -26,11 +26,11 @@ map_floor() {
@@ -16,3 +16,33 @@ index fcf372f..eb3d25a 100755
          echo "CPUINFO_MAX_FREQ=\"$CPUINFO_MAX_FREQ\"" >>"$cpuinfo_file"
      fi
      statFile=$(head -1 /proc/stat)
+@@ -74,6 +74,13 @@ BEGIN {
+ my $json = do { local $/; <> };
+ my $data = eval { $parser->decode($json) } || {};
+ my @chips = ("coretemp-isa-0000","k10temp-pci-00c3","zenpower-pci-00c3");
++my %cpus;
++for my $path (glob "/sys/devices/system/cpu/cpu[0-9]*/topology/core_id") {
++    my ($cpu) = $path =~ m{cpu(\d+)/topology};
++    open my $fh, "<", $path or next;
++    chomp(my $core = <$fh>);
++    push @{ $cpus{"Core $core"} }, $cpu;
++}
+ my @lines;
+ for my $chip (@chips) {
+     next unless exists $data->{$chip} && ref $data->{$chip} eq "HASH";
+@@ -87,10 +94,13 @@ for my $chip (@chips) {
+             $temp = int($obj->{$k});
+             last;
+         }
+-        push @lines, "$label: ${temp}°C" if defined $temp;
++        next unless defined $temp;
++        my @ids = sort { $a <=> $b } @{ $cpus{$label} // [] };
++        my $name = @ids ? "CPU " . join(",", @ids) : $label;
++        push @lines, [@ids ? $ids[0] : -1, "$name: ${temp}°C"];
+     }
+ }
+-print join("\\n\\t", @lines);
++print join("\\n\\t", map { $_->[1] } sort { $a->[0] <=> $b->[0] or $a->[1] cmp $b->[1] } @lines);
+ ' <<<"$sensors_json")"
+ 
+ if [ -n "$CPUINFO_TEMPERATURE_ID" ]; then
