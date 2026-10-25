@@ -6,7 +6,6 @@
 }: let
   cfg = config.hydenix.hm.hyprland;
 
-  # the selector matches names ignoring case
   presets = map lib.toLower ((import ./presets.nix).animations ++ lib.attrNames cfg.animations.overrides);
 in {
   config = lib.mkIf (cfg.enable && cfg.animations.enable) {
@@ -22,7 +21,6 @@ in {
       }
     ];
 
-    # The selector lists these alongside HyDE's presets in ~/.local/share/hypr/lua/animations
     home.file = lib.mapAttrs' (name: text:
       lib.nameValuePair ".config/hypr/lua/animations/${name}.lua" {
         inherit text;
@@ -30,7 +28,6 @@ in {
       })
     cfg.animations.overrides;
 
-    # The selector writes the state that Hyprland loads
     home.activation.setAnimationPreset = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
       run ${pkgs.hyde}/Configs/.local/bin/hyde-shell animations --set ${lib.escapeShellArg cfg.animations.preset}
     '';

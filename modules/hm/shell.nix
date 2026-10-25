@@ -330,7 +330,6 @@ in {
           force = true;
           source = "${pkgs.hyde}/Configs/.config/fish/functions/bind_M_n_history.fish";
         };
-        # ffe and ffec open files through it
         ".config/fish/functions/_hyde_editor.fish" = {
           force = true;
           source = "${pkgs.hyde}/Configs/.config/fish/functions/_hyde_editor.fish";

@@ -65,7 +65,6 @@ in
       gnutar
     ];
 
-    # patchShebangs points the Lua scripts that systemd starts by path, such as batterynotify.lua, at hydeLua
     buildInputs = [hydeLua];
 
     buildPhase = ''

@@ -7,7 +7,6 @@
   cfg = config.hydenix.hm.hyprland;
 
   standardShaders = (import ./presets.nix).shaders;
-  # the selector lists only .frag files, matching names ignoring case
   shaders = map lib.toLower (standardShaders ++ map (lib.removeSuffix ".frag") (lib.filter (lib.hasSuffix ".frag") (lib.attrNames cfg.shaders.overrides)));
 in {
   config = lib.mkIf (cfg.enable && cfg.shaders.enable) {
@@ -53,7 +52,6 @@ in {
         cfg.shaders.overrides)
     ];
 
-    # The selector compiles the shader and writes the state that Hyprland loads; the wallbash shader includes colors the theme switch writes
     home.activation.setShader = lib.hm.dag.entryAfter ["mutableFileGeneration" "setTheme"] ''
       run ${pkgs.hyde}/Configs/.local/bin/hyde-shell shaders --set ${lib.escapeShellArg cfg.shaders.active}
     '';
