@@ -21,8 +21,8 @@
   src = fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "HyDE";
-    rev = "v26.7.4";
-    hash = "sha256-saNXLFMSi2MFRR/RyPGV2KWCKCJqjWRIKGDqdv+f5VE=";
+    rev = "v26.08.21";
+    hash = "sha256-+YhLk3J59zThsVVDsbTlSKcBulSxOO/r/HpPZ6Udg1M=";
   };
   version = lib.removePrefix "v" src.rev;
 in
