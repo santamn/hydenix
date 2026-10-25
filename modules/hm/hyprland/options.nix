@@ -87,7 +87,7 @@ in {
         default = "standard";
         description = "Animation preset to use";
         example = lib.literalExpression ''
-          "standard" # any name in overrides or default: "00-disable", "01-default", "classic", "diablo-1", "diablo-2", "end4", "fast", "gnome", "ja", "limefrenzy", "macos", "me-1", "me-2", "minimal-2", "moving", "optimized", "standard", "vertical"
+          "standard" # a name in overrides, or one HyDE ships: "00-disable", "01-default", "classic", "diablo-1", "diablo-2", "end4", "fast", "gnome", "ja", "limefrenzy", "macos", "me-1", "me-2", "minimal-2", "moving", "optimized", "standard", "vertical"
         '';
       };
       overrides = lib.mkOption {
@@ -119,7 +119,7 @@ in {
         default = "disable";
         description = "Active shader preset";
         example = lib.literalExpression ''
-          "disable" # any string in overrides or default: "blue-light-filter", "color-vision", "custom", "grayscale", "invert-colors", "oled-saver", "paper", "vibrance", "wallbash"
+          "disable" # a name in overrides without .frag, or one HyDE ships: "blue-light-filter", "color-vision", "custom", "grayscale", "invert-colors", "oled-saver", "paper", "vibrance", "wallbash"
         '';
       };
       overrides = lib.mkOption {
@@ -149,7 +149,7 @@ in {
         default = "default";
         description = "Active workflow preset";
         example = lib.literalExpression ''
-          "default" # any name in overrides or default: "editing", "gaming", "powersaver", "snappy"
+          "default" # a name in overrides, or one HyDE ships: "editing", "gaming", "powersaver", "snappy"
         '';
       };
       overrides = lib.mkOption {

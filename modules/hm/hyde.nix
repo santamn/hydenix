@@ -35,13 +35,14 @@ in {
       noto-fonts-cjk-sans
     ];
 
-    # Hyprland starts from HyDE's Lua entry point, which loads ~/.config/hypr/hyprland.lua after HyDE's own config
+    # theme.switch.sh applies a theme to Hyprland only when this file is readable; HyDE's uwsm env sets the same path
     home.sessionVariables = {
       HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyde.lua";
     };
+    # HyDE's binds and scripts run hyde-shell by name
     home.sessionPath = ["$HOME/.local/bin"];
 
-    # At boot, home-manager-<user>.service runs before /run/user/$UID exists, and hyde-shell exits when it cannot create $XDG_RUNTIME_DIR/hyde
+    # hyde-shell needs a writable XDG_RUNTIME_DIR, which is missing when activation runs at boot
     home.activation.hydeRuntimeDir = lib.hm.dag.entryBetween ["setAnimationPreset" "setShader" "setTheme" "setWorkflow"] ["mutableFileGeneration"] ''
       [ -w "''${XDG_RUNTIME_DIR:-/run/user/$UID}" ] || export XDG_RUNTIME_DIR="$(mktemp -d)"
     '';
