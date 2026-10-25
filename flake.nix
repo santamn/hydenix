@@ -210,6 +210,12 @@
           ln -s ${pkgs.hyde}/Configs/.config/hypr/shaders $HOME/.config/hypr/shaders
           ln -s ${config.home.file.".config/hypr/hyprland.lua".source} $HOME/.config/hypr/hyprland.lua
 
+          # A preset under ~/.config/hypr replaces HyDE's one of the same name
+          mkdir -p $HOME/.config/hypr/lua/animations
+          cp $HOME/.local/share/hypr/lua/animations/standard.lua $HOME/.config/hypr/lua/animations/
+          ${hydeShell} animations --set standard
+          grep -qF $HOME/.config/hypr/lua/animations/standard.lua $HOME/.local/state/hyde/lua_state/animations.lua
+
           # What activation runs; the selectors and open.lua load hydeLua's rocks and lgi, and Hyprland loads the state they write
           ${hydeShell} animations --set ${cfg.animations.preset}
           ${hydeShell} workflows --set ${cfg.workflows.active}

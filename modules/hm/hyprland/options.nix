@@ -93,7 +93,7 @@ in {
       overrides = lib.mkOption {
         type = lib.types.attrsOf lib.types.lines;
         default = {};
-        description = "Additional animation presets in Lua, by a name without dots. HyDE's own preset wins over one that reuses its name";
+        description = "Override or add animation presets, written in Lua; names must not contain dots";
         example = lib.literalExpression ''
           {
             "my-animations" = '''
@@ -155,7 +155,7 @@ in {
       overrides = lib.mkOption {
         type = lib.types.attrsOf lib.types.lines;
         default = {};
-        description = "Additional workflows in Lua, by a name without dots. HyDE's own workflow wins over one that reuses its name";
+        description = "Override or add workflows, written in Lua; names must not contain dots";
         example = lib.literalExpression ''
           {
             "my-workflow" = '''
