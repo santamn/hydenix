@@ -116,7 +116,7 @@ hydenix = {
       enable = config.hydenix.hm.enable; # Enable hyprland module
       animations = {
         enable = cfg.enable; # Enable animation configurations
-        overrides = {}; # Additional animation presets in Lua, by a name without dots. HyDE's own preset wins over one that reuses its name
+        overrides = {}; # Override or add animation presets, written in Lua; names must not contain dots
         preset = "standard"; # Animation preset to use
       };
       extraConfig = ""; # Extra config appended to hyprland.lua
@@ -161,7 +161,7 @@ hydenix = {
       workflows = {
         enable = cfg.enable; # Enable workflow configurations
         active = "default"; # Active workflow preset
-        overrides = {}; # Additional workflows in Lua, by a name without dots. HyDE's own workflow wins over one that reuses its name
+        overrides = {}; # Override or add workflows, written in Lua; names must not contain dots
       };
     };
     notifications = {

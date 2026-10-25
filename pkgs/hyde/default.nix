@@ -105,6 +105,11 @@ in
         --replace-fail '    "python": reload_python,' "" \
         --replace-fail '    "lua": reload_lua,' ""
 
+      # let a preset under ~/.config/hypr replace HyDE's one of the same name; HyDE's selector keeps the last dir's copy instead
+      substituteInPlace Configs/.local/lib/hyde/luautils/selector/common.lua \
+        --replace-fail 'for _, entry in ipairs(files) do' 'for i, entry in ipairs(files) do' \
+        --replace-fail 'local item = load_item(entry.path, entry.base)' 'local item = (i == 1 or files[i - 1].file ~= entry.file) and load_item(entry.path, entry.base)'
+
       # the hydeLua wrapper and hyde-shell put Lua 5.5 module paths in LUA_PATH/LUA_CPATH; keep them from the apps open.lua launches
       substituteInPlace Configs/.local/lib/hyde/open.lua \
         --replace-fail 'local GLib = lgi.GLib' 'local GLib = lgi.GLib
