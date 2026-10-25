@@ -9,14 +9,14 @@
 
   variables = builtins.concatStringsSep " " cfg.systemd.variables;
   extraCommands = builtins.concatStringsSep " " (map (f: "&& ${f}") cfg.systemd.extraCommands);
-  # Lua's exec-once: Hyprland fires hyprland.start once, and a reload drops the handler without firing it again
+  # Runs once when Hyprland starts, like exec-once; a reload does not run it again
   systemdActivation = ''
     hl.on("hyprland.start", function()
       hl.exec_cmd(${builtins.toJSON "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd ${variables} ${extraCommands}"})
     end)
   '';
 
-  # A syntax error skips the whole file, including the hyprland.start handler, and Hyprland reports it only at login
+  # Writes hyprland.lua and fails the build on a Lua syntax error, which Hyprland would report only after login
   luaFile = text:
     pkgs.writeTextFile {
       name = "hyprland.lua";

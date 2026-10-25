@@ -1,4 +1,4 @@
-# The presets pkgs.hyde ships, so that a wrong name fails evaluation instead of the switch.
+# Names of the presets pkgs.hyde ships. The modules check the selected name against them, so a typo fails the build instead of the activation.
 {
   # ~/.local/share/hypr/lua/animations/*.lua
   animations = [
