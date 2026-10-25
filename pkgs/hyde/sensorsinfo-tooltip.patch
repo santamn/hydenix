@@ -1,6 +1,8 @@
---- a/Configs/.local/lib/hyde/sensorsinfo.py	2026-10-06 01:16:12.239011471 +0900
-+++ b/Configs/.local/lib/hyde/sensorsinfo.py	2026-10-06 01:23:20.000556206 +0900
-@@ -20,6 +20,8 @@
+diff --git a/Configs/.local/lib/hyde/sensorsinfo.py b/Configs/.local/lib/hyde/sensorsinfo.py
+index a33e22a..bce0392 100755
+--- a/Configs/.local/lib/hyde/sensorsinfo.py
++++ b/Configs/.local/lib/hyde/sensorsinfo.py
+@@ -20,6 +20,8 @@ import json
  import subprocess
  import os
  import argparse
@@ -9,7 +11,7 @@
  import time
  import sys
  
-@@ -42,24 +44,23 @@
+@@ -42,24 +44,23 @@ def get_device_glyph(device_name):
      )
  
  
@@ -51,7 +53,21 @@
  
  
  PAGE_SIZE = 5
-@@ -128,8 +129,11 @@
+@@ -90,12 +91,7 @@ def get_temp_color(temp):
+         90: "#ffa500",  # Orange for 90 to 94
+         85: "#ffd700",  # Gold for 85 to 89
+         80: "#ffff00",  # Yellow for 80 to 84
+-        75: "#ffa07a",  # Light Salmon for 75 to 79
+-        70: "#ff7f50",  # Coral for 70 to 74
+-        65: "#ff4500",  # Orange Red for 65 to 69
+-        60: "#ff6347",  # Tomato for 60 to 64
+-        55: "#ff8c00",  # Dark Orange for 55 to 59
+-        45: "",  # No color for 45 to 54
++        45: "",  # No color for 45 to 79
+         40: "#add8e6",  # Light Blue for 40 to 44
+         35: "#87ceeb",  # Sky Blue for 35 to 39
+         30: "#4682b4",  # Steel Blue for 30 to 34
+@@ -128,8 +124,11 @@ def get_sensor_data(result_sensors, page=0):
      device_data = {}
  
      # Extract top-level sensor data
@@ -63,7 +79,16 @@
          device_data[device] = {
              "temperatures": [],
              "fan_speeds": [],
-@@ -171,25 +175,25 @@
+@@ -145,7 +144,7 @@ def get_sensor_data(result_sensors, page=0):
+                         device_data[device]["temperatures"].append(f"{sensor}: {temp_color}")
+                     elif "fan" in key and "input" in key:
+                         device_data[device]["fan_speeds"].append(f"{sensor}: {value} RPM")
+-                    elif "in" in key and "input" in key:
++                    elif key.startswith("in") and "input" in key:
+                         device_data[device]["voltages"].append(f"{sensor}: {value} V")
+                     elif "curr" in key and "input" in key:
+                         device_data[device]["currents"].append(f"{sensor}: {value} A")
+@@ -171,26 +170,26 @@ def get_sensor_data(result_sensors, page=0):
          has_data = False
          if data["temperatures"]:
              has_data = True
@@ -90,7 +115,9 @@
          if data["powers"]:
              has_data = True
 -            power_columns = format_columns(data["powers"])
+-            device_parts.append("       臘 Powers:\n        " + "\n        ".join(power_columns))
 +            power_columns = data["powers"]
-             device_parts.append("       臘 Powers:\n        " + "\n        ".join(power_columns))
++            device_parts.append("       󰐧 Powers:\n        " + "\n        ".join(power_columns))
          if has_data:
              tooltip_parts.append("\n".join(device_parts))
+             tooltip_parts.append("\n")  # Add a newline after each device's information

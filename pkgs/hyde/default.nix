@@ -61,6 +61,7 @@ in
     inherit src version;
 
     patches = [
+      ./cpuinfo-tooltip.patch
       ./sensorsinfo-tooltip.patch
     ];
 
