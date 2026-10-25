@@ -37,7 +37,6 @@ in {
     ./workflows.nix
     (mkHyprConfig {name = "hypridle";})
     (mkHyprConfig {name = "hyprlock";})
-    # (mkHyprConfig {name = "pyprland"; extension = "toml";})
     (mkHyprConfig {name = "hyprsunset";})
   ];
 
