@@ -1,5 +1,4 @@
 # The presets pkgs.hyde ships, so that a wrong name fails evaluation instead of the switch.
-# The hyprland-config flake check fails when pkgs.hyde ships a different set.
 {
   # ~/.local/share/hypr/lua/animations/*.lua
   animations = [

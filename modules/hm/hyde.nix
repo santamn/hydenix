@@ -39,7 +39,6 @@ in {
     home.sessionVariables = {
       HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyde.lua";
     };
-    # HyDE runs hyde-shell by name; its hyprlang config put ~/.local/bin on Hyprland's PATH, and the Lua one no longer does
     home.sessionPath = ["$HOME/.local/bin"];
 
     # At boot, home-manager-<user>.service runs before /run/user/$UID exists, and hyde-shell exits when it cannot create $XDG_RUNTIME_DIR/hyde

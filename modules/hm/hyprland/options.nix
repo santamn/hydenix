@@ -14,12 +14,12 @@ in {
     extraConfig = lib.mkOption {
       type = lib.types.lines;
       default = "";
-      description = "Extra Lua appended to ~/.config/hypr/hyprland.lua, which HyDE loads after its own config";
+      description = "Extra config appended to hyprland.lua";
     };
     overrideMain = lib.mkOption {
       type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
-      description = "Complete override of ~/.config/hypr/hyprland.lua, the Lua file HyDE loads after its own config";
+      description = "Complete override of hyprland.lua";
     };
     suppressWarnings = lib.mkOption {
       type = lib.types.bool;
@@ -46,7 +46,6 @@ in {
 
       variables = lib.mkOption {
         type = with lib.types; listOf str;
-        # HYPRLAND_CONFIG lets the theme switch that setTheme.service runs at login apply the theme's GTK, icon and cursor settings
         default = [
           "DISPLAY"
           "HYPRLAND_CONFIG"
@@ -86,7 +85,7 @@ in {
       preset = lib.mkOption {
         type = lib.types.str;
         default = "standard";
-        description = "Animation preset to use, by the name of its file under ~/.local/share/hypr/lua/animations or its name in overrides";
+        description = "Animation preset to use";
         example = lib.literalExpression ''
           "standard" # any name in overrides or default: "00-disable", "01-default", "classic", "diablo-1", "diablo-2", "end4", "fast", "gnome", "ja", "limefrenzy", "macos", "me-1", "me-2", "minimal-2", "moving", "optimized", "standard", "vertical"
         '';
@@ -148,7 +147,7 @@ in {
       active = lib.mkOption {
         type = lib.types.str;
         default = "default";
-        description = "Active workflow, by the name of its file under ~/.local/share/hypr/lua/workflows (\"default\" also selects 01-default) or its name in overrides";
+        description = "Active workflow preset";
         example = lib.literalExpression ''
           "default" # any name in overrides or default: "editing", "gaming", "powersaver", "snappy"
         '';

@@ -117,9 +117,9 @@ hydenix = {
       animations = {
         enable = cfg.enable; # Enable animation configurations
         overrides = {}; # Additional animation presets in Lua, by a name without dots. HyDE's own preset wins over one that reuses its name
-        preset = "standard"; # Animation preset to use, by the name of its file under ~/.local/share/hypr/lua/animations or its name in overrides
+        preset = "standard"; # Animation preset to use
       };
-      extraConfig = ""; # Extra Lua appended to ~/.config/hypr/hyprland.lua, which HyDE loads after its own config
+      extraConfig = ""; # Extra config appended to hyprland.lua
       hypridle = {
         enable = cfg.enable; # Enable hypridle configurations
         extraConfig = ""; # Additional hypridle configuration
@@ -135,7 +135,7 @@ hydenix = {
         extraConfig = ""; # Additional hyprsunset configuration
         overrideConfig = null; # Complete hyprsunset configuration override
       };
-      overrideMain = null; # Complete override of ~/.config/hypr/hyprland.lua, the Lua file HyDE loads after its own config
+      overrideMain = null; # Complete override of hyprland.lua
       shaders = {
         enable = cfg.enable; # Enable shader configurations
         active = "disable"; # Active shader preset
@@ -160,7 +160,7 @@ hydenix = {
       };
       workflows = {
         enable = cfg.enable; # Enable workflow configurations
-        active = "default"; # Active workflow, by the name of its file under ~/.local/share/hypr/lua/workflows ("default" also selects 01-default) or its name in overrides
+        active = "default"; # Active workflow preset
         overrides = {}; # Additional workflows in Lua, by a name without dots. HyDE's own workflow wins over one that reuses its name
       };
     };
