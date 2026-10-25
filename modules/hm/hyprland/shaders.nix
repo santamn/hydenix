@@ -41,10 +41,10 @@ in {
         }
       ])
 
-      # Custom/override shaders
+      # Custom/override shaders; mkForce drops the file HyDE ships under the same name
       (lib.mapAttrs' (name: content: {
           name = ".config/hypr/shaders/${name}";
-          value = {
+          value = lib.mkForce {
             text = content;
             force = true;
           };
