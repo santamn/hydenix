@@ -14,12 +14,12 @@ in {
     extraConfig = lib.mkOption {
       type = lib.types.lines;
       default = "";
-      description = "Extra config appended to userprefs.conf";
+      description = "Extra config appended to hyprland.lua";
     };
     overrideMain = lib.mkOption {
       type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
-      description = "Complete override of hyprland.conf";
+      description = "Complete override of hyprland.lua";
     };
     suppressWarnings = lib.mkOption {
       type = lib.types.bool;
@@ -48,6 +48,7 @@ in {
         type = with lib.types; listOf str;
         default = [
           "DISPLAY"
+          "HYPRLAND_CONFIG"
           "HYPRLAND_INSTANCE_SIGNATURE"
           "WAYLAND_DISPLAY"
           "XDG_CURRENT_DESKTOP"
@@ -86,22 +87,20 @@ in {
         default = "standard";
         description = "Animation preset to use";
         example = lib.literalExpression ''
-          "standard" # any string in overrides or default: "LimeFrenzy", "classic", "diablo-1", "diablo-2", "disable", "dynamic", "end4", "fast", "high", "ja", "me-1", "me-2", "minimal-1", "minimal-2", "moving", "optimized", "standard", "vertical"
+          "standard" # a name in overrides, or one HyDE ships: "00-disable", "01-default", "classic", "diablo-1", "diablo-2", "end4", "fast", "gnome", "ja", "limefrenzy", "macos", "me-1", "me-2", "minimal-2", "moving", "optimized", "standard", "vertical"
         '';
-      };
-      extraConfig = lib.mkOption {
-        type = lib.types.lines;
-        default = "";
-        description = "Additional animation configuration";
       };
       overrides = lib.mkOption {
         type = lib.types.attrsOf lib.types.lines;
         default = {};
-        description = "Override specific animation files by name";
+        description = "Override or add animation presets, written in Lua; names must not contain dots";
         example = lib.literalExpression ''
           {
-            "classic" = '''
-              animation = windows, 1, 5, default
+            "my-animations" = '''
+              if not hl then
+                return { name = "My animations" }
+              end
+              hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "default" })
             ''';
           }
         '';
@@ -120,7 +119,7 @@ in {
         default = "disable";
         description = "Active shader preset";
         example = lib.literalExpression ''
-          "disable" # any string in overrides or default: "blue-light-filter", "color-vision", "custom", "grayscale", "invert-colors", "oled", "oled-saver", "paper", "vibrance", "wallbash"
+          "disable" # a name in overrides without .frag, or one HyDE ships: "blue-light-filter", "color-vision", "custom", "grayscale", "invert-colors", "oled-saver", "paper", "vibrance", "wallbash"
         '';
       };
       overrides = lib.mkOption {
@@ -150,17 +149,20 @@ in {
         default = "default";
         description = "Active workflow preset";
         example = lib.literalExpression ''
-          "default" # any string in overrides or default: "editing", "gaming", "powersaver", "snappy"
+          "default" # a name in overrides, or one HyDE ships: "editing", "gaming", "powersaver", "snappy"
         '';
       };
       overrides = lib.mkOption {
         type = lib.types.attrsOf lib.types.lines;
         default = {};
-        description = "Override or add custom workflows";
+        description = "Override or add workflows, written in Lua; names must not contain dots";
         example = lib.literalExpression ''
           {
-            "my-workflow.conf" = '''
-              // Custom workflow configuration
+            "my-workflow" = '''
+              if not hl then
+                return { name = "My workflow" }
+              end
+              hl.config({ general = { gaps_out = 0 } })
             ''';
           }
         '';

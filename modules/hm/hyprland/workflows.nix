@@ -6,58 +6,29 @@
 }: let
   cfg = config.hydenix.hm.hyprland;
 
-  workflowPresets = [
-    "default"
-    "editing"
-    "gaming"
-    "powersaver"
-    "snappy"
-  ];
+  presets = map lib.toLower ((import ./presets.nix).workflows ++ ["default"] ++ lib.attrNames cfg.workflows.overrides);
 in {
   config = lib.mkIf (cfg.enable && cfg.workflows.enable) {
-    home.file = lib.mkMerge [
-      # Active workflow
+    assertions = [
       {
-        ".config/hypr/workflows.conf" =
-          if cfg.workflows.overrides ? ${cfg.workflows.active}
-          then {
-            text = cfg.workflows.overrides.${cfg.workflows.active};
-            force = true;
-            mutable = true;
-          }
-          else {
-            source = "${pkgs.hyde}/Configs/.config/hypr/workflows/${cfg.workflows.active}.conf";
-            force = true;
-            mutable = true;
-          };
+        assertion = lib.elem (lib.toLower cfg.workflows.active) presets;
+        message = "hydenix.hm.hyprland.workflows.active: unknown workflow \"${cfg.workflows.active}\"; use one of ${lib.concatStringsSep ", " presets}";
       }
-
-      # All workflow presets (with overrides)
-      (lib.listToAttrs (
-        map (workflow: {
-          name = ".config/hypr/workflows/${workflow}.conf";
-          value =
-            if cfg.workflows.overrides ? ${workflow}
-            then {
-              text = cfg.workflows.overrides.${workflow};
-              force = true;
-            }
-            else {
-              source = "${pkgs.hyde}/Configs/.config/hypr/workflows/${workflow}.conf";
-              force = true;
-            };
-        })
-        workflowPresets
-      ))
-
-      # Custom workflows (exclude the standard presets)
-      (lib.mapAttrs' (name: content: {
-        name = ".config/hypr/workflows/${name}.conf";
-        value = {
-          text = content;
-          force = true;
-        };
-      }) (lib.filterAttrs (name: _: !(lib.elem name workflowPresets)) cfg.workflows.overrides))
+      {
+        assertion = lib.all (name: builtins.match "[^./]+" name != null) (lib.attrNames cfg.workflows.overrides);
+        message = "hydenix.hm.hyprland.workflows.overrides: names must not contain '.' or '/'";
+      }
     ];
+
+    home.file = lib.mapAttrs' (name: text:
+      lib.nameValuePair ".config/hypr/workflows/${name}.lua" {
+        inherit text;
+        force = true;
+      })
+    cfg.workflows.overrides;
+
+    home.activation.setWorkflow = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+      run ${pkgs.hyde}/Configs/.local/bin/hyde-shell workflows --set ${lib.escapeShellArg cfg.workflows.active}
+    '';
   };
 }

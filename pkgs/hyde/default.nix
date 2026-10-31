@@ -17,12 +17,42 @@
         ])
         ++ [pkgs.pyamdgpuinfo]
     ),
+  # Lua 5.5, the version Hyprland embeds, with the libraries HyDE's Lua scripts use.
+  # HyDE installs them with luarocks into ~/.local/state/hyde/lua_env at runtime; Nix builds them here instead
+  hydeLua ? let
+    lua = pkgs.lua5_5;
+    # nixpkgs marks lgi broken on Lua 5.4 and later; master builds on 5.5 and already carries nixpkgs' patches
+    # shortcut: lgi has not tagged a release since 0.9.2 (2017), so this pins a master commit that Renovate cannot update;
+    # move to a tag once lgi releases one with Lua 5.5 support, or drop this override once nixpkgs' lgi builds on Lua 5.5
+    lgi = lua.pkgs.lgi.overrideAttrs (old: {
+      version = "scm";
+      src = fetchFromGitHub {
+        owner = "lgi-devs";
+        repo = "lgi";
+        rev = "7a2276f9657a50ee548a636f2e646f96ec748bbd";
+        hash = "sha256-YObCJg5RAW5TbZDo1e7NxdDqYaGbk8p5sbAzX7Y0lVg=";
+      };
+      knownRockspec = null;
+      patches = [];
+      meta = old.meta // {broken = false;};
+    });
+  in
+    lua.buildEnv.override {
+      extraLibs = with lua.pkgs; [argparse dkjson lgi luafilesystem luasocket];
+      makeWrapperArgs = [
+        # lgi loads GLib and Gio from these typelibs (open.lua, color/dconf.lua)
+        "--prefix GI_TYPELIB_PATH : ${lib.makeSearchPath "lib/girepository-1.0" [pkgs.glib.out pkgs.gobject-introspection]}"
+        # color/dconf.lua writes the GTK, icon and font settings to GSettings, which needs their schema and the dconf backend
+        "--prefix XDG_DATA_DIRS : ${pkgs.glib.getSchemaDataDirPath pkgs.gsettings-desktop-schemas}"
+        "--prefix GIO_EXTRA_MODULES : ${pkgs.dconf.lib}/lib/gio/modules"
+      ];
+    },
 }: let
   src = fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "HyDE";
-    rev = "v26.7.4";
-    hash = "sha256-saNXLFMSi2MFRR/RyPGV2KWCKCJqjWRIKGDqdv+f5VE=";
+    rev = "v26.08.21";
+    hash = "sha256-+YhLk3J59zThsVVDsbTlSKcBulSxOO/r/HpPZ6Udg1M=";
   };
   version = lib.removePrefix "v" src.rev;
 in
@@ -38,6 +68,8 @@ in
       gnutar
     ];
 
+    buildInputs = [hydeLua];
+
     buildPhase = ''
       runHook preBuild
 
@@ -47,7 +79,6 @@ in
       rm -rf Configs/.local/lib/hyde/resetxdgportal.sh
       rm -rf Configs/.local/bin/hydectl
       rm -rf Configs/.local/bin/hyde-ipc
-      rm -rf Configs/.local/lib/hyde/hyde-config
       rm -rf Configs/.local/lib/hyde/hyq
       rm -rf Configs/.local/bin/hyq
 
@@ -66,6 +97,38 @@ in
 
       # point the runtime uv venv interpreter path at hydePython
       find . -type f -print0 | xargs -0 sed -i 's|''${XDG_STATE_HOME:-$HOME/\.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
+
+      # hyde-shell runs its Lua scripts against the luarocks tree HyDE builds at runtime; point it at hydeLua,
+      # and stop it from activating or creating the uv venv that hydePython replaces
+      substituteInPlace Configs/.local/bin/hyde-shell \
+        --replace-fail 'l_env="''${XDG_STATE_HOME:-$HOME/.local/state}/hyde/lua_env"' 'l_env="${hydeLua}"' \
+        --replace-fail 'python_activate() {' 'python_activate() { return 0'
+      # Nix provides both environments, so `hyde-shell reload` must not rebuild them with uv and luarocks
+      substituteInPlace Configs/.local/lib/hyde/reload.py \
+        --replace-fail '    "python": reload_python,' "" \
+        --replace-fail '    "lua": reload_lua,' ""
+
+      # let a preset under ~/.config/hypr replace HyDE's one of the same name; HyDE's selector keeps the last dir's copy instead
+      substituteInPlace Configs/.local/lib/hyde/luautils/selector/common.lua \
+        --replace-fail 'for _, entry in ipairs(files) do' 'for i, entry in ipairs(files) do' \
+        --replace-fail 'local item = load_item(entry.path, entry.base)' 'local item = (i == 1 or files[i - 1].file ~= entry.file) and load_item(entry.path, entry.base)'
+
+      # the hydeLua wrapper and hyde-shell put Lua 5.5 module paths in LUA_PATH/LUA_CPATH; keep them from the apps open.lua launches
+      substituteInPlace Configs/.local/lib/hyde/open.lua \
+        --replace-fail 'local GLib = lgi.GLib' 'local GLib = lgi.GLib
+      GLib.unsetenv("LUA_PATH")
+      GLib.unsetenv("LUA_CPATH")'
+
+      # HyDE's installer downloads grimblast next to the scripts; the packaged one already speaks Hyprland's Lua IPC
+      substituteInPlace Configs/.local/lib/hyde/screenshot.sh Configs/.local/lib/hyde/screenrecord.sh \
+        --replace-fail '$LIB_DIR/hyde/screenshot/grimblast' '${lib.getExe pkgs.grimblast}'
+
+      # Hyprland's Lua config rejects dispatches in hyprlang syntax; backport HyDE's fixes from after v26.08.21
+      substituteInPlace Configs/.config/hypr/hypridle.conf \
+        --replace-fail 'hyprctl dispatch dpms off' "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'" \
+        --replace-fail 'hyprctl dispatch dpms on' "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'"
+      substituteInPlace Configs/.local/bin/hyde-shell Configs/.local/share/waybar/modules/custom-power{,menu}.jsonc \
+        --replace-fail 'hyprctl dispatch exit 0' "hyprctl dispatch 'hl.dsp.exit()'"
 
       # fix find commands for symlinks
       find . -type f -executable -print0 | xargs -0 sed -i 's/find "/find -L "/g'
@@ -104,11 +167,12 @@ in
     '';
 
     # inline the env instead of wrapProgram: hyde-shell is also sourced, and a wrapper's exec would kill the sourcing script
+    # app2unit runs every `hyde-shell app` command, and HyDE's installer downloads it next to the scripts; hyde-shell finds itself with which
     postInstall = ''
       hydeShell=$out/Configs/.local/bin/hyde-shell
       {
         head -n 1 "$hydeShell"
-        echo 'export PATH="${pkgs.lib.makeBinPath [hydePython]}:$PATH"'
+        echo 'export PATH="${pkgs.lib.makeBinPath [hydePython hydeLua pkgs.app2unit pkgs.which]}:$PATH"'
         tail -n +2 "$hydeShell"
       } >"$hydeShell.new"
       mv "$hydeShell.new" "$hydeShell"

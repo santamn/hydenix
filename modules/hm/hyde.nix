@@ -25,7 +25,6 @@ in {
       pyamdgpuinfo
       hyprquery
       hydectl
-      hyde-ipc
       hyde-config
 
       # fonts
@@ -36,10 +35,17 @@ in {
       noto-fonts-cjk-sans
     ];
 
-    # ensures hyprland config is available in session as per hyde uwsm update
+    # theme.switch.sh applies a theme to Hyprland only when this file is readable; HyDE's uwsm env sets the same path
     home.sessionVariables = {
-      HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyprland.conf";
+      HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyde.lua";
     };
+    # HyDE's binds and scripts run hyde-shell by name
+    home.sessionPath = ["$HOME/.local/bin"];
+
+    # hyde-shell needs a writable XDG_RUNTIME_DIR, which is missing when activation runs at boot
+    home.activation.hydeRuntimeDir = lib.hm.dag.entryBetween ["setAnimationPreset" "setShader" "setTheme" "setWorkflow"] ["mutableFileGeneration"] ''
+      [ -w "''${XDG_RUNTIME_DIR:-/run/user/$UID}" ] || export XDG_RUNTIME_DIR="$(mktemp -d)"
+    '';
 
     fonts.fontconfig.enable = true;
 
@@ -57,35 +63,6 @@ in {
         recursive = true;
         force = true;
         mutable = true;
-      };
-
-      ".config/systemd/user/hyde-config.service" = {
-        text = ''
-          [Unit]
-          Description=HyDE Configuration Parser Service
-          Documentation=https://github.com/HyDE-Project/hyde-config
-          After=graphical-session.target
-          PartOf=graphical-session.target
-
-          [Service]
-          Type=simple
-          ExecStart=%h/.local/lib/hyde/hyde-config
-          Restart=on-failure
-          RestartSec=5s
-          Environment="DISPLAY=:0"
-
-          # Make sure the required directories exist
-          ExecStartPre=/usr/bin/env mkdir -p %h/.config/hyde
-          ExecStartPre=/usr/bin/env mkdir -p %h/.local/state/hyde
-
-          [Install]
-          WantedBy=graphical-session.target
-        '';
-        force = true;
-      };
-      ".config/systemd/user/hyde-ipc.service" = {
-        source = "${pkgs.hyde}/Configs/.config/systemd/user/hyde-ipc.service";
-        force = true;
       };
 
       ".local/bin/hyde-shell" = {
