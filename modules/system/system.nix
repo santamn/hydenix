@@ -7,7 +7,7 @@
   cfg = config.hydenix.system;
 
   # The latest Hyprland release series HyDE's configs are written for; bump it together with HyDE
-  supportedHyprland = "0.56";
+  supportedHyprland = "0.57";
   hyprlandVersion = lib.versions.majorMinor config.programs.hyprland.package.version;
 in {
   options.hydenix.system = {
