@@ -39,7 +39,7 @@ in {
     home.sessionVariables = {
       HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyde.lua";
     };
-    # HyDE's binds and scripts run hyde-shell by name
+    # Add ~/.local/bin to PATH so that HyDE's startup, keybinds, waybar and hypridle can call hyde-shell
     home.sessionPath = ["$HOME/.local/bin"];
 
     # hyde-shell needs a writable XDG_RUNTIME_DIR, which is missing when activation runs at boot
