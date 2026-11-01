@@ -19,26 +19,9 @@
     ),
   # Lua 5.5, the version Hyprland embeds, with the libraries HyDE's Lua scripts use.
   # HyDE installs them with luarocks into ~/.local/state/hyde/lua_env at runtime; Nix builds them here instead
-  hydeLua ? let
-    lua = pkgs.lua5_5;
-    # nixpkgs marks lgi broken on Lua 5.4 and later; master builds on 5.5 and already carries nixpkgs' patches
-    # shortcut: lgi has not tagged a release since 0.9.2 (2017), so this pins a master commit that Renovate cannot update;
-    # move to a tag once lgi releases one with Lua 5.5 support, or drop this override once nixpkgs' lgi builds on Lua 5.5
-    lgi = lua.pkgs.lgi.overrideAttrs (old: {
-      version = "scm";
-      src = fetchFromGitHub {
-        owner = "lgi-devs";
-        repo = "lgi";
-        rev = "7a2276f9657a50ee548a636f2e646f96ec748bbd";
-        hash = "sha256-YObCJg5RAW5TbZDo1e7NxdDqYaGbk8p5sbAzX7Y0lVg=";
-      };
-      knownRockspec = null;
-      patches = [];
-      meta = old.meta // {broken = false;};
-    });
-  in
-    lua.buildEnv.override {
-      extraLibs = with lua.pkgs; [argparse dkjson lgi luafilesystem luasocket];
+  hydeLua ?
+    pkgs.lua5_5.buildEnv.override {
+      extraLibs = with pkgs.lua5_5.pkgs; [argparse dkjson lgi luafilesystem luasocket];
       makeWrapperArgs = [
         # lgi loads GLib and Gio from these typelibs (open.lua, color/dconf.lua)
         "--prefix GI_TYPELIB_PATH : ${lib.makeSearchPath "lib/girepository-1.0" [pkgs.glib.out pkgs.gobject-introspection]}"
