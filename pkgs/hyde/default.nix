@@ -23,7 +23,7 @@
     pkgs.lua5_5.buildEnv.override {
       extraLibs = with pkgs.lua5_5.pkgs; [argparse dkjson lgi luafilesystem luasocket];
       makeWrapperArgs = [
-        # lgi loads GLib and Gio from these typelibs (open.lua, color/dconf.lua)
+        # lgi loads GLib and Gio from these typelibs (open.lua, batterynotify.lua, color/dconf.lua)
         "--prefix GI_TYPELIB_PATH : ${lib.makeSearchPath "lib/girepository-1.0" [pkgs.glib.out pkgs.gobject-introspection]}"
         # color/dconf.lua writes the GTK, icon and font settings to GSettings, which needs their schema and the dconf backend
         "--prefix XDG_DATA_DIRS : ${pkgs.glib.getSchemaDataDirPath pkgs.gsettings-desktop-schemas}"
