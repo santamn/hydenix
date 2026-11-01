@@ -8,7 +8,7 @@
   hyprlang,
   fetchFromGitHub,
 }: let
-  # shortcut: `--dump` and `--export lua`, which HyDE's theme switch needs, exist only on main; pin a release once one has them
+  # `--dump` and `--export lua`, which HyDE's theme switch needs, exist only on main, so `nix run .#update-branch-pins` follows main
   src = fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyprquery";
@@ -21,6 +21,7 @@ in
   hyprlang.stdenv.mkDerivation {
     pname = "hyprquery";
     inherit src version;
+    passthru.updateBranch = "main";
 
     nativeBuildInputs = [
       cmake

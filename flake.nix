@@ -134,7 +134,10 @@
         # Every commit pin that follows an upstream branch, keyed by the flake attribute path nix-update takes
         pins =
           pkgs.lib.mapAttrs' (name: theme: pkgs.lib.nameValuePair "legacyPackages.${system}.hydenix-themes.${builtins.toJSON name}" theme) themes
-          // {"packages.${system}.hyde-diff-upstream.hyde-master" = inputs.self.packages.${system}.hyde-diff-upstream.hyde-master;};
+          // {
+            "packages.${system}.hyde-diff-upstream.hyde-master" = inputs.self.packages.${system}.hyde-diff-upstream.hyde-master;
+            "packages.${system}.hyprquery" = inputs.self.packages.${system}.hyprquery;
+          };
 
         # `rev` pins a commit, which cannot tell where newer ones are; the pin's branch does
         updatePin = attrPath: pin:
