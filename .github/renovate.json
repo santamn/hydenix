@@ -57,6 +57,13 @@
       "automerge": false
     },
     {
+      "description": "Wait as long as the Dependabot cooldown before a release can update a pin",
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "minimumReleaseAge": "7 days"
+    },
+    {
       "matchDepTypes": [
         "nix-raw-pkgs"
       ],
