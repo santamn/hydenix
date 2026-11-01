@@ -5,12 +5,16 @@ on:
   schedule:
     - cron: "0 0 * * 0" # Run weekly on Sunday at midnight UTC
 
+permissions: {}
+
 jobs:
   update-branch-pins:
     runs-on: ubuntu-latest
+    # Holds RENOVATE_TOKEN
+    environment: renovate
+    # The PR is pushed, opened and merged with RENOVATE_TOKEN, so GITHUB_TOKEN only needs to check out
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,7 +37,8 @@ jobs:
         id: create_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # GitHub holds the pull_request runs of a PR opened with GITHUB_TOKEN until someone approves them
+          token: ${{ secrets.RENOVATE_TOKEN }}
           commit-message: "chore: automated branch pin updates"
           title: "chore: Automated Branch Pin Updates"
           body: |
@@ -50,7 +55,7 @@ jobs:
         if: steps.create_pr.outputs.pull-request-number
         run: gh pr merge --auto --rebase "$PR_NUMBER"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
 
       - name: Notify failed pin updates
