@@ -11,6 +11,9 @@
   extraCommands = builtins.concatStringsSep " " (map (f: "&& ${f}") cfg.systemd.extraCommands);
   # Runs once when Hyprland starts, like exec-once; a reload does not run it again
   systemdActivation = ''
+    -- The handler below starts hyprland-session.target after importing HYPRLAND_CONFIG.
+    -- Since 0.57 Hyprland also starts it, and the handler's restart would then stop the apps HyDE has started.
+    hl.env("HYPRLAND_NO_SD_TARGET", "1")
     hl.on("hyprland.start", function()
       hl.exec_cmd(${builtins.toJSON "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd ${variables} ${extraCommands}"})
     end)
