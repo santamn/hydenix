@@ -10,6 +10,7 @@
   "nix": {
     "enabled": true
   },
+  "automerge": true,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": [],
@@ -48,6 +49,13 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "A HyDE release changes the configs hydenix builds on, so someone reviews it before it lands",
+      "matchDepNames": [
+        "/^hyde-project\\/hyde$/i"
+      ],
+      "automerge": false
+    },
     {
       "matchDepTypes": [
         "nix-raw-pkgs"
