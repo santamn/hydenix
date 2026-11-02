@@ -99,7 +99,7 @@
 
       # Add hyprquery, hydectl, hyde-ipc, and hyde-config for building
       inherit (pkgs) hyprquery hydectl hyde-config hyde-ipc hyde;
-      inherit (pkgs) code-wallbash pokego pyamdgpuinfo;
+      inherit (pkgs) code-wallbash pyamdgpuinfo;
     };
 
     # The update-branch-pins app passes each theme to nix-update using its flake attribute path.
