@@ -2,24 +2,26 @@
   lib,
   cmake,
   pkg-config,
-  spdlog,
+  libxkbcommon,
   nlohmann_json,
   cli11,
   hyprlang,
   fetchFromGitHub,
 }: let
+  # `--dump` and `--export lua`, which HyDE's theme switch needs, exist only on main, so `nix run .#update-branch-pins` follows main
   src = fetchFromGitHub {
     owner = "HyDE-Project";
     repo = "hyprquery";
-    rev = "v0.6.7";
-    hash = "sha256-2DtTKQUU3nlAnEzYQSP+ax43oWHi1sNNbp2epcSkzbs=";
+    rev = "002af783eeb8c487a4bf90d75e5a804340557967";
+    hash = "sha256-nGvpj4vbhUX2Xh6usUPQghKdj2Wy6ADMU16SSrKwzkA=";
   };
-  version = lib.removePrefix "v" src.rev;
+  version = "0.6.8-unstable-2026-06-13";
 in
   # nixpkgs builds hyprlang with a newer GCC than the default stdenv, and linking it against an older libstdc++ fails
   hyprlang.stdenv.mkDerivation {
     pname = "hyprquery";
     inherit src version;
+    passthru.updateBranch = "main";
 
     nativeBuildInputs = [
       cmake
@@ -27,21 +29,16 @@ in
     ];
 
     buildInputs = [
-      spdlog
+      libxkbcommon
       nlohmann_json
       cli11
       hyprlang
     ];
 
-    patches = [
-      ./cmake-fix.patch
-    ];
-
     cmakeFlags = [
       "-DCMAKE_BUILD_TYPE=Release"
       "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-      "-DUSE_SYSTEM_SPDLOG=ON"
-      "-DUSE_SYSTEM_HYPRLANG=ON"
+      "-DHYPRQUERY_DISTRO_BUILD=ON"
     ];
 
     # A wrong libstdc++ in the RUNPATH still links, but fails as soon as the binary is loaded

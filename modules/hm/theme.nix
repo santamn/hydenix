@@ -82,10 +82,10 @@ in {
 
     /*
     We require both an activation script and a service to set the theme.
-    color.set.sh (run by theme.switch.sh) sources color/dconf.sh, which needs the graphical session to write dconf
+    color.set.sh (run by theme.switch.sh) runs color/dconf.lua, which needs the graphical session to write dconf
     This is only an issue for the *first* rebuild, as dbus has never been started
 
-    #TODO: this works but a more robust implementation is possible. just do what color.set.sh/color/dconf.sh does and use home.file to set the correct gtk/qt/etc options
+    #TODO: this works but a more robust implementation is possible. just do what color.set.sh/color/dconf.lua does and use home.file to set the correct gtk/qt/etc options
     */
 
     # applies what it can before graphical.target, think of this like a "first content paint"
@@ -97,6 +97,7 @@ in {
             awww
             killall
             hyprland
+            hyprquery
             dunst
             libnotify
             systemd
@@ -112,6 +113,8 @@ in {
           ]
         )
       }:$HOME/.local/bin:$PATH"
+      # theme.switch.sh turns the theme's hypr.theme into Lua for Hyprland only when it finds the Lua config here
+      export HYPRLAND_CONFIG="${config.home.sessionVariables.HYPRLAND_CONFIG or ""}"
 
       if [[ -v DRY_RUN ]]; then
         echo "Would set theme to ${cfg.active}"

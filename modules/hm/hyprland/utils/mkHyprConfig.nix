@@ -3,10 +3,7 @@
   pkgs,
   lib,
   ...
-}: {
-  name,
-  extension ? "conf",
-}: let
+}: {name}: let
   hyprCfg = config.hydenix.hm.hyprland;
   cfg = hyprCfg.${name};
 in {
@@ -33,12 +30,12 @@ in {
   config = lib.mkIf (hyprCfg.enable && cfg.enable) {
     warnings = lib.optional (cfg.overrideConfig != null && !hyprCfg.suppressWarnings) "hydenix.hm.hyprland.${name}.overrideConfig is overriding Hyde defaults. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)";
 
-    home.file.".config/hypr/${name}.${extension}" = {
+    home.file.".config/hypr/${name}.conf" = {
       text =
         if cfg.overrideConfig != null
         then cfg.overrideConfig
         else ''
-          ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/${name}.${extension}"}
+          ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/${name}.conf"}
           ${cfg.extraConfig}
         '';
       force = true;
