@@ -1,0 +1,24 @@
+name: Dependabot Auto-Merge
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *" # Daily, after Dependabot's run at midnight UTC
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    # Holds RENOVATE_TOKEN
+    environment: renovate
+    steps:
+      # Dependabot's PRs change .github/workflows, which GitHub refuses to let GITHUB_TOKEN merge,
+      # and runs that Dependabot triggers cannot read RENOVATE_TOKEN, so pick the PRs up from here.
+      # The ruleset on main holds each merge until the required checks pass
+      - name: Enable auto-merge
+        run: |
+          gh pr list --repo "$GITHUB_REPOSITORY" --author app/dependabot --json number --jq '.[].number' |
+            xargs -r -n 1 gh pr merge --repo "$GITHUB_REPOSITORY" --auto --merge
+        env:
+          GH_TOKEN: ${{ secrets.RENOVATE_TOKEN }}

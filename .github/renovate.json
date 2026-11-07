@@ -10,6 +10,7 @@
   "nix": {
     "enabled": true
   },
+  "automerge": true,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": [],
@@ -48,6 +49,20 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "A HyDE release changes the configs hydenix builds on, so someone reviews it before it lands",
+      "matchDepNames": [
+        "/^hyde-project\\/hyde$/i"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Wait as long as the Dependabot cooldown before a release can update a pin",
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "minimumReleaseAge": "7 days"
+    },
     {
       "matchDepTypes": [
         "nix-raw-pkgs"
