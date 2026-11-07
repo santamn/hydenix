@@ -77,7 +77,7 @@ in {
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Enable fastfetch on shell startup";
+        description = "Enable fastfetch on shell startup, unless pokego is enabled";
       };
     };
   };
@@ -178,7 +178,7 @@ in {
              fi
              source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
           ''}
-          ${lib.optionalString cfg.fastfetch.enable ''
+          ${lib.optionalString (cfg.fastfetch.enable && !cfg.pokego.enable) ''
             fastfetch --logo-type kitty
           ''}
           ${cfg.zsh.configText}
@@ -232,7 +232,7 @@ in {
           pokego --no-title -r 1,3,6
         ''}
 
-        ${lib.optionalString cfg.fastfetch.enable ''
+        ${lib.optionalString (cfg.fastfetch.enable && !cfg.pokego.enable) ''
           fastfetch --logo-type kitty
         ''}
       '';

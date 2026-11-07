@@ -9,7 +9,6 @@ final: _prev: {
   code-wallbash = final.callPackage ./code-wallbash.nix {};
   hydenix-theme-assets = final.callPackage ./hydenix-theme-assets.nix {};
   hydenix-themes = final.callPackage ./hydenix-themes {};
-  pokego = final.callPackage ./pokego {};
   pyamdgpuinfo = final.callPackage ./pyamdgpuinfo {};
   Tela-circle-dracula = final.callPackage ./Tela-circle-dracula.nix {};
 }
