@@ -150,7 +150,7 @@ in
     '';
 
     # inline the env instead of wrapProgram: hyde-shell is also sourced, and a wrapper's exec would kill the sourcing script
-    # app2unit runs every `hyde-shell app` command, and HyDE's installer downloads it next to the scripts; hyde-shell finds itself with which
+    # app2unit runs every `hyde-shell app` command, and HyDE's installer downloads it next to the scripts; hyde-shell runs the `which` command to find its own directory
     postInstall = ''
       hydeShell=$out/Configs/.local/bin/hyde-shell
       {
