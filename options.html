@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f8cce776.js";
+            window.path_to_searchindex_js = "searchindex-11cc69d3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-10ef2642.js"></script>
@@ -275,11 +275,10 @@ You <em>must</em> set these options or else hydenix will not load.</p>
       enable = config.hydenix.hm.enable; # Enable hyprland module
       animations = {
         enable = cfg.enable; # Enable animation configurations
-        extraConfig = ""; # Additional animation configuration
-        overrides = {}; # Override specific animation files by name
+        overrides = {}; # Override or add animation presets, written in Lua; names must not contain dots
         preset = "standard"; # Animation preset to use
       };
-      extraConfig = ""; # Extra config appended to userprefs.conf
+      extraConfig = ""; # Extra config appended to hyprland.lua
       hypridle = {
         enable = cfg.enable; # Enable hypridle configurations
         extraConfig = ""; # Additional hypridle configuration
@@ -295,22 +294,7 @@ You <em>must</em> set these options or else hydenix will not load.</p>
         extraConfig = ""; # Additional hyprsunset configuration
         overrideConfig = null; # Complete hyprsunset configuration override
       };
-      keybindings = {
-        enable = cfg.enable; # Enable keybindings configurations
-        extraConfig = ""; # Additional keybindings configuration
-        overrideConfig = null; # Complete keybindings configuration override
-      };
-      monitors = {
-        enable = cfg.enable; # Enable monitors configurations
-        extraConfig = ""; # Additional monitors configuration
-        overrideConfig = null; # Complete monitors configuration override
-      };
-      nvidia = {
-        enable = cfg.enable; # Enable nvidia configurations
-        extraConfig = ""; # Additional nvidia configuration
-        overrideConfig = null; # Complete nvidia configuration override
-      };
-      overrideMain = null; # Complete override of hyprland.conf
+      overrideMain = null; # Complete override of hyprland.lua
       shaders = {
         enable = cfg.enable; # Enable shader configurations
         active = "disable"; # Active shader preset
@@ -326,21 +310,17 @@ You <em>must</em> set these options or else hydenix will not load.</p>
         ]; # Extra commands to be run after D-Bus activation
         variables = [
           "DISPLAY"
+          "HYPRLAND_CONFIG"
           "HYPRLAND_INSTANCE_SIGNATURE"
           "WAYLAND_DISPLAY"
           "XDG_CURRENT_DESKTOP"
           "XDG_SESSION_TYPE"
         ]; # Environment variables to be imported in the systemd &amp; D-Bus user environment
       };
-      windowrules = {
-        enable = cfg.enable; # Enable windowrules configurations
-        extraConfig = ""; # Additional windowrules configuration
-        overrideConfig = null; # Complete windowrules configuration override
-      };
       workflows = {
         enable = cfg.enable; # Enable workflow configurations
         active = "default"; # Active workflow preset
-        overrides = {}; # Override or add custom workflows
+        overrides = {}; # Override or add workflows, written in Lua; names must not contain dots
       };
     };
     notifications = {
