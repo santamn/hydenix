@@ -40,8 +40,8 @@ in {
       userDirs = {
         enable = true;
         createDirectories = true;
-        # export XDG_DESKTOP_DIR and friends; leaving it unset warns when home.stateVersion < 26.05
-        setSessionVariables = true;
+        # apps read the dirs from user-dirs.dirs; the default is still true, with a warning, while home.stateVersion < 26.05
+        setSessionVariables = false;
 
         # Define standard XDG user directories
         desktop = "${config.home.homeDirectory}/Desktop";
