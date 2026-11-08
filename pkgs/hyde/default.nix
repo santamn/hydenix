@@ -119,8 +119,7 @@ in
       substituteInPlace Configs/.local/share/hypr/lua/key_binds.lua \
         --replace-fail 'switch", release = true, transparent = true}' 'switch", release = true, transparent = true, non_consuming = true}'
 
-      # swaync's style.css ends its last @import without a semicolon, so GTK warns "Unterminated block at end of document"
-      # whenever swaync loads its CSS; the newline in the pattern makes the build fail once upstream adds the semicolon
+      # Add a missing semicolon to the end of style.css for swaync
       substituteInPlace Configs/.config/swaync/style.css \
         --replace-fail $'@import "user-style.css"\n' $'@import "user-style.css";\n'
 
