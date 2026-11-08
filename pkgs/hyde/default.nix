@@ -114,8 +114,7 @@ in
       substituteInPlace Configs/.local/bin/hyde-shell Configs/.local/share/waybar/modules/custom-power{,menu}.jsonc \
         --replace-fail 'hyprctl dispatch exit 0' "hyprctl dispatch 'hl.dsp.exit()'"
 
-      # the alt-tab switcher's Alt_L/Alt_R release binds lack non_consuming, so Hyprland consumes both the press and the release
-      # of a lone Alt and an input method never sees it (e.g. fcitx5 hotkeys)
+      # keep Hyprland from consuming the press and release of a lone Alt, so an input method sees it (e.g. fcitx5 hotkeys)
       substituteInPlace Configs/.local/share/hypr/lua/key_binds.lua \
         --replace-fail 'switch", release = true, transparent = true}' 'switch", release = true, transparent = true, non_consuming = true}'
 
