@@ -119,6 +119,10 @@ in
       substituteInPlace Configs/.local/share/hypr/lua/key_binds.lua \
         --replace-fail 'switch", release = true, transparent = true}' 'switch", release = true, transparent = true, non_consuming = true}'
 
+      # Add a missing semicolon to the end of style.css for swaync
+      substituteInPlace Configs/.config/swaync/style.css \
+        --replace-fail $'@import "user-style.css"\n' $'@import "user-style.css";\n'
+
       # fix find commands for symlinks
       find . -type f -executable -print0 | xargs -0 sed -i 's/find "/find -L "/g'
       find . -type f -name "*.sh" -print0 | xargs -0 sed -i 's/find "/find -L "/g'
