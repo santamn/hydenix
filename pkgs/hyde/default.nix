@@ -173,6 +173,9 @@ in
       chmod +x "$hydeShell"
     '';
 
+    # for running HyDE's Python scripts at build time, as the waybar module does
+    passthru = {inherit hydePython;};
+
     meta = {
       description = "HyDE, your Development Environment";
       homepage = "https://github.com/HyDE-Project/HyDE";
