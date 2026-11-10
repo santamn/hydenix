@@ -79,6 +79,8 @@ in
 
       # Update waybar killall command in all HyDE files
       find . -type f -print0 | replaceInFiles 'killall waybar' 'killall .waybar-wrapped'
+      find . -type f -print0 | replaceInFiles 'pgrep -x waybar' 'pgrep -x .waybar-wrapped'
+      find . -type f -print0 | replaceInFiles '"-x", "waybar"' '"-x", ".waybar-wrapped"'
 
       # update dunst
       find . -type f -print0 | replaceInFiles 'killall dunst' 'killall .dunst-wrapped'
