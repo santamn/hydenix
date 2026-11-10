@@ -4,6 +4,8 @@
   sharedAssets,
 }: {
   name,
+  # used through `args`, see `pkg` below
+  # deadnix: skip
   src,
   branch ? null,
   meta,
