@@ -230,6 +230,9 @@
           touch $out
         '';
 
+      # checks that HyDE's waybar.py still imports, still has update_icon_size and generate_includes, writes waybar/includes/includes.json, and lists modules from both module dirs
+      waybar-includes = inputs.self.homeConfigurations.default.config.home.file.".config/waybar/includes/includes.json".source;
+
       # mirror the `home.packages` buildEnv merge over the default `hydenix.hm.theme.themes`.
       # `altIcons` pulls in the whole asset tree, so this builds the merge as well
       theme-assets = pkgs.buildEnv {

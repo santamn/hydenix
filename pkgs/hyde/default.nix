@@ -66,21 +66,31 @@ in
       rm -rf Configs/.local/lib/hyde/hyq
       rm -rf Configs/.local/bin/hyq
 
+      # substituteInPlace --replace-fail over the files on stdin that contain the string; fails when none does
+      replaceInFiles() {
+        local -a files
+        mapfile -d "" files < <(xargs -0r grep -lIZF -- "$1")
+        if [ ''${#files[@]} -eq 0 ]; then
+          echo "no HyDE file contains '$1'" >&2
+          return 1
+        fi
+        substituteInPlace "''${files[@]}" --replace-fail "$1" "$2"
+      }
+
       # Update waybar killall command in all HyDE files
-      find . -type f -print0 | xargs -0 sed -i 's/killall waybar/killall .waybar-wrapped/g'
+      find . -type f -print0 | replaceInFiles 'killall waybar' 'killall .waybar-wrapped'
 
       # update dunst
-      find . -type f -print0 | xargs -0 sed -i 's/killall dunst/killall .dunst-wrapped/g'
+      find . -type f -print0 | replaceInFiles 'killall dunst' 'killall .dunst-wrapped'
 
       # update kitty
-      find . -type f -print0 | xargs -0 sed -i 's/killall kitty/killall .kitty-wrapped/g'
-      find . -type f -print0 | xargs -0 sed -i 's/killall -SIGUSR1 kitty/killall -SIGUSR1 .kitty-wrapped/g'
+      find . -type f -print0 | replaceInFiles 'killall -SIGUSR1 kitty' 'killall -SIGUSR1 .kitty-wrapped'
 
       # update swaync
-      find . -type f -print0 | xargs -0 sed -i 's/pgrep -x swaync/pgrep -x .swaync-wrapped/g'
+      find . -type f -print0 | replaceInFiles 'pgrep -x swaync' 'pgrep -x .swaync-wrapped'
 
       # point the runtime uv venv interpreter path at hydePython
-      find . -type f -print0 | xargs -0 sed -i 's|''${XDG_STATE_HOME:-$HOME/\.local/state}/hyde/python_env/bin/python|${hydePython}/bin/python|g'
+      find . -type f -print0 | replaceInFiles ${lib.escapeShellArg "\${XDG_STATE_HOME:-$HOME/.local/state}/hyde/python_env/bin/python"} ${hydePython}/bin/python
 
       # hyde-shell runs its Lua scripts against the luarocks tree HyDE builds at runtime; point it at hydeLua,
       # and stop it from activating or creating the uv venv that hydePython replaces
@@ -123,8 +133,7 @@ in
         --replace-fail $'@import "user-style.css"\n' $'@import "user-style.css";\n'
 
       # fix find commands for symlinks
-      find . -type f -executable -print0 | xargs -0 sed -i 's/find "/find -L "/g'
-      find . -type f -name "*.sh" -print0 | xargs -0 sed -i 's/find "/find -L "/g'
+      find . -type f \( -executable -o -name "*.sh" \) -print0 | replaceInFiles 'find "' 'find -L "'
 
       # BUILD GRUB THEMES
       mkdir -p $out/share/grub/themes
@@ -163,6 +172,9 @@ in
       mv "$hydeShell.new" "$hydeShell"
       chmod +x "$hydeShell"
     '';
+
+    # for running HyDE's Python scripts at build time, as the waybar module does
+    passthru = {inherit hydePython;};
 
     meta = {
       description = "HyDE, your Development Environment";
