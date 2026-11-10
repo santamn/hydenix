@@ -81,16 +81,16 @@ in {
         mutable = true;
       };
       ".config/waybar/includes/includes.json" = {
-        # HyDE's installer has waybar.py write this file; run the same code over the modules linked here
+        # HyDE's install.sh writes this file with `waybar.py --update`, which also starts waybar; call only the two functions of --update that write it, over the module dirs home-manager deploys
         source =
           pkgs.runCommand "waybar-includes.json" {
-            # waybar.py exits when waybar is not on PATH
+            # importing waybar.py calls sys.exit(0) unless waybar is on PATH; waybar itself never runs here
             nativeBuildInputs = [pkgs.hyde.hydePython pkgs.waybar];
           } ''
             mkdir -p config/waybar data/waybar
             ln -s ${pkgs.hyde}/Configs/.config/waybar/modules config/waybar/modules
             ln -s ${pkgs.hyde}/Configs/.local/share/waybar/modules data/waybar/modules
-            # glob lists files in readdir order, which differs between filesystems; sort it so the file is reproducible
+            # waybar.py takes the include list from glob.glob, which keeps the filesystem's directory order; sort it so every builder writes the same file
             XDG_CONFIG_HOME=$PWD/config XDG_DATA_HOME=$PWD/data PYTHONPATH=${pkgs.hyde}/Configs/.local/lib/hyde python -c '
             import glob, waybar
             unsorted = glob.glob
