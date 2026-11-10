@@ -8,7 +8,7 @@
 
 ## Before pushing
 
-Run what CI runs: `nix flake check`, `nix flake check ./template --override-input hydenix path:. --no-write-lock-file`, `nix fmt`, typos, and commitlint over the branch.
+Run what CI runs: `nix flake check`, `nix flake check ./template --override-input hydenix path:. --no-write-lock-file`, typos, and commitlint over the branch. CI does not check formatting, so run `nix fmt` too.
 
 ## Patching HyDE (`pkgs/hyde`)
 
