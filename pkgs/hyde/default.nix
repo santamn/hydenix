@@ -77,8 +77,10 @@ in
         substituteInPlace "''${files[@]}" --replace-fail "$1" "$2"
       }
 
-      # Update waybar killall command in all HyDE files
+      # nixpkgs' waybar runs as .waybar-wrapped; update the commands that match its exact process name
       find . -type f -print0 | replaceInFiles 'killall waybar' 'killall .waybar-wrapped'
+      find . -type f -print0 | replaceInFiles 'pgrep -x waybar' 'pgrep -x .waybar-wrapped'
+      find . -type f -print0 | replaceInFiles '"-x", "waybar"' '"-x", ".waybar-wrapped"'
 
       # update dunst
       find . -type f -print0 | replaceInFiles 'killall dunst' 'killall .dunst-wrapped'
