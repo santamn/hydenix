@@ -2,8 +2,6 @@
 #
 # 重要: ログイン画面は home-manager の設定が適用される「前」に表示される。
 # そのためカーソルテーマなどはシステム側（ここ）で指定する必要がある。
-#
-# 注意: enable の既定値が `true` 固定。`hydenix.enable = false` にしても有効なまま。
 {
   config,
   lib,
@@ -15,7 +13,7 @@ in {
   options.hydenix.sddm = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = config.hydenix.enable;
       description = "Enable sddm module";
     };
   };

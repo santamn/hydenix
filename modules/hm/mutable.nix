@@ -10,12 +10,13 @@
 #   という作りになっており、読み取り専用だと動作しない。
 #
 # ■ 解決策
-#   `mutable = true;` を指定したファイルは、リンクではなく「コピー」で配置し、
+#   `mutable = true;` を指定したファイルは、リンクを張った後に「コピー」で上書きし、
 #   書き込み権限を付ける。これで HyDE のスクリプトが自由に書き換えられる。
 #
-# ■ 代償
-#   コピーなので home-manager の管理から外れる。設定から削除しても
-#   ホームディレクトリに残り続けるため、手動で消す必要がある。
+# ■ 設定から外したとき
+#   世代ごとに mutable なファイルの一覧（mutable-files）を残しておき、
+#   新しい世代に無いコピーは古い世代へのリンクに戻す。すると home-manager が
+#   普通のリンクと同じように削除する。手で書き換えた内容も一緒に消える。
 #
 # 仕組みの詳細は docs-ja/04-mutable-files.md を参照。
 # =============================================================================
@@ -25,168 +26,156 @@
   pkgs,
   ...
 }: let
-  # 拡張対象となる 3 つのオプション。属性パスをリストで表現している
-  #   [ "home" "file" ] は config.home.file を指す
-  fileOptionAttrPaths = [
-    [
-      "home"
-      "file"
-    ]
-    [
-      "xdg"
-      "configFile"
-    ]
-    [
-      "xdg"
-      "dataFile"
-    ]
-  ];
+  # 既存の home.file などに mutable だけを追加定義する。
+  # モジュールシステムは同じオプションの submodule 定義をマージするので、
+  # 元の定義（source / text / force など）は壊れない
+  mutableOption = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.submodule {
+      options.mutable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Whether to copy the file without the read-only attribute instead of
+          symlinking. If you set this to `true`, you must also set `force` to
+          `true`. A mutable file is deleted once it is gone from your
+          configuration, including any change you made to it after it was
+          copied.
+
+          This option is useful for programs that don't have a very good
+          support for read-only configurations.
+        '';
+      };
+    });
+  };
+
+  # xdg.configFile と xdg.dataFile は home.file に合流するので、home.file だけを見れば全部拾える
+  # Home Manager merges xdg.configFile and xdg.dataFile into home.file.
+  mutableFiles = lib.filter (file: file.enable && file.mutable) (lib.attrValues config.home.file);
 in {
-  # ---------------------------------------------------------------------------
-  # options: 3 つのオプションそれぞれに `mutable` サブオプションを生やす
-  #
-  # NixOS のモジュールシステムでは、同じオプションを複数のモジュールが定義すると
-  # 「マージ」される。ここでは既存の home.file 等に対して mutable だけを
-  # 追加定義することで、元の定義を壊さずに項目を増やしている。
-  # ---------------------------------------------------------------------------
-  options = let
-    # 属性集合のリストを 1 つにまとめる。
-    # mergeAttrs（= x: y: x // y）だと最上位のキーしか見ないため、
-    # {xdg.configFile} が {xdg.dataFile} に丸ごと差し替えられて
-    # xdg.configFile.<name>.mutable が未定義になっていた。
-    # 入れ子までマージする recursiveUpdate を使う
-    mergeAttrsList = builtins.foldl' lib.recursiveUpdate {};
+  options = {
+    home.file = mutableOption;
+    xdg.configFile = mutableOption;
+    xdg.dataFile = mutableOption;
+  };
 
-    # 「ファイル名 → 設定」の属性集合の型。
-    # submodule は「入れ子の設定オブジェクト」を表す型で、
-    # ここでは mutable という bool 項目だけを追加している
-    fileAttrsType = lib.types.attrsOf (
-      lib.types.submodule (
-        _: {
-          options.mutable = lib.mkOption {
-            type = lib.types.bool;
-            default = false;
-            description = ''
-              Whether to copy the file without the read-only attribute instead of
-              symlinking. If you set this to `true`, you must also set `force` to
-              `true`. Mutable files are not removed when you remove them from your
-              configuration.
-
-              This option is useful for programs that don't have a very good
-              support for read-only configurations.
-            '';
-          };
-        }
-      )
-    );
-  in
-    # fileOptionAttrPaths の各パスに対して
-    #   { home.file = mkOption {...}; } のような属性集合を作り、すべて統合する
-    mergeAttrsList (
-      map (
-        attrPath: lib.setAttrByPath attrPath (lib.mkOption {type = fileAttrsType;})
-      )
-      fileOptionAttrPaths
-    );
-
-  # ---------------------------------------------------------------------------
-  # config: mutable 指定のファイルを実際にコピーする activation スクリプトを生成
-  #
-  # 注意: この config は enable フラグで囲われていない（無条件）。
-  # そのため mutableFileGeneration というエントリは常に存在する
-  # ---------------------------------------------------------------------------
   config = {
-    home.packages = with pkgs; [
-      file # ファイル種別の判定（実行ファイルかどうかの判別に使う）
-      findutils # find コマンド
-    ];
+    # 前回コピーした実ファイルがホームに残っているので、force = true が無いと
+    # 次の rebuild で home-manager の衝突チェックに引っかかる
+    assertions =
+      map (file: {
+        assertion = file.force;
+        message = "${file.target}: `mutable = true` requires `force = true`";
+      })
+      mutableFiles;
 
-    home.activation.mutableFileGeneration = let
-      # 3 つのオプションに登録された全ファイル定義を 1 つのリストに集める
-      allFiles = builtins.concatLists (
-        map (attrPath: builtins.attrValues (lib.getAttrFromPath attrPath config)) fileOptionAttrPaths
-      );
+    # この世代でコピーする対象の一覧を、世代のディレクトリに mutable-files として書き出す。
+    # 次の世代の mutableFileCleanup が「前回は mutable だったもの」を知るのにも使う。
+    #
+    # コピーは cp -L でリンクをたどるので、リンク先が Nix ストアの外（mkOutOfStoreSymlink など）なら
+    # 実行するマシンにあるものがコピーされ、存在しなければ linkGeneration の後で activation が止まる。
+    # checkMutableLinks はそうした世代をビルドの段階で失敗させ、どの世代にもロールバックできるようにする
+    # The targets this generation copies, read by its own activation and by the next one.
+    home.extraBuilderCommands = let
+      manifest = pkgs.writeText "mutable-files" (lib.concatLines (map (file: file.target) mutableFiles));
+    in ''
+      ln -s ${manifest} $out/mutable-files
 
-      # mutable = true のものだけを抽出する。
-      # このとき force = true でなければ assertMsg がエラーを出して停止する
-      # （force が無いと home-manager 側のリンク作成と衝突するため）
-      filterMutableFiles = builtins.filter (
-        file:
-          (file.mutable or false)
-          && lib.assertMsg file.force "if you specify `mutable` to `true` on a file, you must also set `force` to `true`"
-      );
+      function checkMutableLinks() {
+        local target link resolved failed=0
+        while IFS= read -r target; do
+          while IFS= read -r -d "" link; do
+            resolved="$(realpath -m -- "$link")"
+            if [[ $resolved != ${builtins.storeDir}/* || ! -e $resolved ]]; then
+              echo "error: the mutable file ~/''${link#"$out/home-files/"} links to $resolved, which is not an existing path in the Nix store" >&2
+              failed=1
+            fi
+          done < <(find -L "$out/home-files/$target" -xtype l -print0)
+        done < ${manifest}
+        return "$failed"
+      }
 
-      mutableFiles = filterMutableFiles allFiles;
+      checkMutableLinks
+    '';
 
-      # ファイル定義 1 つを、コピー用のシェルスクリプト断片に変換する関数
-      toCommand = file: let
-        # escapeShellArg: パスに空白などが含まれていても壊れないようクォートする
-        source = lib.escapeShellArg file.source;
-        target = lib.escapeShellArg file.target;
-        recursiveFlag =
-          if (file.recursive or false)
-          then "-r"
-          else "";
-      in ''
-        $VERBOSE_ECHO "Copying mutable file: ${source} -> ${target}"
-
-        # --remove-destination : 既存のシンボリックリンクを消してから書く
-        #                        （これが無いとリンク先に書こうとして失敗する）
-        # --no-preserve=mode   : Nix ストアの読み取り専用パーミッションを引き継がない
-        #                        （こちらが本質）
-        if [ -n "${recursiveFlag}" ]; then
-          $DRY_RUN_CMD cp -r --remove-destination --no-preserve=mode ${source}/. ${target} || {
-            echo "Error: Failed to copy recursive directory ${source} to ${target}"
-            exit 1
-          }
-        else
-          $DRY_RUN_CMD cp --remove-destination --no-preserve=mode ${source} ${target} || {
-            echo "Error: Failed to copy file ${source} to ${target}"
-            exit 1
-          }
+    # linkGeneration の前に実行する（ロールバック時は $oldGenPath が新しいほうの世代になる）。新しい世代でコピーされなくなったファイルを、
+    # 古い世代へのリンクに戻しておく。こうすると linkGeneration が古いリンクの掃除として消すか、
+    # 新しい世代のリンクに張り直す。
+    #   - 新しい世代でも mutable なら、後のコピーで上書きされるので触らない
+    #   - リンクに変わったファイルを手で書き換えていたら、home-manager の衝突チェックに任せる
+    # Turns copies the new generation no longer makes back into links of the old generation,
+    # so that linkGeneration deletes or relinks them like any other.
+    home.activation.mutableFileCleanup = lib.hm.dag.entryBetween ["linkGeneration"] ["writeBoundary" "checkFilesChanged"] ''
+      function relinkStaleMutableCopies() {
+        if [[ ! -v oldGenPath || ! -e $oldGenPath/mutable-files ]]; then
+          return
         fi
 
-        # コピーしたものがスクリプトなら実行権限を付け直す
-        # （HyDE は ~/.local/lib/hyde 以下のスクリプトを実行するため必須）
-        if [ -d ${target} ]; then
-          find ${target} -type f -exec sh -c '
-            for f do
-              type=$(${pkgs.file}/bin/file -b "$f")
-              if echo "$type" | grep -qE "executable|script" || [[ "$f" =~ \.sh$ ]]; then
-                $DRY_RUN_CMD chmod u+wx "$f" || {
-                  echo "Error: Failed to set permissions on $f"
-                  exit 1
-                }
+        local newGenFiles oldGenFiles
+        newGenFiles="$(readlink -e "$newGenPath/home-files")"
+        oldGenFiles="$(readlink -e "$oldGenPath/home-files")"
+
+        local -A stillMutable=()
+        local target
+        while IFS= read -r target; do
+          stillMutable[$target]=1
+        done < "$newGenPath/mutable-files"
+
+        local oldSource path
+        while IFS= read -r target; do
+          # Walk the old tree so that files the user added next to a recursive target's copies stay untouched.
+          while IFS= read -r -d "" oldSource; do
+            path="''${oldSource#"$oldGenFiles"/}"
+
+            # Gone already, or still a link.
+            if [[ ! -f $HOME/$path || -L $HOME/$path ]]; then
+              continue
+            fi
+
+            if [[ -e $newGenFiles/$path ]]; then
+              # Still mutable, so the copy step overwrites it.
+              if [[ -n ''${stillMutable[$target]-} ]]; then
+                continue
               fi
-            done
-          ' sh {} +
-        else
-          type=$(${pkgs.file}/bin/file -b ${target})
-          if echo "$type" | grep -qE "executable|script" || [[ ${target} =~ \.sh$ ]]; then
-            $DRY_RUN_CMD chmod u+wx ${target} || {
-              echo "Error: Failed to set permissions on ${target}"
-              exit 1
-            }
-          fi
-        fi
-      '';
+              # Now a link. An edited copy goes through Home Manager's collision handling instead.
+              if ! cmp -s "$newGenFiles/$path" "$HOME/$path"; then
+                continue
+              fi
+            fi
 
-      # 全 mutable ファイル分のコマンドを連結して 1 本のスクリプトにする
-      command =
-        ''
-          export PATH="${pkgs.file}/bin:${pkgs.findutils}/bin:$PATH"
-          echo "Copying mutable home files for $HOME"
-        ''
-        + lib.concatLines (map toCommand mutableFiles);
-    in
-      # DAG (依存グラフ) 上で "linkGeneration"（home-manager が
-      # シンボリックリンクを張る処理）の直後に実行するよう指定する。
-      # 「リンクを張った後にコピーで上書きする」という順序が重要。
-      #
-      # このエントリ名 "mutableFileGeneration" は theme.nix / hyde.nix /
-      # hyprland/default.nix から entryAfter で参照されている。
-      # home-manager の DAG は知らない依存名を黙って捨てるので、
-      # 名前を変えるときは参照側も一緒に直すこと
-      lib.hm.dag.entryAfter ["linkGeneration"] command;
+            run ln -sf $VERBOSE_ARG "$oldSource" "$HOME/$path"
+          done < <(find "$oldGenFiles/$target" \( -type f -o -type l \) -print0)
+        done < "$oldGenPath/mutable-files"
+      }
+
+      relinkStaleMutableCopies
+    '';
+
+    # リンクを張った後に、mutable なファイルをコピーで上書きする。
+    #   -L : 世代のツリーはリンクなので、リンク先の中身をコピーする
+    #   -T : ディレクトリ（recursive）の場合、linkGeneration が作ったディレクトリにマージする
+    #   --remove-destination : 既存のシンボリックリンクを消してから書く
+    #                          （これが無いとリンク先に書こうとして失敗する）
+    # Nix ストアのファイルは読み取り専用なので、コピー後に chmod u+w で書き込み権限を付ける。
+    # 実行権限は cp がそのまま引き継ぐ。
+    #
+    # このエントリ名 "mutableFileGeneration" は theme.nix / hyde.nix /
+    # hyprland/ の各モジュールから entryAfter で参照されている。
+    # home-manager の DAG は知らない依存名を黙って捨てるので、
+    # 名前を変えるときは参照側も一緒に直すこと
+    home.activation.mutableFileGeneration = lib.hm.dag.entryAfter ["linkGeneration"] ''
+      function copyMutableFiles() {
+        echo "Copying mutable home files for $HOME"
+
+        local target
+        while IFS= read -r target; do
+          # -T merges a recursive target into the directory linkGeneration made.
+          run cp -rLT --remove-destination "$newGenPath/home-files/$target" "$HOME/$target"
+          # The store's modes are read-only.
+          run chmod -R u+w "$HOME/$target"
+        done < "$newGenPath/mutable-files"
+      }
+
+      copyMutableFiles
+    '';
   };
 }

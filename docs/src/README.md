@@ -9,7 +9,7 @@ the Nix module system and reproducible configuration management.
 > This repository continues a lineage whose earlier links have stopped.
 >
 > ```text
-> richen604/hydenix             in maintenance mode: no further nixpkgs or HyDE updates
+> richen604/hydenix             archived: read-only
 >   └─ florianvazelle/hydenix   archived: read-only
 >        └─ santamn/hydenix     <-- this repository
 > ```
@@ -27,7 +27,7 @@ the Nix module system and reproducible configuration management.
 > [!IMPORTANT]  
 > Some familiarity with **functional programming concepts** is recommended.  
 >
-> If you are new to Nix, check the [Nix resources](./faq.md#how-do-i-learn-more-about-nix) or ask questions in **Issues** or **Discord**.
+> If you are new to Nix, check the [Nix resources](./faq.md#how-do-i-learn-more-about-nix) or ask questions in **Issues**.
 
 ## Documentation
 
@@ -54,6 +54,7 @@ nix run github:santamn/hydenix
 > [!NOTE]
 > Any configuration changes require rebuilding the VM.
 > To reset it, delete the disk image:
+>
 > ```text
 > rm hydenix.qcow2
 > ```

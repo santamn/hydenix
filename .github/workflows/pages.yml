@@ -6,12 +6,37 @@ on:
     branches: [main]
   pull_request:
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
-  deploy:
+  changes:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      docs: ${{ steps.diff.outputs.docs }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.after }}
+        run: |
+          files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE...$HEAD" --jq '.files[] | .filename, .previous_filename // empty')
+          if grep -qE '^(docs/|\.github/workflows/pages\.yml$)' <<<"$files"; then
+            echo docs=true >>"$GITHUB_OUTPUT"
+          else
+            echo docs=false >>"$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: changes
+    # Also runs when `changes` fails or is skipped
+    if: ${{ !cancelled() && needs.changes.outputs.docs != 'false' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
@@ -19,7 +44,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 

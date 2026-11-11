@@ -2,8 +2,6 @@
 #
 # hydenix でいちばん大きいシステムモジュール。ここで Hyprland を
 # `programs.hyprland` として有効にし、UWSM 連携も入れている。
-#
-# 注意: enable の既定値が `true` 固定。`hydenix.enable = false` にしても有効なまま。
 {
   config,
   lib,
@@ -11,16 +9,30 @@
   ...
 }: let
   cfg = config.hydenix.system;
+
+  # Hyprland は nixpkgs のものを使うので、nixpkgs の更新で HyDE が対応していない
+  # バージョンに上がることがある。下の assertion でそれを評価時に止める
+  # The latest Hyprland release series HyDE's configs are written for; bump it together with HyDE
+  supportedHyprland = "0.57";
+  hyprlandVersion = lib.versions.majorMinor config.programs.hyprland.package.version;
 in {
   options.hydenix.system = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = config.hydenix.enable;
       description = "Enable system module";
     };
   };
 
   config = lib.mkIf cfg.enable {
+    # Hyprland follows nixpkgs, so a nixpkgs update can move it past what HyDE supports
+    assertions = [
+      {
+        assertion = hyprlandVersion == supportedHyprland;
+        message = "hydenix: Hyprland ${config.programs.hyprland.package.version} is not supported, HyDE expects ${supportedHyprland}.x. Update supportedHyprland in hydenix together with HyDE, or pin nixpkgs to a revision with Hyprland ${supportedHyprland}.x.";
+      }
+    ];
+
     environment.systemPackages = with pkgs; [
       parallel # Shell tool for executing jobs in parallel
       jq # Command-line JSON processor
@@ -102,7 +114,6 @@ in {
 
     # For polkit authentication
     security.polkit.enable = true;
-    security.pam.services.swaylock = {};
     security.rtkit.enable = true;
     systemd.user.services.hyprpolkitagent = {
       description = "Hyprland PolicyKit Agent";

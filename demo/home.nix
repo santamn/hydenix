@@ -12,11 +12,6 @@
       pokego.enable = true;
     };
 
-    lockscreen = {
-      hyprlock = true;
-      swaylock = true;
-    };
-
     notifications = {
       swaync.enable = true;
     };

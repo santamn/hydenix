@@ -1,5 +1,5 @@
 # fastfetch（シェル起動時に出るシステム情報表示）の設定ファイル配置。
-# シェル起動時に実行するかどうかは shell.nix の fastfetch.enable が持っている。
+# シェル起動時に実行するかどうかは shell.nix の fastfetch.enable が持っている（pokego を有効にすると実行しない）。
 {
   config,
   lib,

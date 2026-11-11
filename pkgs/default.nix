@@ -6,7 +6,7 @@
 #   prev  … 適用前の pkgs（ここでは使わないので _prev）
 #
 # callPackage は「定義ファイルの引数を pkgs から自動で埋める」仕組み。
-# だから ./pokego/default.nix は {lib, buildGoModule, fetchFromGitHub} と
+# だから ./hydectl/default.nix は {lib, buildGoLatestModule, fetchFromGitHub} と
 # 書くだけで済んでいる。
 # =============================================================================
 final: _prev: {
@@ -15,14 +15,13 @@ final: _prev: {
   # 誰も参照していなかったため削除した。テーマは hydenix-themes が個別に取得する
   hyde = final.callPackage ./hyde {}; # HyDE 本体（設定ファイル一式）
   hyde-config = final.callPackage ./hyde-config {}; # config.toml パーサ
-  hyde-ipc = final.callPackage ./hyde-ipc {}; # Hyprland のイベント購読・自動化
   hydectl = final.callPackage ./hydectl {}; # HyDE 操作 CLI
   hyprquery = final.callPackage ./hyprquery {}; # hyq: Hyprland 設定値の問い合わせ
   # Additional packages
   Bibata-Modern-Ice = final.callPackage ./Bibata-Modern-Ice.nix {};
   code-wallbash = final.callPackage ./code-wallbash.nix {}; # wallbash の配色を VS Code に当てる拡張
+  hydenix-theme-assets = final.callPackage ./hydenix-theme-assets.nix {}; # 有効なテーマのアイコン・GTK テーマ・フォントを束ねる関数
   hydenix-themes = final.callPackage ./hydenix-themes {};
-  pokego = final.callPackage ./pokego {};
   pyamdgpuinfo = final.callPackage ./pyamdgpuinfo {};
   Tela-circle-dracula = final.callPackage ./Tela-circle-dracula.nix {};
 }

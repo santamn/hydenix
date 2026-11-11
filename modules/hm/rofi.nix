@@ -35,8 +35,8 @@ in {
     # HyDE が持つ rofi テーマを ~/.local/share/rofi/themes/ へリンクする。
     # rofi はこのパスしか見ないため、配置先とは別にリンクを張る必要がある
     home.activation.hydeRofiThemes = lib.hm.dag.entryAfter ["writeBoundary"] ''
-      $DRY_RUN_CMD mkdir -p "$HOME/.local/share/rofi/themes"
-      $DRY_RUN_CMD find "$HOME/.local/share/hyde/rofi/themes" -type f -o -type l -exec ln -snf {} "$HOME/.local/share/rofi/themes/" \; 2>/dev/null || true
+      run mkdir -p "$HOME/.local/share/rofi/themes"
+      run find "$HOME/.local/share/hyde/rofi/themes" -type f -o -type l -exec ln -snf {} "$HOME/.local/share/rofi/themes/" \; 2>/dev/null || true
     '';
 
     # 補足: このファイルには home.file が 2 回出てくるがエラーにならない。

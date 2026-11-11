@@ -1,18 +1,17 @@
 # =============================================================================
 # 「追記 or 置き換え」型の Hyprland 設定モジュールを生成するファクトリ関数
 #
-# hypridle / keybindings / monitors / nvidia / windowrules / hyprsunset は
-# どれも「HyDE の <name>.conf を土台に、追記するか丸ごと置き換えるか」という
-# 同一構造だったため、個別ファイルをやめて 1 つの関数にまとめてある。
+# hypridle / hyprlock / hyprsunset は、どれも「HyDE の <name>.conf を土台に、
+# 追記するか丸ごと置き換えるか」という同一構造なので、1 つの関数にまとめてある。
 #
 # ■ 使い方（default.nix の imports 内）
-#     (mkHyprConfig {name = "keybindings";})
-#   → hydenix.hm.hyprland.keybindings.{enable,extraConfig,overrideConfig} が生えて、
-#     ~/.config/hypr/keybindings.conf が配置される
+#     (mkHyprConfig {name = "hypridle";})
+#   → hydenix.hm.hyprland.hypridle.{enable,extraConfig,overrideConfig} が生えて、
+#     ~/.config/hypr/hypridle.conf が配置される
 #
 # ■ カリー化の 2 段構造
 #   1 段目 {config, pkgs, lib, ...} … default.nix から import 時に渡す
-#   2 段目 {name, extension ? "conf"} … 生成したいモジュールの指定
+#   2 段目 {name} … 生成したいモジュールの指定
 #   返り値がモジュール（= {options, config} の属性集合）になる
 # =============================================================================
 {
@@ -20,10 +19,7 @@
   pkgs,
   lib,
   ...
-}: {
-  name,
-  extension ? "conf", # pyprland だけ toml を想定していた（現在は無効化）
-}: let
+}: {name}: let
   hyprCfg = config.hydenix.hm.hyprland;
   cfg = hyprCfg.${name};
 in {
@@ -35,9 +31,9 @@ in {
     };
 
     # 【置き換え】HyDE の設定を一切使わない。HyDE の機能をほぼ全部失うので非推奨。
-    # 使うと assertions.nix が rebuild のたびに警告を出す
+    # 使うと下の warnings が rebuild のたびに警告を出す
     overrideConfig = lib.mkOption {
-      type = lib.types.nullOr lib.types.lines;
+      type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
       description = "Completely ${name} configuration override";
     };
@@ -51,18 +47,20 @@ in {
   };
 
   config = lib.mkIf (hyprCfg.enable && cfg.enable) {
-    home.file.".config/hypr/${name}.${extension}" = {
-      # source = ... ではなく readFile + text にしているのは、
-      # リンクを張るだけでは extraConfig を後ろに足せないため
+    warnings = lib.optional (cfg.overrideConfig != null && !hyprCfg.suppressWarnings) "hydenix.hm.hyprland.${name}.overrideConfig is overriding Hyde defaults. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)";
+
+    # source = ... ではなく readFile + text にしているのは、
+    # リンクを張るだけでは extraConfig を後ろに足せないため
+    home.file.".config/hypr/${name}.conf" = {
       text =
         if cfg.overrideConfig != null
         then cfg.overrideConfig
         else ''
-          ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/${name}.${extension}"}
+          ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/${name}.conf"}
           ${cfg.extraConfig}
         '';
       force = true;
-      # HyDE 側のツール（モニタ設定 UI 等）が書き換えるため mutable。
+      # HyDE 側のスクリプト（hyprlock.sh のレイアウト切り替えなど）が書き換えるため mutable。
       # 副作用として、モジュールを無効化してもファイルはホームに残り続ける
       mutable = true;
     };

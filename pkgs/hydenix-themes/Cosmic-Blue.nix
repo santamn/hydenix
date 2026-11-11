@@ -7,9 +7,9 @@ mkTheme rec {
   src = pkgs.fetchFromGitHub {
     owner = "Maroc02";
     repo = "Cosmic-Blue";
-    rev = "f5e0e85d333f8ae93caa262f46303efe4c35c5a8";
+    rev = "ad8a9a50684f9ab6dbd29cd98b6c2a3f457347f3";
     inherit name;
-    sha256 = "sha256-ed9QxS4onniN+kABewK9kBRu9xFMvHU6em+QcP2GrFM=";
+    sha256 = "sha256-4o/w7QViz8sD+dpzd9KWcoXUC+H7tn57JlzlRoPp9q8=";
   };
   meta = {
     description = "HyDE Theme: Cosmic Blue";

@@ -9,14 +9,45 @@ on:
 permissions: {}
 
 jobs:
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      config: ${{ steps.diff.outputs.config }}
+      runner: ${{ steps.diff.outputs.runner }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE...$HEAD" --jq '.files[] | .filename, .previous_filename // empty')
+          if grep -qE '^\.github/(renovate\.json|workflows/renovate\.yml)$' <<<"$files"; then
+            echo config=true >>"$GITHUB_OUTPUT"
+          else
+            echo config=false >>"$GITHUB_OUTPUT"
+          fi
+          # The dry run reads renovate.json from main, so on a PR it only tests how Renovate is launched
+          if grep -qE '^\.github/(renovate-entrypoint\.sh|workflows/renovate\.yml)$' <<<"$files"; then
+            echo runner=true >>"$GITHUB_OUTPUT"
+          else
+            echo runner=false >>"$GITHUB_OUTPUT"
+          fi
+
   renovate-config-validator:
+    needs: changes
+    # Also runs when `changes` fails
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.config != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
@@ -24,12 +55,14 @@ jobs:
         run: nix-shell -p renovate --run "renovate-config-validator --strict"
 
   renovate-local:
+    needs: changes
+    # Also runs when `changes` fails or is skipped
+    if: ${{ !cancelled() && github.actor != 'dependabot[bot]' && needs.changes.outputs.runner != 'false' }}
     runs-on: ubuntu-latest
     environment: renovate
+    # Renovate writes with RENOVATE_TOKEN, so GITHUB_TOKEN only needs to check out
     permissions:
-      contents: write
-      pull-requests: write
-      statuses: write
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,10 +73,9 @@ jobs:
         run: echo "RENOVATE_DRY_RUN=full" >> $GITHUB_ENV
 
       - name: Renovate
-        uses: renovatebot/github-action@39b914146caeff8cd512e61c8992f1d5913af85c # v46.2.5
+        uses: renovatebot/github-action@1c0cf989c02653fba0efe7ca5772338860ca71dc # v46.3.12
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
-          configurationFile: .github/renovate.json
           docker-cmd-file: .github/renovate-entrypoint.sh
           docker-user: root
         env:

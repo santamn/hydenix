@@ -1,7 +1,7 @@
 # XDG ベースディレクトリ仕様（~/.config, ~/.local/share ...）と既定アプリの設定。
 #
-# 注意: シェル履歴の環境変数（HISTFILE / HISTSIZE など）もここにある。
-# 本来 shell.nix にあるべきもので、本家 issue #154 として残っている整理課題。
+# 本家ではシェル履歴の環境変数（HISTFILE / HISTSIZE など）もここにあった（本家 issue #154）。
+# このフォークでは shell.nix の programs.zsh.history に移している。
 {
   config,
   lib,
@@ -44,6 +44,10 @@ in {
       userDirs = {
         enable = true;
         createDirectories = true;
+        # 各アプリは user-dirs.dirs からディレクトリを読むので、XDG_*_DIR の環境変数は設定しない。
+        # home.stateVersion が 26.05 未満のうちは既定値が true のままで、警告が出る
+        # apps read the dirs from user-dirs.dirs; the default is still true, with a warning, while home.stateVersion < 26.05
+        setSessionVariables = false;
 
         # Define standard XDG user directories
         desktop = "${config.home.homeDirectory}/Desktop";
@@ -72,32 +76,10 @@ in {
       XDG_STATE_HOME = config.xdg.stateHome;
       XDG_RUNTIME_DIR = "/run/user/$(id -u)";
 
-      # User directories
-      XDG_DESKTOP_DIR = config.xdg.userDirs.desktop;
-      XDG_DOCUMENTS_DIR = config.xdg.userDirs.documents;
-      XDG_DOWNLOAD_DIR = config.xdg.userDirs.download;
-      XDG_MUSIC_DIR = config.xdg.userDirs.music;
-      XDG_PICTURES_DIR = config.xdg.userDirs.pictures;
-      XDG_PUBLICSHARE_DIR = config.xdg.userDirs.publicShare;
-      XDG_TEMPLATES_DIR = config.xdg.userDirs.templates;
-      XDG_VIDEOS_DIR = config.xdg.userDirs.videos;
-
       # Additional XDG-related variables
       LESSHISTFILE = "/tmp/less-hist";
       PARALLEL_HOME = "${config.xdg.configHome}/parallel";
       SCREENRC = "${config.xdg.configHome}/screen/screenrc";
-      ZSH_AUTOSUGGEST_STRATEGY = "history completion";
-
-      # History configuration // explicit to not nuke history
-      HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
-      HISTSIZE = "10000";
-      SAVEHIST = "10000";
-      setopt_EXTENDED_HISTORY = "true";
-      setopt_INC_APPEND_HISTORY = "true";
-      setopt_SHARE_HISTORY = "true";
-      setopt_HIST_EXPIRE_DUPS_FIRST = "true";
-      setopt_HIST_IGNORE_DUPS = "true";
-      setopt_HIST_IGNORE_ALL_DUPS = "true";
     };
   };
 }

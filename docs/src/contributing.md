@@ -58,6 +58,20 @@ nix run .#update-hashes
 
 `version` is derived from `rev`, so there is nothing else to edit by hand. Renovate runs the same command after bumping a `rev`, so a bot update and a manual one take the same path.
 
+## Updating the supported Hyprland version
+
+Hyprland comes from nixpkgs rather than its own flake, so it moves whenever `nixpkgs` is updated. `supportedHyprland` in `modules/system/system.nix` records the Hyprland release series (e.g. `"0.56"`) that HyDE's configs are written for, and an assertion fails the build when `programs.hyprland.package` is from a different series.
+
+Nothing bumps `supportedHyprland` automatically. HyDE targets whatever Hyprland Arch Linux currently ships and does not declare a supported version anywhere a tool could read it, so deciding when HyDE supports a new release is left to a maintainer.
+
+The Flake Check workflow evaluates the demo system, so the assertion holds `nixpkgs` back by itself. When nixpkgs moves Hyprland to a new release series, Renovate's lock file maintenance PR fails the check, and Renovate does not automerge it. Every input in `flake.lock` stays at its current revision until that PR is resolved:
+
+1. Check whether HyDE supports the new release, e.g. in its [commits](https://github.com/HyDE-Project/HyDE/commits/master) and [issues](https://github.com/HyDE-Project/HyDE/issues)
+2. If it does, open a PR that makes the move in one go: run `nix flake update`, bump the `rev` of `pkgs/hyde` to a HyDE commit that supports the release as described above, and set `supportedHyprland` to the new release series. The lock and `supportedHyprland` have to land together, since either one without the other fails the assertion. Close the lock file maintenance PR once this one merges
+3. If it does not, leave the lock file maintenance PR open. It keeps failing on each Renovate run until HyDE catches up
+
+A Hyprland release that nixpkgs does not ship yet cannot be used, as Hyprland is no longer pulled in from its own flake.
+
 ## Pull requests
 
 1. Fork the repository

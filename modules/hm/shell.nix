@@ -81,7 +81,7 @@ in {
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Enable fastfetch on shell startup";
+        description = "Enable fastfetch on shell startup, unless pokego is enabled";
       };
     };
   };
@@ -112,7 +112,12 @@ in {
       enable = true;
       enableCompletion = true;
       autosuggestion.enable = true;
+      autosuggestion.strategy = ["history" "completion"];
       syntaxHighlighting.enable = true;
+      history = {
+        extended = true;
+        expireDuplicatesFirst = true;
+      };
       oh-my-zsh = {
         enable = true;
         inherit (cfg.zsh) plugins;
@@ -177,7 +182,7 @@ in {
              fi
              source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
           ''}
-          ${lib.optionalString cfg.fastfetch.enable ''
+          ${lib.optionalString (cfg.fastfetch.enable && !cfg.pokego.enable) ''
             fastfetch --logo-type kitty
           ''}
           ${cfg.zsh.configText}
@@ -231,7 +236,7 @@ in {
           pokego --no-title -r 1,3,6
         ''}
 
-        ${lib.optionalString cfg.fastfetch.enable ''
+        ${lib.optionalString (cfg.fastfetch.enable && !cfg.pokego.enable) ''
           fastfetch --logo-type kitty
         ''}
       '';
@@ -270,7 +275,7 @@ in {
         };
         ".config/zsh/completions/hyde-shell.zsh" = {
           force = true;
-          source = "${pkgs.hyde}/Configs/.config/zsh/completions/hyde-shell.zsh";
+          source = "${pkgs.hyde}/Configs/.local/lib/hyde/completions/hyde-shell.zsh";
         };
         ".config/zsh/.p10k.zsh" = {
           source = "${pkgs.hyde}/Configs/.config/zsh/.p10k.zsh";
@@ -325,7 +330,7 @@ in {
         # Fish configs
         ".config/fish/completions/hyde-shell.fish" = {
           force = true;
-          source = "${pkgs.hyde}/Configs/.config/fish/completions/hyde-shell.fish";
+          source = "${pkgs.hyde}/Configs/.local/lib/hyde/completions/hyde-shell.fish";
         };
         ".config/fish/conf.d/hyde.fish" = {
           force = true;
@@ -334,6 +339,10 @@ in {
         ".config/fish/functions/bind_M_n_history.fish" = {
           force = true;
           source = "${pkgs.hyde}/Configs/.config/fish/functions/bind_M_n_history.fish";
+        };
+        ".config/fish/functions/_hyde_editor.fish" = {
+          force = true;
+          source = "${pkgs.hyde}/Configs/.config/fish/functions/_hyde_editor.fish";
         };
         ".config/fish/functions/fzf/ffcd.fish" = {
           force = true;

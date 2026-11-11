@@ -8,9 +8,9 @@ mkTheme rec {
     owner = "amit-0i";
     repo = "1-Bit";
     # locking commit
-    rev = "ee6a133693e676802976fb870567829b941a8624";
+    rev = "84b2f94e8a340d324deaf293449e5508553eb128";
     inherit name;
-    sha256 = "sha256-dYRZKGHO0Q8x4h80Q+PrajaPaY/ZJHZgnp3QVI5d0Lc=";
+    sha256 = "sha256-hhSi7R2MHlcLIMou7Mq91r2iVRkWG7t4ODt6jDzAV/Y=";
   };
   meta = {
     inherit name;

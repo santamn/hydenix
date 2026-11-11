@@ -61,4 +61,3 @@ hydenix/
 ## Getting help
 
 - [hydenix issues](https://github.com/santamn/hydenix/issues)
-- [hyde discord](https://discord.gg/AYbJ9MJez7)

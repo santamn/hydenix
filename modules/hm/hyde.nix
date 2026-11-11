@@ -35,10 +35,10 @@ in {
       kdePackages.kconfig # TODO: not sure if this is still needed
       wf-recorder # screen recorder for wlroots-based compositors such as sway
       pyamdgpuinfo # AMD GPU 情報（waybar の gpuinfo モジュール用）
-      # 以下 4 つは HyDE 同梱版を pkgs/hyde/default.nix で削除し、Nix 版に差し替えている
+      # 以下 3 つは Nix でビルドした HyDE のツール。
+      # HyDE 同梱の hyq と hydectl は pkgs/hyde/default.nix で削除し、こちらに差し替えている
       hyprquery # hyq: Hyprland の設定値を問い合わせる CLI
       hydectl # HyDE の操作 CLI
-      hyde-ipc # Hyprland のイベント購読・自動化
       hyde-config # ~/.config/hyde/config.toml を解析して各設定へ反映するデーモン
 
       # fonts
@@ -53,10 +53,24 @@ in {
       noto-fonts-cjk-sans
     ];
 
-    # ensures hyprland config is available in session as per hyde uwsm update
+    # HyDE の Lua 設定の入口 hyde.lua を指す。Hyprland 自身もこの変数を読んで起動する。
+    # 古い ~/.local/share/hypr/hyprland.conf を指したままだと、Hyprland が空の設定を生成して
+    # 素の Hyprland が起動してしまう
+    # theme.switch.sh applies a theme to Hyprland only when this file is readable; HyDE's uwsm env sets the same path
     home.sessionVariables = {
-      HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyprland.conf";
+      HYPRLAND_CONFIG = "${config.xdg.dataHome}/hypr/hyde.lua";
     };
+    # HyDE の Lua 設定は hyprlang 版と違って ~/.local/bin を PATH に足さないので、セッション側で足す
+    # Add ~/.local/bin to PATH so that HyDE's startup, keybinds, waybar and hypridle can call hyde-shell
+    home.sessionPath = ["$HOME/.local/bin"];
+
+    # 起動時の activation は /run/user/$UID ができる前に実行されることがあり、
+    # HyDE のスクリプトはそこにディレクトリを作れないと終了してしまう。
+    # その場合は一時ディレクトリで代用する。entryBetween で、HyDE のスクリプトを実行する 4 つの activation より前に置いている
+    # hyde-shell needs a writable XDG_RUNTIME_DIR, which is missing when activation runs at boot
+    home.activation.hydeRuntimeDir = lib.hm.dag.entryBetween ["setAnimationPreset" "setShader" "setTheme" "setWorkflow"] ["mutableFileGeneration"] ''
+      [ -w "''${XDG_RUNTIME_DIR:-/run/user/$UID}" ] || export XDG_RUNTIME_DIR="$(mktemp -d)"
+    '';
 
     fonts.fontconfig.enable = true;
 
@@ -66,11 +80,11 @@ in {
     # 依存先の名前は mutable.nix が定義する "mutableFileGeneration" と一致させること。
     # home-manager の DAG は知らない名前を黙って捨てるので、綴りを間違えると
     # 順序制約が効かないまま toposort 任せの位置で実行される。
-    # $DRY_RUN_CMD は dry-activate のとき実行を空振りさせるための前置き
+    # run は Home Manager の関数で、dry-run のときはコマンドを実行せずに表示だけする
     home.activation.createCavaConfig = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
-      $DRY_RUN_CMD mkdir -p "$HOME/.config/cava"
-      $DRY_RUN_CMD touch "$HOME/.config/cava/config"
-      $DRY_RUN_CMD chmod 644 "$HOME/.config/cava/config"
+      run mkdir -p "$HOME/.config/cava"
+      run touch "$HOME/.config/cava/config"
+      run chmod 644 "$HOME/.config/cava/config"
     '';
 
     home.file = {
@@ -82,35 +96,6 @@ in {
         recursive = true;
         force = true;
         mutable = true;
-      };
-
-      ".config/systemd/user/hyde-config.service" = {
-        text = ''
-          [Unit]
-          Description=HyDE Configuration Parser Service
-          Documentation=https://github.com/HyDE-Project/hyde-config
-          After=graphical-session.target
-          PartOf=graphical-session.target
-
-          [Service]
-          Type=simple
-          ExecStart=%h/.local/lib/hyde/hyde-config
-          Restart=on-failure
-          RestartSec=5s
-          Environment="DISPLAY=:0"
-
-          # Make sure the required directories exist
-          ExecStartPre=/usr/bin/env mkdir -p %h/.config/hyde
-          ExecStartPre=/usr/bin/env mkdir -p %h/.local/state/hyde
-
-          [Install]
-          WantedBy=graphical-session.target
-        '';
-        force = true;
-      };
-      ".config/systemd/user/hyde-ipc.service" = {
-        source = "${pkgs.hyde}/Configs/.config/systemd/user/hyde-ipc.service";
-        force = true;
       };
 
       ".local/bin/hyde-shell" = {

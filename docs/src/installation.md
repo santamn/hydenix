@@ -63,7 +63,6 @@ sudo nixos-rebuild switch --flake .#default
 > * Check the [troubleshooting & issues](./troubleshooting.md) guide.
 > * Search the [faq](./faq.md).
 > * Ask the community for help:
->   * Discord: <https://discord.gg/AYbJ9MJez7>
 >   * GitHub Issues: <https://github.com/santamn/hydenix/issues>
 
 ## 6. Launch hydenix

@@ -20,6 +20,8 @@
   sharedAssets,
 }: {
   name,
+  # used through `args`, see `pkg` below
+  # deadnix: skip
   src,
   # テーマが追っているブランチ。1 つのリポジトリにテーマをブランチ別に置いているテーマだけが指定し、
   # それ以外は null（リポジトリの既定ブランチを追う）。
@@ -81,6 +83,12 @@
       ${findFirstDir}
 
       cp -r Configs/.config/hyde/themes/"${name}"/. $out/share/hyde/themes/"${name}"/
+
+      # wall.set と wall.<バックエンド>.png は、テーマごとに選んだ壁紙を HyDE が記録するリンク。
+      # 一部のテーマは作者のマシン上のパスを指すリンクのままコミットしており、
+      # mutable のコピー（cp -L）が失敗して activation が途中で止まる。
+      # 無ければ HyDE がテーマの最初の壁紙へのリンクを作るので、パッケージからは消しておく
+      rm -f $out/share/hyde/themes/"${name}"/wall.set $out/share/hyde/themes/"${name}"/wall.*.png
 
       # Install GTK theme if available
       for gtk_archive in ./Source/arcs/Gtk_* ./Source/Gtk_*; do

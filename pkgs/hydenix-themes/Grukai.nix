@@ -7,9 +7,9 @@ mkTheme rec {
   src = pkgs.fetchFromGitHub {
     owner = "amit-0i";
     repo = "Grukai";
-    rev = "95e0b92633b3622685cb29662d5e320f21753001";
+    rev = "3945b4a154eeabf3cf916360ad182cb80eb2d51f";
     inherit name;
-    sha256 = "sha256-N8AErlZCypJSy+P1uO1iYYcdRmpGbiZ1TNhtJvo14Lg=";
+    sha256 = "sha256-5HOyo9uhQHhZZJFhpcwiY4ArWOdnL7yOkVAXhMva9LE=";
   };
   meta = {
     inherit name;

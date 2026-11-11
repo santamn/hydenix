@@ -1,9 +1,11 @@
 # =============================================================================
 # ワークフロー（用途別の Hyprland 設定プリセット）の選択
 #
-# animations.nix と同じ「プリセット選択型」だが、1 点だけ違いがある。
-# 標準プリセットに無い名前を overrides に書くと、
-# 新規ワークフローとしても配置される（末尾の mapAttrs' + filterAttrs の処理）。
+# animations.nix と同じプリセット選択型。HyDE の同梱分は
+# ~/.local/share/hypr/lua/workflows/<名前>.lua にあり、activation で
+# `hyde-shell workflows --set <名前>` を実行して切り替える。
+# overrides に書いたものは ~/.config/hypr/workflows/<名前>.lua に置かれ、
+# 標準に無い名前なら新しいワークフローとして選べるようになる。
 # =============================================================================
 {
   config,
@@ -13,61 +15,31 @@
 }: let
   cfg = config.hydenix.hm.hyprland;
 
-  # HyDE が同梱している標準ワークフロー
-  workflowPresets = [
-    "default"
-    "editing"
-    "gaming"
-    "powersaver"
-    "snappy"
-  ];
+  # "default" は 01-default.lua の表示名。HyDE のセレクタはファイル名でも表示名でも引ける
+  presets = map lib.toLower ((import ./presets.nix).workflows ++ ["default"] ++ lib.attrNames cfg.workflows.overrides);
 in {
   config = lib.mkIf (cfg.enable && cfg.workflows.enable) {
-    home.file = lib.mkMerge [
-      # Active workflow
+    assertions = [
       {
-        ".config/hypr/workflows.conf" =
-          if cfg.workflows.overrides ? ${cfg.workflows.active}
-          then {
-            text = cfg.workflows.overrides.${cfg.workflows.active};
-            force = true;
-            mutable = true;
-          }
-          else {
-            source = "${pkgs.hyde}/Configs/.config/hypr/workflows/${cfg.workflows.active}.conf";
-            force = true;
-            mutable = true;
-          };
+        assertion = lib.elem (lib.toLower cfg.workflows.active) presets;
+        message = "hydenix.hm.hyprland.workflows.active: unknown workflow \"${cfg.workflows.active}\"; use one of ${lib.concatStringsSep ", " presets}";
       }
-
-      # All workflow presets (with overrides)
-      (lib.listToAttrs (
-        map (workflow: {
-          name = ".config/hypr/workflows/${workflow}.conf";
-          value =
-            if cfg.workflows.overrides ? ${workflow}
-            then {
-              text = cfg.workflows.overrides.${workflow};
-              force = true;
-            }
-            else {
-              source = "${pkgs.hyde}/Configs/.config/hypr/workflows/${workflow}.conf";
-              force = true;
-            };
-        })
-        workflowPresets
-      ))
-
-      # Custom workflows (exclude the standard presets)
-      # 標準プリセット以外の overrides を、新しいワークフローとして追加配置する。
-      # filterAttrs で標準プリセットを除外し、mapAttrs' でキーをパスに変換している
-      (lib.mapAttrs' (name: content: {
-        name = ".config/hypr/workflows/${name}.conf";
-        value = {
-          text = content;
-          force = true;
-        };
-      }) (lib.filterAttrs (name: _: !(lib.elem name workflowPresets)) cfg.workflows.overrides))
+      {
+        assertion = lib.all (name: builtins.match "[^./]+" name != null) (lib.attrNames cfg.workflows.overrides);
+        message = "hydenix.hm.hyprland.workflows.overrides: names must not contain '.' or '/'";
+      }
     ];
+
+    # overrides を Lua ファイルとして配置する
+    home.file = lib.mapAttrs' (name: text:
+      lib.nameValuePair ".config/hypr/workflows/${name}.lua" {
+        inherit text;
+        force = true;
+      })
+    cfg.workflows.overrides;
+
+    home.activation.setWorkflow = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+      run ${pkgs.hyde}/Configs/.local/bin/hyde-shell workflows --set ${lib.escapeShellArg cfg.workflows.active}
+    '';
   };
 }

@@ -7,9 +7,9 @@ mkTheme rec {
   src = pkgs.fetchFromGitHub {
     owner = "rishav12s";
     repo = "Monterey-Frost";
-    rev = "4675ddd4abae2d86ce3d2c3940b29071ce1b4580";
+    rev = "559edd928d63183c8269052f4739b3d07dca9091";
     inherit name;
-    sha256 = "sha256-ECG7wyIa0RdZteTEdQjpVjhbf62XXz0rW3Ea494461E=";
+    sha256 = "sha256-RpCLKIssAqz6wcbIA8Fzz0feenL3UTEUXGvPGlbLm0o=";
   };
   meta = {
     description = "Mac-OS inspired dark theme";

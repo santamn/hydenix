@@ -2,8 +2,8 @@
 # システム側（NixOS）モジュールの入口
 #
 # hm 側と同じく、各サブモジュールの enable は `config.hydenix.enable` に追従する。
-# ただし nix.nix / sddm.nix / system.nix の 3 つだけは既定値が `true` で固定されており、
-# hydenix.enable = false にしても有効なままになる点に注意（本家から続く仕様）。
+# 本家では nix.nix / sddm.nix / system.nix の 3 つだけ既定値が `true` で固定されていたが、
+# このフォークではほかと同じく hydenix.enable に追従させている。
 # =============================================================================
 {
   lib,

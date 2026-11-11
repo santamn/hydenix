@@ -1,6 +1,6 @@
 {
   lib,
-  buildGoModule,
+  buildGoLatestModule,
   fetchFromGitHub,
 }: let
   src = fetchFromGitHub {
@@ -11,7 +11,7 @@
   };
   version = lib.removePrefix "v" src.rev;
 in
-  buildGoModule {
+  buildGoLatestModule {
     pname = "hydectl";
     inherit src version;
 
