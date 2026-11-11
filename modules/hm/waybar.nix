@@ -58,7 +58,8 @@ in {
       # Note: some of these may not work for NixOS
       # TODO: review waybar modules for nix compatibility
       # 補足: HyDE のモジュール定義には Arch 前提のコマンドを呼ぶものが混じっており、
-      # NixOS では動かないものがある。本家 TODO に「もう配置不要では」と残っている項目
+      # NixOS で動くかの確認が本家の TODO として残っている。
+      # includes.json はこのディレクトリのモジュールも列挙するので、配置自体は外せない
       ".config/waybar/modules" = {
         source = "${pkgs.hyde}/Configs/.config/waybar/modules";
         recursive = true;
