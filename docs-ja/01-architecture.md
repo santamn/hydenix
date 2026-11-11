@@ -123,8 +123,8 @@ enable = lib.mkOption {
 };
 ```
 
-このおかげで、利用者は `hydenix.enable = true;` と書くだけで全部が有効になり、
-不要なものだけ `hydenix.gaming.enable = false;` のように個別に切れます。
+このおかげで、利用者は `hydenix.enable = true;` と書くだけで全部が有効になります。
+不要なものだけ `hydenix.gaming.enable = false;` のような書き方で個別に切れます。
 
 > [!CAUTION]
 > **例外が 3 つあります。** `nix.nix` / `sddm.nix` / `system.nix` の `enable` は

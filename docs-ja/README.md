@@ -19,7 +19,7 @@ Nix 初心者の方は、上から順に読むことをおすすめします。
 | 04 | [04-mutable-files.md](./04-mutable-files.md) | **最重要**: 読み取り専用の Nix と、書き換えたい HyDE の折り合いの付け方 |
 | 05 | [05-theme-system.md](./05-theme-system.md) | テーマと wallbash（壁紙から配色を生成する仕組み） |
 | 06 | [06-hyprland-modules.md](./06-hyprland-modules.md) | Hyprland 設定モジュールの設計パターン |
-| 07 | [07-reading-notes.md](./07-reading-notes.md) | コードを読んで気づいた点・落とし穴 |
+| 07 | [07-reading-notes.md](./07-reading-notes.md) | コードを読んで気づいた点・注意点 |
 | 08 | [08-improvements.md](./08-improvements.md) | **将来加えると良い変更**。修正案と未解決問題の一覧 |
 | 09 | [09-fork-workflow.md](./09-fork-workflow.md) | ブランチ構成と PR の運用（日本語コメントの扱い） |
 | 10 | [10-ci.md](./10-ci.md) | CI（GitHub Actions）が何を検証し、何を自動化しているか |
@@ -66,23 +66,23 @@ santamn/hydenix            ← このリポジトリ
 | `lib/dev-shell.nix` | `shell.nix` |
 | `lib/hyde-update/` | `pkgs/hyde-diff-upstream/` + `pkgs/hyde-diff-home/` |
 | `template/docs/` | `docs/`（mdbook + GitHub Pages） |
-| nixfmt-rfc-style | **alejandra**（treefmt 経由。CI では検査していない） |
+| nixfmt-rfc-style | **alejandra**（treefmt 経由。CI ではチェックしていない） |
 
 ### モジュール
 
-- **`git.nix` が削除された** — 本家 issue #169 の型バグをモジュールごと消して解決。git の設定は素の `programs.git` に書く
-- **`swww.nix` → `awww.nix`** — 壁紙デーモンの差し替え
-- **hyprland モジュールが `utils/mkHyprConfig.nix` に一本化された** — `hypridle`、`keybindings`、`monitors`、`nvidia`、`windowrules`、`hyprsunset` は同じ構造だったため、個別ファイルをやめて関数生成に変わった。オプション名と使い方は本家と同じ
-- **`hyprsunset` が追加された** — ブルーライト低減
-- **`pyprland` が無効化された** — `default.nix` の imports でコメントアウトされ、オプションも消えている
-- **`hyprland.systemd.*` が追加された** — Hyprland 起動時に環境変数を systemd / D-Bus のユーザ環境へ流し込み、`hyprland-session.target` を起動する
+- `git.nix` が削除された。本家 issue #169 の型バグをモジュールごと消して解決している。git の設定は素の `programs.git` に書く
+- `swww.nix` が `awww.nix` になった（壁紙デーモンの差し替え）
+- hyprland モジュールが `utils/mkHyprConfig.nix` に一本化された。`hypridle`、`keybindings`、`monitors`、`nvidia`、`windowrules`、`hyprsunset` は同じ構造だったため、個別ファイルをやめて関数生成に変わった。オプション名と使い方は本家と同じ
+- `hyprsunset` が追加された（ブルーライト低減）
+- `pyprland` が無効化された。`default.nix` の imports でコメントアウトされ、オプションも消えている
+- `hyprland.systemd.*` が追加された。Hyprland 起動時に環境変数を systemd / D-Bus のユーザ環境へ流し込み、`hyprland-session.target` を起動する
 
 ### flake
 
 - `nixosModules.default` が **home-manager 本体と `homeModules.default` を自動で配線する**（`home-manager.sharedModules` 経由）。本家より利用者側の記述が減る
 - `homeConfigurations.default` が追加され、home-manager 単体でも使える
 - Hyprland を flake input でバージョン固定し（現在は `v0.56.2`。HyDE が対応する最新版に合わせる）、cachix を `nixConfig` に追加
-- `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）。`system.stateVersion` と `home.stateVersion` も `mkDefault` なので、利用者が書いた値が勝つ
+- `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）。`system.stateVersion` と `home.stateVersion` も `mkDefault` なので、利用者の書いた値が勝つ
 
 ### 開発基盤
 

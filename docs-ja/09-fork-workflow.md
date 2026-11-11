@@ -11,11 +11,11 @@
 | `main` | 修正の本体。**日本語は一切入れない** | PR の分岐元、docs の公開元、利用側の flake が参照する先 |
 | `ja` | `main` + 日本語コメント + `docs-ja/` | 自分がコードを読むとき |
 
-分けておくのは、`main` に日本語が入ると typos の CI がリポジトリ全体を検査する都合で誤検出しますし、`docs/` を GitHub Pages へ出す先も `main` だからです。
+分けておくのは、`main` に日本語が入ると typos の CI がリポジトリ全体をチェックする都合で誤検出しますし、`docs/` を GitHub Pages へ出す先も `main` だからです。
 
 日本語コメントは `ja` ブランチにしか存在しないので、
 `main` から分岐した PR には**構造的に混入しません**。
-「うっかり入れてしまう」事故が起きない、というのがこの方式の要点です。
+「うっかり入れてしまう」ミスが起きない、というのがこの方式の要点です。
 
 ```text
                           fix/... ──●
@@ -87,9 +87,9 @@ worktree をリポジトリ内に置きたい場合は `.wt/` 以下が使えま
 | `update-branch-pins.yml`（毎日） | テーマ 58 個と HyDE master（`hyde-diff-upstream` 用）の commit 固定 | ワークフローが直接 |
 | Dependabot（毎日） | GitHub Actions のバージョン | 手動 |
 
-手動でマージするものが普段の作業です。Hyprland は `flake.nix` で HyDE が対応する版に固定してあるので、renovate が上げてきても HyDE 側の対応版を確認してからマージします。詳細は [10-ci.md](./10-ci.md)。
+手動でマージするものが普段の作業です。Hyprland は `flake.nix` で HyDE が対応するバージョンに固定してあるので、renovate が上げてきても HyDE 側の対応バージョンを確認してからマージします。詳細は [10-ci.md](./10-ci.md)。
 
-`pkgs/` の `rev` を手で書き換えたときは、`nix run .#update-hashes` で `hash` を計算し直します。renovate も同じコマンドを使うので、手動の更新と bot の更新は同じ経路を通ります。`version` は `rev` から導かれるので触りません。
+`pkgs/` の `rev` を手で書き換えたときは、`nix run .#update-hashes` で `hash` を計算し直します。renovate も同じコマンドを使うので、手動の更新と bot の更新は同じ手順を踏みます。`version` は `rev` から導かれるので触りません。
 
 ### 2. `ja` ブランチを追随させる
 
@@ -135,7 +135,7 @@ base:    santamn/hydenix  main
 compare: santamn/hydenix  fix/<修正内容>
 ```
 
-直接 `main` に push せず PR を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを走らせないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に走らせられる場所はここしかありません。
+直接 `main` に push せず PR を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを実行しないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に実行できる場所はここしかありません。
 
 ### 4. 自分の修正を `ja` にも取り込む
 
@@ -150,15 +150,15 @@ git switch ja && git merge main
 
 ## PR を出すときの決まりごと
 
-このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が検査し、整形はレビューで担保する運用です。ブランチ保護ではどのチェックも必須にしていないので、落ちていてもマージ自体はできてしまいます。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
+このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が確認し、整形はレビューで担保する運用です。ブランチ保護ではどのチェックも必須にしていないので、落ちていてもマージ自体はできてしまいます。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
 
-| 項目 | ツール | CI で検査 | 内容 |
+| 項目 | ツール | CI で確認 | 内容 |
 |---|---|---|---|
 | 整形 | treefmt（alejandra / deadnix / statix） | されない | `nix fmt` を通すこと |
 | コミットメッセージ | commitlint | される | **Conventional Commits 必須**。72 文字以内、末尾のピリオド禁止 |
-| スペル | typos | される | リポジトリ全体を検査 |
+| スペル | typos | される | リポジトリ全体をチェック |
 | Actions | zizmor | される | ワークフローの静的解析 |
-| 依存の重複 | flint | される | `flake.lock` 内の依存バージョン重複を検査 |
+| 依存の重複 | flint | される | `flake.lock` 内の依存バージョン重複をチェック |
 | ビルド | flake-check | される | `nix flake check` |
 
 コミットメッセージの型は次のどれかです。
@@ -175,11 +175,11 @@ refactor(hyprland): generate assertions from mkHyprConfig
 ```
 
 > [!WARNING]
-> **`typos` はリポジトリ全体を検査します。** `main` に日本語ファイルを置くと、
-> 日本語中に混ざった英単語が誤検出される可能性があります。
+> **`typos` はリポジトリ全体をチェックします。** `main` に日本語ファイルを置くと、
+> 日本語の文中にある英単語が誤検出される可能性があります。
 > `docs-ja/` を `ja` ブランチに閉じ込めているのは、これを避ける意味もあります。
 > （CI の push トリガーは `main` のみ、PR トリガーは PR 単位なので、
-> `ja` ブランチを push しても CI は走りません。）
+> `ja` ブランチを push しても CI は起動しません。）
 
 ### PR 本文の書き方
 

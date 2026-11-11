@@ -1,4 +1,4 @@
-# 04. `mutable` オプション — hydenix の核心
+# 04. `mutable` オプション — hydenix の中心となる仕組み
 
 対象ファイル: [`modules/hm/mutable.nix`](../modules/hm/mutable.nix)
 
@@ -20,7 +20,7 @@ home-manager で設定ファイルを配置すると、こうなります。
 
 シンボリックリンクであり、リンク先の Nix ストアは読み取り専用です。これは Nix の設計思想そのもので、次の利点があります。
 
-- 設定が完全に再現可能：同じ入力なら必ず同じ結果
+- 設定を再現できる（同じ入力なら必ず同じ結果になる）
 - 変更点が Nix のコードに集約される
 - ロールバックが確実にできる
 
@@ -85,7 +85,7 @@ mergeAttrsList (
 1. `lib.setAttrByPath ["home" "file"] X` → `{home.file = X;}` を作る
 2. それを3つ分作って `mergeAttrsList` で1つに統合する
 
-同じことを3回書く代わりにループで生成しています。モジュールシステムが既存のオプション定義とのマージを行うため、問題なくしてくれるからです。 `home.file` の他の性質（`source` や `force` など）は home-manager 本体が定義したものがそのまま残り、そこに `mutable` だけが足されます。
+同じことを3回書く代わりにループで生成しています。モジュールシステムが既存のオプション定義とのマージを行うため、問題なくしてくれるからです。 `home.file` の他の性質（`source` や `force` など）は home-manager 本体の定義のまま残り、そこに `mutable` だけが足されます。
 
 > [!NOTE]
 > `mergeAttrsList` が畳み込むのは `lib.recursiveUpdate` です。`lib.mergeAttrs`（= `//`）は最上位のキーしか見ないので、`{xdg.configFile}` と `{xdg.dataFile}` を重ねると `xdg` ごと後者に差し替えられ、`xdg.configFile` に `mutable` が生えなくなります。
@@ -107,7 +107,7 @@ flowchart TD
     A --> B --> C --> D
 ```
 
-生成されるコマンドの核心部分:
+生成されるコマンドの主要部分:
 
 ```bash
 cp --remove-destination --no-preserve=mode <source> <target>
@@ -136,7 +136,7 @@ lib.assertMsg file.force
   "if you specify `mutable` to `true` on a file, you must also set `force` to `true`"
 ```
 
-`force = false` のままだと、home-manager は既存ファイルがあるときにリンク作成を中断し、ファイルが既に存在するというエラーを出します。mutable ファイルは前回の rebuild でコピーされた実ファイルが必ず存在するため、 `force = true` で「既存を上書きしてよい」と明示する必要があります。
+`force = false` のままだと、home-manager は既存ファイルがあるときにリンク作成を中断し、ファイルが既に存在するというエラーを出します。mutable ファイルは前回の rebuild でコピーされた実ファイルが必ず存在します。そのため `force = true` で「既存を上書きしてよい」と明示しておかないと、リンク作成が中断されます。
 
 ## トレードオフ
 
@@ -148,7 +148,7 @@ lib.assertMsg file.force
 | ディスク使用量 | 少ない（共有） | 多い（実体を持つ） |
 | ロールバック | 確実 | 内容は戻らない |
 
-mutable な設定ファイルは削除しても消えない点に注意が必要です。 mutable ファイルを使わなくなった場合や、古い設定が悪さをしている場合は手動で削除する必要があります。
+mutable な設定ファイルは削除しても消えない点に注意が必要です。 mutable ファイルを使わなくなった場合や、古い設定が悪さをしている場合は手動で削除してください。
 
 ```bash
 # 例: テーマ関連の状態をリセットしたい場合
@@ -166,11 +166,11 @@ grep -rn "mutable = true" modules/hm/
 
 おおよそ次の性質を持つファイルです。
 
-- **wallbash が書き込む配色ファイル**: `theme.css` / `theme.conf` / `colors.conf` など
-- **テーマ切り替えで書き換わる設定**: `dunstrc` / `kdeglobals` / `gtk-3.0/settings.ini`
-- **アプリが自分で書き換える設定**: `hyde/config.toml` / VS Code の `settings.json`
-- **HyDE のスクリプト・データ本体**: `~/.local/share/hyde` / `~/.local/lib/hyde`
-- **Hyprland の各種 `.conf`**: `mkHyprConfig` が生成するもの全部（後述）
+- wallbash が書き込む配色ファイル（`theme.css` / `theme.conf` / `colors.conf` など）
+- テーマ切り替えで書き換わる設定（`dunstrc` / `kdeglobals` / `gtk-3.0/settings.ini`）
+- アプリが自分で書き換える設定（`hyde/config.toml` / VS Code の `settings.json`）
+- HyDE のスクリプト・データ本体（`~/.local/share/hyde` / `~/.local/lib/hyde`）
+- Hyprland の各種 `.conf`（`mkHyprConfig` が生成するもの全部。後述）
 
 > [!IMPORTANT]
 > **フォークでの変更点**: `mkHyprConfig` が生成する設定はすべて `mutable = true` です。オリジナルの hydenix では `monitors.conf` だけが mutable で、`keybindings.conf` などはリンクでした。
@@ -180,12 +180,12 @@ grep -rn "mutable = true" modules/hm/
 
 ## 自分の設定で mutable なファイルを上書きしたいとき
 
-利用者側で `home.file` に同じパスを書いても、mutable のコピーに後から上書きされて効きません。`mutableFileGeneration` が `linkGeneration` の後に走るためです。そのため次のどちらかで対処する必要があります。
+利用者側で `home.file` に同じパスを書いても、mutable のコピーに後から上書きされて反映されません。`mutableFileGeneration` が `linkGeneration` の後に実行されるためです。そのため次のどちらかで対処します。
 
 1. 自分の側でも `mutable = true;` と `force = true;` を併記する
 2. 参照元（例: waybar の `includes.json`）を書き換えて、独自パスを指させる
 
-具体例（waybar の clock モジュールを差し替えたい場合）:
+waybar の clock モジュールを差し替えたい場合は、次のように書きます。
 
 ```nix
 # 効かない

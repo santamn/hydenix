@@ -68,7 +68,7 @@ mkTheme = import ./utils/mkTheme.nix {
 
 CI では `flake.nix` の `checks.theme-assets` が `Bibata-Modern-Ice` / `Tela-circle-dracula` / Catppuccin Mocha / Catppuccin Latte を 1 つの `buildEnv` に束ねており、同じ衝突が起きれば PR の時点で落ちます（[santamn/hydenix#10](https://github.com/santamn/hydenix/pull/10)）。
 
-なお `modules/hm/theme.nix` が使う `symlinkJoin` は `buildEnv` と違い、同名パスの 2 つ目を**警告してスキップする**だけでエラーにしません。テーマ同士が同名アイコンテーマを別ビルドで同梱しているケースはこの経路を通るため検出されません。詳しくは [08-improvements.md](./08-improvements.md) の B-10 を参照してください。
+なお `modules/hm/theme.nix` が使う `symlinkJoin` は `buildEnv` と違い、同名パスの 2 つ目を**警告してスキップする**だけでエラーにしません。テーマ同士が同名アイコンテーマを別ビルドで同梱しているケースは、この `symlinkJoin` による合成の対象なので検出されません。詳しくは [08-improvements.md](./08-improvements.md) の B-10 を参照してください。
 
 ### カタログ
 
@@ -85,7 +85,7 @@ CI では `flake.nix` の `checks.theme-assets` が `Bibata-Modern-Ice` / `Tela-
 ```
 
 > [!IMPORTANT]
-> **利用者が書くテーマ名は、このファイルのキーと完全に一致させる必要があります。**
+> **利用者が書くテーマ名は、このファイルのキーと一字一句一致させる必要があります。**
 > ハイフンだったり空白だったり、`Rosé` のようにアクセント付き文字だったりと不規則なので、設定する前に必ず `pkgs/hydenix-themes/default.nix` を確認してください。
 
 ### theme.nix によるインストール
@@ -95,9 +95,9 @@ findThemeByName = themeName: pkgs.hydenix-themes.${themeName} or null;
 availableThemes = lib.filter (themeName: findThemeByName themeName != null) cfg.themes;
 ```
 
-`or null` により、**存在しないテーマ名を書いてもビルドは失敗せず、黙って無視されます**。[`demo/home.nix`](../demo/home.nix) の末尾にある `"Some Theme"` は、この挙動を検証するためのテスト用エントリです。
+`or null` により、**存在しないテーマ名を書いてもビルドは失敗せず、警告も出ずに無視されます**。[`demo/home.nix`](../demo/home.nix) の末尾にある `"Some Theme"` は、この挙動を検証するためのテスト用エントリです。
 
-親切なようですが、タイプミスに気づけないという副作用もあります。テーマが適用されないときは、まず名前のスペルを疑ってください。
+親切なようですが、タイプミスに気づけないという副作用もあります。テーマが適用されないときは、まず名前のスペルを確認してください。
 
 配置先は `~/.config/hyde/themes/<テーマ名>` で、`mutable = true` が付いています（wallbash がこの中に生成物を書き込むため）。
 
@@ -133,7 +133,7 @@ hydenix 側は基本的にHyDE のスクリプトが動く環境を整えるだ�
 
 ### なぜ 3 か所で適用しているのか
 
-テーマ適用スクリプト `theme.switch.sh` は、内部で dconf（GNOME 系の設定ストア）を使います。dconf は D-Bus が必要で、D-Bus はグラフィカルセッションと一緒に起動します。一方 `nixos-rebuild switch` の activation script は、セッションが始まる前（あるいはログイン中の別コンテキスト）で走ります。つまり、初回の rebuild では dconf を使う部分が必ず失敗するのです。
+テーマ適用スクリプト `theme.switch.sh` は、内部で dconf（GNOME 系の設定ストア）を使います。dconf は D-Bus が必要で、D-Bus はグラフィカルセッションと一緒に起動します。一方 `nixos-rebuild switch` の activation script は、セッションが始まる前（あるいはログイン中の別コンテキスト）で実行されます。つまり、初回の rebuild では dconf を使う部分が必ず失敗するのです。
 
 そこで hydenix は3段構えにしています。
 
@@ -210,7 +210,7 @@ hydenix.hm.theme = {
 
 > theme.set.sh / dconf.set.sh がやっていることを Nix 側で再現し、gtk/qt などの設定を home.file で直接書き込むようにすればよい
 
-もしこれが実現すれば、activation script も systemd サービスも mutable ファイルも減らせます。現状は「HyDE のスクリプトをそのまま動かす」方針を取っており、HyDE 本体の更新に追従しやすい代わりに、仕組みが複雑になっています。
+もしこれが実現すれば、activation script、systemd サービス、mutable ファイルのいずれも減らせます。現状は「HyDE のスクリプトをそのまま動かす」方針を取っています。この方針だと HyDE 本体の更新に追従しやすい反面、仕組みは複雑です。
 
 > [!WARNING]
 > **この TODO が名指ししている 2 本のスクリプトは、現在の HyDE には存在しません。**

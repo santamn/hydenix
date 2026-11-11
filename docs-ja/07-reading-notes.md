@@ -1,4 +1,4 @@
-# 07. 読解メモ — 気づいた点と落とし穴
+# 07. 読解メモ — 気づいた点と注意点
 
 コードを読む上での注意点をまとめました。いずれもコードの挙動を変えるものではなく、読み手向けの注意書きです。
 
@@ -7,7 +7,7 @@
 > [!NOTE]
 > 手元の環境に `nix` が無いため、以下はコードの読解に基づく指摘です。実際のビルド・動作までは確認していません。
 
-## 1. 存在しないテーマ名は黙って無視される
+## 1. 存在しないテーマ名は警告も出ずに無視される
 
 ```nix
 findThemeByName = themeName: pkgs.hydenix-themes.${themeName} or null;
@@ -15,7 +15,7 @@ findThemeByName = themeName: pkgs.hydenix-themes.${themeName} or null;
 
 `or null` があるため、タイプミスしてもビルドは成功し、そのテーマだけ入りません。`demo/home.nix` の `"Some Theme"` は、この挙動を検証するためのテスト用エントリです。
 
-テーマが適用されないときは、まず名前のスペルを疑ってください。正しい名前は `pkgs/hydenix-themes/default.nix` のキーで確認できます。（`"Rosé Pine"` / `"Mac OS"` / `"Catppuccin-Macchiato"` のように表記が不規則です）。
+テーマが適用されないときは、まず名前のスペルを見直してください。正しい名前は `pkgs/hydenix-themes/default.nix` のキーで確認できます。（`"Rosé Pine"` / `"Mac OS"` / `"Catppuccin-Macchiato"` のように表記が不規則です）。
 
 なお、Hyprland の `animations.preset` などは逆に存在しない名前でビルドが失敗します。挙動が統一されていない点に注意してください。
 
@@ -35,7 +35,7 @@ Nix では同じ属性パスに属性集合リテラルを2回代入した場合
 | `.config/menus/applications.menu` | `dolphin.nix` / `qt.nix` |
 | `.config/electron-flags.conf` | `hyde.nix` / `social.nix` / `spotify.nix` |
 
-内容が完全に同じなのでマージされ、エラーになりません。ただし片方だけ変更するとその瞬間に定義衝突でビルドが落ちます。どれか1つを編集するときは、他の定義箇所も揃える必要があります。
+内容が同一なのでマージされ、エラーになりません。ただし片方だけ変更するとその瞬間に定義衝突でビルドが落ちます。どれか1つを編集するときは、他の定義箇所も揃える必要があります。
 
 ## 4. `nix` / `sddm` / `system` モジュールは `hydenix.enable` に従わない
 
@@ -52,7 +52,7 @@ enable = lib.mkOption {
 
 つまり `hydenix.enable = false;` にしても、**SDDM・Hyprland・zsh・PipeWire 以外の共通パッケージは有効なまま**です。本家からそのまま引き継がれている挙動で、意図的かどうかは不明です。
 
-完全に切りたい場合は個別に指定します。
+全部切りたい場合は個別に指定します。
 
 ```nix
 hydenix.system.enable = false;
@@ -71,7 +71,7 @@ setopt_EXTENDED_HISTORY = "true";
 
 本来は `shell.nix` にあるべき設定です。本家 issue #154 として残っている整理課題で、フォークでも未対応です。動作上の問題はありません。
 
-なお `setopt_*` という名前の環境変数は zsh の `setopt` とは無関係で、HyDE 側の独自変数です。ただし**ピン留め中の HyDE には読み手がもう存在しません**。`HISTFILE` / `HISTSIZE` / `SAVEHIST` のほうも home-manager の zsh モジュールが `.zshrc` で上書きするため、この 9 行は 1 行も効いていません。
+なお `setopt_*` という名前の環境変数は zsh の `setopt` とは無関係で、HyDE 側の独自変数です。ただし**ピン留め中の HyDE には読み手がもう存在しません**。`HISTFILE` / `HISTSIZE` / `SAVEHIST` のほうも home-manager の zsh モジュールが `.zshrc` で上書きするため、この 9 行は 1 行も実際の挙動に反映されていません。
 
 移動と削除の両方を [08-C-2](./08-improvements.md#c-2-履歴の環境変数を-shellnix-へ移す本家-issue-154) に書いています。
 
@@ -86,7 +86,7 @@ setopt_EXTENDED_HISTORY = "true";
 |---------|-----|------|
 | mutable | 手で編集して `hyprctl reload` で即試せる | モジュールを切ってもファイルが残る |
 
-実運用ではむしろ便利ですが、設定から外したのに効いているという混乱の原因になり得ます。
+実運用ではむしろ便利ですが、設定から外したのにまだ反映されているという混乱の原因になり得ます。
 
 ## 7. `assertions.nix` が `hyprsunset` を見ていない
 
@@ -98,7 +98,7 @@ setopt_EXTENDED_HISTORY = "true";
 
 本家では`pyprland.nix` は存在するが `imports` に無いという状態で、オプションだけあって何も起きない、という分かりにくい挙動でした。
 
-フォークでは `imports` のコメントアウトに加えて**オプション定義も無くなった**ため、`hydenix.hm.hyprland.pyprland.*` を書くと未定義エラーで止まります。黙って無視されるよりは親切な挙動です。
+フォークでは `imports` のコメントアウトに加えて**オプション定義も無くなった**ため、`hydenix.hm.hyprland.pyprland.*` を書くと未定義エラーで止まります。警告も出ずに無視されるよりは親切な挙動です。
 
 ## 9. `hyde-diff-upstream` の master は commit で固定されている
 
@@ -124,7 +124,7 @@ nix-update は `src` を定義しているファイルを書き換えます。�
 | `flake.nix` | ルート | hydenix 本体（**提供する側**） |
 | `flake.nix` | `template/` | 利用者の雛形（**利用する側**） |
 | `default.nix` | `pkgs/` | overlay の本体 |
-| `default.nix` | `modules/hm/`, `modules/system/` | モジュールの入口 |
+| `default.nix` | `modules/hm/`, `modules/system/` | サブモジュールを `imports` でまとめて読み込むファイル |
 | `configuration.nix` | `demo/` | 開発者向けリファレンス設定 |
 | `configuration.nix` | `template/` | 利用者が編集する設定 |
 | `hardware-configuration.nix` | 両方 | どちらもダミー（実機では要置換） |

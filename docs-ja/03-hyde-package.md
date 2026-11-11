@@ -14,7 +14,7 @@ HyDE はもともと Arch Linux 用の設定集なので、そのまま NixOS �
 | Python 環境が存在しない | 実行時に `uv` で作る venv が前提だが、NixOS では誰もそれを作らない |
 | アーカイブが未展開 | アイコンや GTK テーマ、GRUB テーマが `.tar.gz` のまま同梱されている |
 
-`buildPhase` は、これらを 1 つずつ潰していく処理です。
+`buildPhase` は、これらを 1 つずつ解消していく処理です。
 
 ## buildPhase がやっていること
 
@@ -53,7 +53,7 @@ find . -type f -executable -print0 | xargs -0 sed -i 's/find "/find -L "/g'
 find . -type f -name "*.sh" -print0 | xargs -0 sed -i 's/find "/find -L "/g'
 ```
 
-home-manager は設定ファイルを Nix ストアへのシンボリックリンクとして配置します。 `find` は既定でリンクをたどらないため、HyDE のスクリプトがテーマや壁紙を見つけられなくなります。`-L` オプションを付けてリンク先を追跡させます。
+home-manager は設定ファイルを Nix ストアへのシンボリックリンクとして配置します。 `find` はデフォルトではリンクをたどらないため、HyDE のスクリプトがテーマや壁紙を見つけられなくなります。`-L` オプションを付けてリンク先を追跡させます。
 
 > [!NOTE]
 > 本家は実行ファイルだけを対象にしていましたが、このフォークでは `*.sh` も対象に追加されています（2 行目）。
@@ -157,7 +157,7 @@ flowchart LR
 
 ## HyDE を更新するときの手順
 
-`pkgs/hyde/default.nix` の `rev` を書き換えるのが基本ですが、 HyDE はスクリプトの塊なので、更新すると壊れやすい部分があります。ふだんは HyDE の新しいタグを renovate が見つけ、2 の書き換えまで済ませた PR を作ります。
+`pkgs/hyde/default.nix` の `rev` を書き換えるのが基本ですが、 HyDE はスクリプトの塊なので、更新すると動かなくなりやすい部分があります。ふだんは HyDE の新しいタグを renovate が見つけ、2 の書き換えまで済ませた PR を作ります。
 
 1. `nix run .#hyde-diff-upstream` で上流の変更を確認する
 2. `rev` を書き換え、`nix run .#update-hashes` で `hash` を計算し直す（`version` は `rev` から導かれるので触らない）
@@ -168,7 +168,7 @@ flowchart LR
 
 ## 覚えておくとよいこと
 
-- **HyDE の設定ファイルの実体は必ず `pkgs.hyde` の中にある**：`~/.config/hypr/hyprlock.conf` を見ても、実体は `/nix/store/...` へのリンクになっている
-- **リンク先を編集しても意味がない**
+- HyDE の設定ファイルの実体は必ず `pkgs.hyde` の中にある。`~/.config/hypr/hyprlock.conf` を見ても、実体は `/nix/store/...` へのリンクになっている
+- リンク先を編集しても意味がない
   - 読み取り専用なので編集できない。設定を変えたいときは Nix 側のオプションを使う → [06](./06-hyprland-modules.md)
   - `mutable` 指定のファイルは例外でコピーを作っているので編集できる → [04](./04-mutable-files.md)

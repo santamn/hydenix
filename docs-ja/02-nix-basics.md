@@ -77,7 +77,8 @@ in {... cfg.active ...}
 | `or` | 属性が無いときの既定値 | `pkgs.hydenix-themes.${name} or null` |
 | `++` | リストの連結 | `[a] ++ lib.optionals cond [b]` |
 
-> **注意**: `or` は **論理和ではありません** 。属性選択とセットでしか使えません。
+> [!WARNING]
+> `or` は **論理和ではありません** 。属性選択とセットでしか使えません。
 > 判定するのは値の真偽ではなくキーの有無です（`{a = false;}.a or true` は `false`）。論理和が欲しいときは `||` を使います。
 
 ### rec
@@ -126,7 +127,7 @@ options.hydenix.hm.theme = {
 | `lib.types.nullOr X` | X または null（「未指定」を表現したいとき） |
 | `lib.types.enum ["a" "b"]` | 決められた値のどれか |
 | `lib.types.submodule {...}` | 入れ子の設定オブジェクト |
-| `lib.types.addCheck T pred` | 既存の型に追加の検査を足す |
+| `lib.types.addCheck T pred` | 既存の型にチェックを追加する |
 
 `addCheck` は `modules/system/default.nix` の timezone 型で使われています（「空白を含まない文字列」という制約を足している）。
 
@@ -148,9 +149,9 @@ options.hydenix.hm.theme = {
 | `lib.mkMerge [a b]` | 複数の設定を統合 | 条件分岐した設定をまとめるとき |
 | `lib.mkOrder n v` | 順序の指定 | `.zshrc` の書き込み位置制御 |
 
-`mkIf` が重要な理由: 単に `if cond then {...} else {}` と書くと、条件の評価に `config` が必要な場合に**無限再帰**に陥ることがあります。 `mkIf` は評価を遅延させるので安全です。
+`mkIf` が重要な理由: 単に `if cond then {...} else {}` と書くと、条件の評価で `config` を参照するとき、**無限再帰**に陥ることがあります。 `mkIf` は評価を遅延させるので安全です。
 
-`mkDefault` の有無は運用に直結します。付いていない値を利用者が別の値で上書きしようとすると、定義が衝突してビルドが落ちます。このフォークでは `networking.hostName` / `time.timeZone` / `i18n.defaultLocale` / `system.stateVersion` / `home.stateVersion` に `mkDefault` が付いているので、どれも利用者が書いた値が勝ちます。
+`mkDefault` の有無は運用に直結します。付いていない値を利用者が別の値で上書きしようとすると、定義が衝突してビルドが落ちます。このフォークでは `networking.hostName` / `time.timeZone` / `i18n.defaultLocale` / `system.stateVersion` / `home.stateVersion` に `mkDefault` が付いているので、どれも利用者の書いた値が勝ちます。
 
 ### assertions と warnings
 
@@ -182,7 +183,7 @@ warnings = ["設定を上書きしています"];
 | `lib.makeBinPath [pkgs...]` | パッケージのリストから `PATH` 用の文字列を作る |
 | `lib.hm.dag.entryAfter ["X"] script` | activation script を X の後に実行する（home-manager 固有） |
 
-`setAttrByPath` / `getAttrFromPath` は `modules/hm/mutable.nix` の核心部分です。`home.file` / `xdg.configFile` / `xdg.dataFile` の 3 つに同じ処理をするために、属性パスをデータとして扱っています。
+`setAttrByPath` / `getAttrFromPath` は `modules/hm/mutable.nix` の中心となる処理で使われています。`home.file` / `xdg.configFile` / `xdg.dataFile` の 3 つに同じ処理をするために、属性パスをデータとして扱っています。
 
 ### `source` と `lib.readFile` の違い
 
@@ -250,11 +251,11 @@ overlays.default = final: prev:
   (inputs.hyprland.overlays.hyprland-packages final prev) // (import ./pkgs final prev);
 ```
 
-`//` は上書きマージなので、名前が衝突したら `pkgs/` 側が勝ちます。
+`//` は上書きマージなので、名前の衝突時は `pkgs/` 側が勝ちます。
 
 ## 6. コードスタイル（このリポジトリの規約）
 
-整形は **alejandra** に統一されています。ただし CI では検査していないので（[10](./10-ci.md)）、手元で `nix fmt` を通してください。
+整形は **alejandra** に統一されています。ただし CI ではチェックしていないので（[10](./10-ci.md)）、手元で `nix fmt` を通してください。
 
 ```bash
 nix fmt          # treefmt 経由で alejandra / deadnix / statix が走る

@@ -44,7 +44,7 @@
 | **`hydenix.*`** | システム側のオプション名前空間（`modules/system/`） |
 | **`hydenix.hm.*`** | ユーザー側のオプション名前空間（`modules/hm/`） |
 | **`mkHyprConfig`** | 「追記 or 置き換え」型の Hyprland モジュールを動的生成する関数。フォーク独自 |
-| **hyde-shell** | HyDE の各種スクリプトを呼び出す入口コマンド |
+| **hyde-shell** | HyDE の各種スクリプトを呼び出すためのラッパーコマンド |
 | **hydectl** | HyDE の操作 CLI（Go 製・別リポジトリ） |
 | **hyq (hyprquery)** | Hyprland の設定値を問い合わせる CLI |
 | **hyde-ipc** | Hyprland のイベントを購読し、自動化する CLI（Rust 製） |
@@ -56,12 +56,12 @@
 
 | 用語 | 説明 |
 |---|---|
-| **treefmt** | 複数のフォーマッタを束ねて走らせるツール。`nix fmt` の実体 |
+| **treefmt** | 複数のフォーマッタをまとめて実行するツール。`nix fmt` の実体 |
 | **alejandra** | Nix コードのフォーマッタ。このリポジトリの整形規則 |
 | **deadnix** | 使われていない変数・引数を検出する linter |
 | **statix** | Nix のアンチパターンを検出する linter |
-| **typos** | スペルミス検出。CI でリポジトリ全体を検査する |
+| **typos** | スペルミス検出。CI でリポジトリ全体をチェックする |
 | **zizmor** | GitHub Actions ワークフローの静的解析（セキュリティ） |
-| **commitlint** | コミットメッセージが Conventional Commits に従っているか検査する |
+| **commitlint** | コミットメッセージが Conventional Commits に従っているかをチェックする |
 | **renovate** | 依存関係の更新 PR を自動で作るボット |
 | **nix-update** | パッケージの `rev` や `hash` を書き換えるツール。`nix run .#update-hashes` と `nix run .#update-branch-pins` の中身 |

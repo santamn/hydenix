@@ -102,7 +102,7 @@ Note this may break hydenix, hope you know what you're doing!
 (set suppressWarnings = true to hide this warning): keybindings.overrideConfig
 ```
 
-自覚した上で使うなら `suppressWarnings = true;` で黙らせられます。
+自覚した上で使うなら `suppressWarnings = true;` で警告を非表示にできます。
 
 > [!NOTE]
 > `assertions.nix` は `hypridle` / `keybindings` / `windowrules` / `nvidia` / `monitors` / `overrideMain` しか見ていません。
@@ -169,7 +169,7 @@ if cfg.animations.overrides ? ${cfg.animations.preset} then <overrides の中身
 ```
 
 > [!WARNING]
-> `preset` に「overrides にも HyDE にも無い名前」を書くと、`${pkgs.hyde}/Configs/.config/hypr/animations/<名前>.conf` が存在せず、**ビルドが失敗します**。テーマ名と違い、こちらは黙って無視されません。
+> `preset` に「overrides にも HyDE にも無い名前」を書くと、`${pkgs.hyde}/Configs/.config/hypr/animations/<名前>.conf` が存在せず、**ビルドが失敗します**。警告も出さずに無視されるテーマ名とは扱いが違います。
 
 `workflows.nix` だけは追加処理があり、標準プリセットに無い名前の `overrides` を新規ワークフローとしても配置します。
 
@@ -204,7 +204,7 @@ hydenix.hm.hyprland.extraConfig = ''
 '';
 ```
 
-`overrideMain` は HyDE の機能をほぼ全部失うため、HyDE のレイアウトを土台にしたくないという明確な意図がある場合のみ使います。
+`overrideMain` は HyDE の機能をほぼ全部失うため、HyDE のレイアウトを元にしたくないという明確な意図がある場合のみ使います。
 
 ## systemd 連携（フォークで追加）
 
