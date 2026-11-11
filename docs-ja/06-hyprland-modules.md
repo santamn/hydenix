@@ -6,9 +6,9 @@
 
 ```text
 hyprland/
-├── default.nix      ← 入口。imports と hyprland.conf / userprefs.conf の配置
+├── default.nix      ← 入口。imports と hyprland.lua / hyprlock/ の配置、systemd target
 ├── options.nix      ← オプションの定義（ここだけ読めば何ができるか分かる）
-├── assertions.nix   ← 危険な設定の検証と警告
+├── presets.nix      ← HyDE が同梱するプリセット名の一覧（名前の検査に使う）
 │
 ├── animations.nix   ┐
 ├── shaders.nix      │ プリセット選択型
@@ -23,7 +23,9 @@ hyprland/
 > [!IMPORTANT]
 > フォークでの最大の変更点がここです。本家には `hypridle.nix` / `keybindings.nix` / `windowrules.nix` / `nvidia.nix` / `monitors.nix` / `pyprland.nix` という個別ファイルがありましたが、すべて同じ構造だったため、`mkHyprConfig.nix` という関数に一本化されました。
 >
-> オプション名も使い方も本家と同じなので、利用者側の設定はそのまま動きます。変わったのはどこに実装があるかだけです。
+> さらにフォークは HyDE v26.08.21 に追従しており、Hyprland の設定は hyprlang の `.conf` ではなく Lua で書きます。`mkHyprConfig` で作るのは、Lua 化の後も hyprlang のまま残った `hypridle` / `hyprlock` / `hyprsunset` の 3 つだけです。`keybindings` / `monitors` / `nvidia` / `windowrules` のオプションは無く、キーバインド・ウィンドウルール・モニタは `extraConfig` に Lua で書きます（[メイン設定の扱い](#メイン設定の扱い)）。NVIDIA 用の環境変数は、NVIDIA ドライバが読み込まれているときだけ HyDE の `lua/env.lua` が設定します。
+>
+> そのため、本家向けに書いた `hydenix.hm.hyprland.*` の設定はそのままでは動きません。`extraConfig` は Lua で書き直す必要があり、`keybindings` などは未定義のオプションになります。
 
 ## パターン A: 追記 or 置き換え型（`mkHyprConfig`）
 
@@ -35,33 +37,38 @@ hyprland/
 mkHyprConfig = import ./utils/mkHyprConfig.nix {inherit lib pkgs config;};
 
 imports = [
+  ./animations.nix
+  ./options.nix
+  ./shaders.nix
+  ./workflows.nix
+  # mkHyprConfig で生成されるモジュール群。
+  # それぞれ hydenix.hm.hyprland.<name>.{enable,extraConfig,overrideConfig} を提供し、
+  # ~/.config/hypr/<name>.conf を配置する（この 3 つは Lua 化後も hyprlang のまま）
   (mkHyprConfig {name = "hypridle";})
-  (mkHyprConfig {name = "keybindings";})
-  (mkHyprConfig {name = "monitors";})
-  (mkHyprConfig {name = "nvidia";})
-  # (mkHyprConfig {name = "pyprland"; extension = "toml";})   ← 無効化されている
-  (mkHyprConfig {name = "windowrules";})
-  (mkHyprConfig {name = "hyprsunset";})                       ← フォークで追加
+  (mkHyprConfig {name = "hyprlock";})
+  (mkHyprConfig {name = "hyprsunset";}) # フォーク独自追加（ブルーライト低減）
 ];
 ```
 
-`mkHyprConfig` が用意するのは設定ファイルの配置だけで、コマンド本体は入りません。`hyprsunset` の本体は `default.nix` の `home.packages` に `lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset` を足して入れています。`lockscreen.nix` が hyprlock / swaylock を設定と対で入れているのと同じ形です。
+`mkHyprConfig` が用意するのは設定ファイルの配置だけで、コマンド本体は入りません。`hyprlock` と `hyprsunset` の本体は、`default.nix` の `home.packages` に `lib.mkIf cfg.hyprlock.enable pkgs.hyprlock` / `lib.mkIf cfg.hyprsunset.enable pkgs.hyprsunset` を足して、モジュールを有効にしたときだけ入れています。`hypridle` の本体は `modules/system/system.nix` がシステム全体に入れています。
 
-`mkHyprConfig {name = "keybindings";}` を呼ぶと、次のモジュールが返ります。
+`mkHyprConfig {name = "hypridle";}` を呼ぶと、次のモジュールが返ります。
 
-- **オプション:** `hydenix.hm.hyprland.keybindings.{enable, extraConfig, overrideConfig}`
-- **設定:** `~/.config/hypr/keybindings.conf` の配置
+- **オプション:** `hydenix.hm.hyprland.hypridle.{enable, extraConfig, overrideConfig}`
+- **設定:** `~/.config/hypr/hypridle.conf` の配置と、`overrideConfig` を使ったときの警告
 
 ### 中身
 
 ```nix
 config = lib.mkIf (hyprCfg.enable && cfg.enable) {
-  home.file.".config/hypr/${name}.${extension}" = {
+  warnings = lib.optional (cfg.overrideConfig != null && !hyprCfg.suppressWarnings) "hydenix.hm.hyprland.${name}.overrideConfig is overriding Hyde defaults. ...";
+
+  home.file.".config/hypr/${name}.conf" = {
     text =
       if cfg.overrideConfig != null
       then cfg.overrideConfig                      # 【置き換え】HyDE の設定を一切使わない
       else ''
-        ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/${name}.${extension}"}
+        ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/${name}.conf"}
         ${cfg.extraConfig}                         # 【追記】HyDE の設定の後ろに足す
       '';
     force = true;
@@ -81,145 +88,174 @@ config = lib.mkIf (hyprCfg.enable && cfg.enable) {
 
 ### 使い分け
 
+3 つとも hyprlang のファイルなので、`extraConfig` と `overrideConfig` も hyprlang で書きます。
+
 ```nix
 # 推奨: 既定の挙動を保ったまま足す
-hydenix.hm.hyprland.keybindings.extraConfig = ''
-  bind = SUPER, B, exec, firefox
-  bind = SUPER SHIFT, S, exec, grim -g "$(slurp)"
+hydenix.hm.hyprland.hypridle.extraConfig = ''
+  listener {
+    timeout = 1800
+    on-timeout = systemctl hibernate
+  }
 '';
 
-# 非推奨: HyDE の機能をほぼ全部失う
-hydenix.hm.hyprland.keybindings.overrideConfig = ''
-  bind = SUPER, Return, exec, kitty
+# 非推奨: HyDE の hypridle.conf（減光・ロック・画面オフ・サスペンド）を丸ごと捨てる
+hydenix.hm.hyprland.hypridle.overrideConfig = ''
+  listener {
+    timeout = 300
+    on-timeout = loginctl lock-session
+  }
 '';
 ```
 
-`override` 系を使うと `assertions.nix` が rebuild のたびに警告を出します。
+`overrideConfig` を使うと、そのモジュール自身が rebuild のたびに警告を出します。
 
 ```text
-hydenix.hm.hyprland: The following configs are overriding Hyde defaults.
-Note this may break hydenix, hope you know what you're doing!
-(set suppressWarnings = true to hide this warning): keybindings.overrideConfig
+hydenix.hm.hyprland.hypridle.overrideConfig is overriding Hyde defaults. Note this may break hydenix, hope you know what you're doing! (set hydenix.hm.hyprland.suppressWarnings = true to hide this warning)
 ```
 
-自覚した上で使うなら `suppressWarnings = true;` で警告を非表示にできます。
+自覚した上で使うなら `hydenix.hm.hyprland.suppressWarnings = true;` で警告を非表示にできます。
 
-> [!NOTE]
-> `assertions.nix` は `hypridle` / `keybindings` / `windowrules` / `nvidia` / `monitors` / `overrideMain` しか見ていません。
-> フォークで追加された **`hyprsunset`** は検証対象から漏れています。
-
-### monitors について
-
-本家では `monitors.nix` だけが `extraConfig` なし・`mutable = true` という特別扱いでした。フォークでは `mkHyprConfig` に統合されたため、`monitors` にも `extraConfig` が使えます。また `mutable = true` は全モジュール共通になりました。
-
-内容を Nix で固定したい場合は従来通り `overrideConfig` を使います。
-
-```nix
-hydenix.hm.hyprland.monitors.overrideConfig = ''
-  monitor = DP-1, 2560x1440@144, 0x0, 1
-  monitor = HDMI-A-1, 1920x1080@60, 2560x0, 1
-'';
-```
+`overrideConfig` の型は `nullOr nonEmptyStr` です。空文字や空白だけの文字列を書くと、モジュールシステムが型エラーで止め、どのファイルで定義したかを表示します。
 
 ### pyprland が使えない件
 
-`default.nix` の imports でコメントアウトされており、オプションも存在しません。本家 issue #188（`hyde-shell pypr console` が動かない）が未解決のためです。
+hydenix は pyprland の設定を配置せず、オプションもありません。HyDE は `~/.config/pypr/config.toml` を同梱していますが、どのモジュールもこれを配置しません。本家 issue #188（`hyde-shell pypr console` が動かない）は未解決のままです。
 
 そのため scratchpad などの pyprland 機能は使えません。`hydenix.hm.hyprland.pyprland.extraConfig = "...";` と書くと、本家と違って**オプション未定義エラーで止まります**。
 
 ## パターン B: プリセット選択型
 
-`animations` / `shaders` / `workflows` が該当します。「複数の候補ファイルを全部置いておき、そのうち 1 つを有効にする」構造です。
+`animations` / `shaders` / `workflows` が該当します。「HyDE が同梱する候補をすべて置いておき、そのうち 1 つを有効にする」構造です。
+
+候補の置き場所は種類によって異なります。アニメーションとワークフローは `~/.local/share/hypr/lua/{animations,workflows}/<名前>.lua` にあり、`default.nix` が `~/.local/share/hypr/` ごと HyDE のファイルへリンクしています。シェーダは `shaders.nix` が `~/.config/hypr/shaders/<名前>.frag` として 1 つずつリンクします。
+
+どれを有効にするかは、rebuild の activation で HyDE のセレクタ（`hyde-shell <セレクタ> --set <名前>`）を実行して決めます。
 
 ```nix
-config = lib.mkIf (cfg.enable && cfg.animations.enable) {
-  home.file = lib.mkMerge [
-    # (1) 現在有効なプリセット → animations.conf
-    {".config/hypr/animations.conf" = ...;}
-
-    # (2) 全プリセット → animations/<名前>.conf
-    (lib.listToAttrs (map (preset: {name = "..."; value = ...;}) animationPresets))
-  ];
-};
+home.activation.setAnimationPreset = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
+  run ${pkgs.hyde}/Configs/.local/bin/hyde-shell animations --set ${lib.escapeShellArg cfg.animations.preset}
+'';
 ```
 
-(2) で全プリセットを配置しているのは、**実行中に HyDE の機能で切り替えられるようにするため**です。
+セレクタは選んだプリセットを `~/.local/state/hyde/lua_state/` の状態ファイルに書き、Hyprland はそれを `hyde.lua` から読み込みます。シェーダはこのときにコンパイルされます。`setShader` だけは `setTheme` の後に実行されます。wallbash シェーダが、テーマ切り替えの書き出す色を include するためです。
+
+候補をすべて置いているのは、**実行中に HyDE の機能で切り替えられるようにするため**です。ただし実行中に切り替えた選択は、次の rebuild で activation が Nix 側の指定に戻します。
 
 ### overrides の使い方
 
+アニメーションとワークフローの `overrides` は Lua で書きます。先頭の `if not hl then ... end` は、HyDE が同梱するプリセットと同じ書き方です。
+
 ```nix
 hydenix.hm.hyprland.animations = {
-  preset = "my-custom";           # ← overrides に無い名前でもよい
+  preset = "my-custom";           # ← overrides のキーも選べる
   overrides = {
     "my-custom" = ''
-      animation = windows, 1, 3, default
-      animation = fade, 1, 3, default
+      if not hl then
+        return { name = "My animations" }
+      end
+      hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "default" })
     '';
-    "standard" = ''               # 既存プリセットの上書きもできる
-      animation = global, 0, 0, default
+    # HyDE の同名プリセットを置き換える
+    "standard" = ''
+      if not hl then
+        return { name = "Standard" }
+      end
+      hl.animation({ leaf = "global", enabled = false })
     '';
   };
 };
 ```
 
-判定は「`overrides` にそのキーがあるか」だけで行われます。
+`overrides` に書いたものは、アニメーションなら `~/.config/hypr/lua/animations/<名前>.lua`、ワークフローなら `~/.config/hypr/workflows/<名前>.lua` に置かれます。HyDE のセレクタは `~/.config/hypr` 側を `~/.local/share/hypr` 側より先に探し、`pkgs/hyde/default.nix` のパッチによって、同名のプリセットがあれば先に見つけたほうを使います。そのため HyDE と同じ名前なら HyDE のプリセットを置き換え、新しい名前なら新しいプリセットとして選べるようになります。
+
+`overrides` のキーには `.` と `/` を使えません。HyDE はプリセットを Lua の `require` で読み込み、`require` はドットをディレクトリの区切りとして扱うためです。違反すると assertion で評価が止まります。
+
+評価の時点で、選んだ名前が候補の一覧にあるかを assertion で調べます。
 
 ```nix
-if cfg.animations.overrides ? ${cfg.animations.preset} then <overrides の中身> else <HyDE のファイル>
+presets = map lib.toLower ((import ./presets.nix).animations ++ lib.attrNames cfg.animations.overrides);
+...
+assertion = lib.elem (lib.toLower cfg.animations.preset) presets;
 ```
+
+候補は `presets.nix` に書かれた HyDE 同梱の名前と、`overrides` のキーを合わせたものです。大文字小文字は区別しません（HyDE のセレクタと同じ）。`presets.nix` は手で書いた一覧ですが、flake の `hyprland-config` チェックが `pkgs.hyde` の実ファイルの一覧と比べるので、HyDE の更新でプリセットが増減するとチェックが失敗します。
 
 > [!WARNING]
-> `preset` に「overrides にも HyDE にも無い名前」を書くと、`${pkgs.hyde}/Configs/.config/hypr/animations/<名前>.conf` が存在せず、**ビルドが失敗します**。警告も出さずに無視されるテーマ名とは扱いが違います。
+> `preset` に「overrides にも HyDE にも無い名前」を書くと、**assertion で評価が止まり**、選べる名前の一覧がエラーメッセージに出ます。警告も出さずに無視されるテーマ名とは扱いが違います。
 
-`workflows.nix` だけは追加処理があり、標準プリセットに無い名前の `overrides` を新規ワークフローとしても配置します。
+`workflows.active` の既定値 `"default"` は `01-default.lua` の表示名です。HyDE のセレクタはファイル名と表示名のどちらでもプリセットを引けるので、`workflows.nix` は候補に `"default"` を足しています。
 
-```nix
-(lib.mapAttrs' (name: content: {...})
-  (lib.filterAttrs (name: _: !(lib.elem name workflowPresets)) cfg.workflows.overrides))
-```
-
-`shaders.nix` の `overrides` はキーに**拡張子まで含めて**書く点が他と異なります（例: `"my-filter.frag"`）。
+`shaders.nix` の `overrides` はキーに**拡張子まで含めて**書く点が他と異なります（例: `"my-filter.frag"`）。HyDE と同名のキー（`"wallbash.frag"` など）は `lib.mkForce` で HyDE のファイルを置き換えます。
 
 ## メイン設定の扱い
 
-`default.nix` が 2 つのファイルを配置します。
+Hyprland は `~/.local/share/hypr/hyde.lua` から起動します。`hyde.nix` がセッション変数 `HYPRLAND_CONFIG` でこのファイルを指しています。`hyde.lua` は HyDE の Lua モジュール（変数、既定値、ウィンドウルール、キーバインド、起動処理など）を読んだ後、ユーザ層の `~/.config/hypr/hyprland.lua`、選択中のワークフローの順に読み込みます。
+
+`default.nix` はこのうち次の 2 つを配置します。
 
 ```nix
-".config/hypr/hyprland.conf"   # HyDE 本体（overrideMain で丸ごと置き換え可能）
-".config/hypr/userprefs.conf"  # extraConfig の内容が入る。hyprland.conf の最後に読み込まれる
+".local/share/hypr/"          # HyDE の hyde.lua と lua/ 一式（HyDE のファイルへのリンク）
+".config/hypr/hyprland.lua"   # ユーザ層。systemd 連携の Lua と extraConfig が入る（overrideMain で丸ごと置き換え可能）
 ```
 
-**通常のカスタマイズは `extraConfig` に書きます。**
+生成される `hyprland.lua` の先頭には、次のブロックが入ります。`HYPRLAND_CONFIG` を指定せずに起動した Hyprland は最初にこのファイルを読むので、そのときは `hyde.lua` を読み込んで終わります。`hyde.lua` がこのファイルをユーザ層としてもう一度読むため、ここで止めないと二重に実行されます。
+
+```lua
+-- Hyprland starts from this file only when started without -c or HYPRLAND_CONFIG.
+-- hyde.lua then loads this file again as its user layer, so stop here instead of running it twice.
+if not hyde then
+  dofile((os.getenv("XDG_DATA_HOME") or os.getenv("HOME") .. "/.local/share") .. "/hypr/hyde.lua")
+  return
+end
+```
+
+**通常のカスタマイズは `extraConfig` に Lua で書きます。** ユーザ層は HyDE のモジュールより後に読まれるので、HyDE の既定値を上書きできます。キーバインド（`hl.bind`）、ウィンドウルール（`hl.window_rule`）、モニタ（`hl.monitor`）もここに書きます。書き方は HyDE の `MIGRATION-LUA.md` にあります。
 
 ```nix
 hydenix.hm.hyprland.extraConfig = ''
-  input {
-    kb_options = ctrl:swapcaps
-    touchpad {
-      natural_scroll = true
-      clickfinger_behavior = true
-    }
-  }
-  exec-once = fcitx5
+  hl.monitor({ output = "DP-1", mode = "2560x1440@144", position = "0x0", scale = 1 })
+  hl.monitor({ output = "HDMI-A-1", mode = "1920x1080@60", position = "2560x0", scale = 1 })
+  hl.config({
+    input = {
+      kb_options = "ctrl:swapcaps",
+      touchpad = {
+        natural_scroll = true,
+        clickfinger_behavior = true,
+      },
+    },
+  })
+  hl.on("hyprland.start", function()
+    hl.exec_cmd("fcitx5")
+  end)
 '';
 ```
 
-`overrideMain` は HyDE の機能をほぼ全部失うため、HyDE のレイアウトを元にしたくないという明確な意図がある場合のみ使います。
+`hyprland.lua` はビルド時に `luac -p` で構文を確かめ、構文エラーがあればビルドを止めます。構文エラーのあるファイルはログイン時に丸ごと読み飛ばされ、ログインするまで気づけないためです。
+
+`overrideMain` は `hyprland.lua` を丸ごと差し替えます。差し替わるのはユーザ層だけなので、HyDE のキーバインドやウィンドウルールはその前に読み込まれます。ただし上のブロックも systemd 連携の Lua も入らなくなります。使うと `default.nix` が rebuild のたびに警告を出すので、`extraConfig` で足りない明確な理由がある場合のみ使います。
 
 ## systemd 連携（フォークで追加）
 
-`hyprland.conf` の末尾に、次の 1 行が自動で足されます。
+`hydenix.hm.hyprland.systemd.enable` が有効なとき、`hyprland.lua` の `extraConfig` の前に次の Lua が自動で足されます（`<dbus>` は dbus パッケージのストアパス）。
 
-```text
-exec-once = <dbus>/bin/dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target
+```lua
+-- Hyprland 0.57 starts hyprland-session.target itself, before the handler below imports HYPRLAND_CONFIG.
+-- Leave the target to the handler, so setTheme.service and the other units it pulls in always see the variable.
+hl.env("HYPRLAND_NO_SD_TARGET", "1")
+hl.on("hyprland.start", function()
+  hl.exec_cmd("<dbus>/bin/dbus-update-activation-environment --systemd DISPLAY HYPRLAND_CONFIG HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target")
+end)
 ```
 
-これにより、systemd ユーザサービス側から `WAYLAND_DISPLAY` などが見えるようになります。テーマ適用サービス（`setTheme.service`）が正しく動くための前提です。
+`hyprland.start` のハンドラは、hyprlang の `exec-once` と同じく Hyprland の起動時に 1 回だけ実行され、reload では実行されません。これにより、systemd ユーザサービス側から `WAYLAND_DISPLAY` や `HYPRLAND_CONFIG` などが見えるようになります。テーマ適用サービス（`setTheme.service`）が正しく動くための前提です。
+
+`HYPRLAND_NO_SD_TARGET` を設定しているのは、Hyprland 0.57 が起動時に自分で `hyprland-session.target` を起動するためです。そのままだと、ハンドラによる `HYPRLAND_CONFIG` の流し込みより先に target が起動します。すると、target に引き込まれた `setTheme.service` は、この変数なしで動くことがあります。`HYPRLAND_NO_SD_TARGET` で Hyprland 側の起動を止め、target の起動をハンドラに任せています。
 
 ```nix
 hydenix.hm.hyprland.systemd = {
-  enable = true;                 # hyprland-session.target を作る
-  variables = [...];             # 流し込む環境変数（既定で 5 つ）
+  enable = true;                 # hyprland-session.target を作り、上の Lua を hyprland.lua に入れる
+  variables = [...];             # 流し込む環境変数（既定で 6 つ）
   extraCommands = [...];         # D-Bus 起動後に走らせるコマンド
   enableXdgAutostart = false;    # XDG autostart を有効にするか
 };
@@ -229,16 +265,16 @@ hydenix.hm.hyprland.systemd = {
 
 ```nix
 home.activation.createHyprConfigs = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
-  $DRY_RUN_CMD mkdir -p "$HOME/.config/hypr/themes"
-  $DRY_RUN_CMD touch "$HOME/.config/hypr/themes/colors.conf"
-  ...
+  run mkdir -p "$HOME/.config/hypr/themes"
+  run touch "$HOME/.config/hypr/themes/colors.conf"
+  run chmod 644 "$HOME/.config/hypr/themes/colors.conf"
 '';
 ```
 
-これらは**テーマ適用スクリプトが後で書き込む先**のファイルです。Hyprland は設定ファイル内の `source = ...` で存在しないファイルを指すとエラーを出すため、初回起動時のエラーを防ぐために空ファイルを先に用意しています。
+`colors.conf` は**wallbash が後で書き込む先**のファイルです。hyprlock は HyDE の `~/.local/share/hypr/hyprlock.conf` 経由でこのファイルを `source` しており、存在しないファイルを `source` するとエラーを出します。初回起動時のエラーを防ぐために、空ファイルを先に用意しています。
 
 > [!NOTE]
-> 依存先の `"mutableFileGeneration"` は `mutable.nix` が定義しているエントリ名です。`$DRY_RUN_CMD` は `nixos-rebuild dry-activate` のときに実行を空振りさせるための前置きです。
+> 依存先の `"mutableFileGeneration"` は `mutable.nix` が定義しているエントリ名です。`run` は Home Manager のシェル関数で、dry-run のときはコマンドを実行せずに表示だけします。
 
 ## 設定を変更したときの反映
 
@@ -246,9 +282,9 @@ Hyprland は設定ファイルの変更を自動で再読み込みします。�
 
 ```bash
 sudo nixos-rebuild switch --flake .#<ホスト名>
-# → ~/.config/hypr/*.conf が更新される
+# → ~/.config/hypr/hyprland.lua などが更新され、activation がプリセットを選び直す
 # → Hyprland が自動で再読み込みする（されない場合は hyprctl reload）
 ```
 
 > [!TIP]
-> `mkHyprConfig` の生成物は `mutable = true` なので、**手動で編集した内容は次の rebuild まで残ります**。試行錯誤するときは直接編集 → `hyprctl reload` が速く、決まったら `extraConfig` に書き戻す、という進め方ができます。
+> `hyprland.lua` は Nix ストアのファイルへのリンクなので、直接は編集できません。一方 `mkHyprConfig` の生成物（`hypridle.conf` / `hyprlock.conf` / `hyprsunset.conf`）は `mutable = true` なので、**手動で編集した内容は次の rebuild まで残ります**。試行錯誤するときは直接編集して確かめ、決まったら `extraConfig` に書き戻す、という進め方ができます。

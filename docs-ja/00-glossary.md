@@ -47,7 +47,6 @@
 | **hyde-shell** | HyDE の各種スクリプトを呼び出すためのラッパーコマンド |
 | **hydectl** | HyDE の操作 CLI（Go 製・別リポジトリ） |
 | **hyq (hyprquery)** | Hyprland の設定値を問い合わせる CLI |
-| **hyde-ipc** | Hyprland のイベントを購読し、自動化する CLI（Rust 製） |
 | **hyde-config** | `~/.config/hyde/config.toml` を解析して各設定へ反映するデーモン |
 | **hyde-diff-upstream** | 固定中の HyDE と上流 master の差分を出すツール。フォーク独自 |
 | **hyde-diff-home** | 固定中の HyDE と自分のホーム構成の差分を出すツール。フォーク独自 |

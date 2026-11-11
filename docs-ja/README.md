@@ -35,7 +35,7 @@ hydenix は **Arch Linux 用のデスクトップ設定集である HyDE を、N
 
 この矛盾を解消するために、hydenix は以下の 3 つの仕掛けを持っています。
 
-1. **HyDE 本体をビルド時に書き換える** ([03](./03-hyde-package.md)): Arch 前提のコマンド名やパスを、NixOS 用に `sed` で置換してからパッケージ化する
+1. **HyDE 本体をビルド時に書き換える** ([03](./03-hyde-package.md)): Arch 前提のコマンド名やパスを、NixOS 用に `substituteInPlace` で置換してからパッケージ化する
 2. **`mutable` オプション** ([04](./04-mutable-files.md)): 書き換えが必要なファイルだけ、リンクではなく「書き込み可能なコピー」として配置する
 3. **activation script + systemd サービス** ([05](./05-theme-system.md)): テーマ適用スクリプトを、rebuild 時とログイン後の 2 段階で実行する
 
@@ -44,7 +44,7 @@ hydenix は **Arch Linux 用のデスクトップ設定集である HyDE を、N
 ## このフォークの立ち位置
 
 ```text
-richen604/hydenix          本家。2026-01-23 を最後に停止（メンテナンスモード）
+richen604/hydenix          本家。2026-01-23 を最後にアーカイブ（読み取り専用）
         ↓ fork
 florianvazelle/hydenix     後継だったが、2026-08 にアーカイブ（読み取り専用）
         ↓ fork
@@ -72,22 +72,29 @@ santamn/hydenix            ← このリポジトリ
 
 - `git.nix` が削除された。本家 issue #169 の型バグをモジュールごと消して解決している。git の設定は素の `programs.git` に書く
 - `swww.nix` が `awww.nix` になった（壁紙デーモンの差し替え）
-- hyprland モジュールが `utils/mkHyprConfig.nix` に一本化された。`hypridle`、`keybindings`、`monitors`、`nvidia`、`windowrules`、`hyprsunset` は同じ構造だったため、個別ファイルをやめて関数生成に変わった。オプション名と使い方は本家と同じ
+- Hyprland の設定が Lua になった（HyDE v26.08.21 に合わせたもの）。hydenix は `~/.config/hypr/hyprland.lua` を書き、`hydenix.hm.hyprland.extraConfig` と `overrideMain` は Lua を受け取る
+- 追記か置き換えを選ぶ型の hyprland モジュールが `utils/mkHyprConfig.nix` に一本化された。`hypridle`、`hyprlock`、`hyprsunset` は同じ構造なので、個別ファイルをやめて関数生成に変わった。`keybindings`、`monitors`、`nvidia`、`windowrules` のオプションは無く、`extraConfig` の Lua に書く
+- hyprlock が `hyprland/` の下に入り、`hydenix.hm.hyprland.hyprlock.enable` で切り替える。`lockscreen.nix` と swaylock は無い
 - `hyprsunset` が追加された（ブルーライト低減）
-- `pyprland` が無効化された。`default.nix` の imports でコメントアウトされ、オプションも消えている
+- `pyprland` が外された。モジュールとオプションは無い
+- `mutable = true` のファイルは、設定から外すと次の世代でホームから削除される
+- テーマに同梱のアイコン・GTK テーマ・フォントは `~/.local/share/{icons,themes,fonts}` に置かれる。同じ名前のディレクトリを複数のテーマが持つときは、先に書いたテーマのディレクトリを丸ごと使う（中身の違うアイコンテーマは、後のテーマの分をプロファイルへ入れる）
+- zsh の履歴設定は `xdg.nix` の環境変数ではなく `programs.zsh.history` で書く（本家 issue #154）
 - `hyprland.systemd.*` が追加された。Hyprland 起動時に環境変数を systemd / D-Bus のユーザ環境へ流し込み、`hyprland-session.target` を起動する
 
 ### flake
 
 - `nixosModules.default` が **home-manager 本体と `homeModules.default` を自動で配線する**（`home-manager.sharedModules` 経由）。本家より利用者側の記述が減る
 - `homeConfigurations.default` が追加され、home-manager 単体でも使える
-- Hyprland を flake input でバージョン固定し（現在は `v0.56.2`。HyDE が対応する最新版に合わせる）、cachix を `nixConfig` に追加
+- Hyprland は本家と同じく nixpkgs のものを使う。ただし nixpkgs は nixos-unstable を追い（`flake.lock` を週次で更新）、`modules/system/system.nix` の assertion が、HyDE の対応する major.minor（今は 0.57）以外の Hyprland を評価時に止める
+- `nix` / `sddm` / `system` の各モジュールも、ほかのシステムモジュールと同じく `hydenix.enable` に従う
 - `hostname` / `timezone` / `locale` に既定値が付き、`lib.mkIf cfg.enable (lib.mkDefault ...)` になった（本家は `mkDefault` なし＋必須アサーションあり）。`system.stateVersion` と `home.stateVersion` も `mkDefault` なので、利用者の書いた値が勝つ
 
 ### 開発基盤
 
-- treefmt（alejandra / deadnix / statix）、typos、zizmor による CI
-- renovate による依存自動更新と、テーマの自動更新（[10](./10-ci.md)）
+- treefmt（alejandra / deadnix / statix）による整形（`nix fmt`。CI では実行しない）と、typos・zizmor による CI
+- renovate と Dependabot による依存の自動更新と自動マージ、テーマなどのブランチピンの自動更新（[10](./10-ci.md)）
+- PR と push 前の手順をまとめた `AGENTS.md`（`CLAUDE.md` から読み込む）
 - `docs/` を mdbook 化して GitHub Pages で公開
 
 ## 公式ドキュメント（英語）

@@ -30,15 +30,15 @@ JSON のオブジェクトに相当します。Nix の設定はほぼ全部こ�
 #                  ↑ 「他の引数も来るかもしれないが無視する」の意味。これが無いとエラーになる
 
 # カリー化（pkgs/hydenix-themes/utils/mkTheme.nix がこの形）
-{pkgs}: {name, src, meta}: <derivation>
-#  ↑先に pkgs を渡して関数を作り、後からテーマ情報を渡す
+{pkgs, sharedAssets}: {name, src, branch ? null, meta}: <derivation>
+#  ↑先に pkgs などを渡して関数を作り、後からテーマ情報を渡す
 
 # 二重カリー化（modules/hm/hyprland/utils/mkHyprConfig.nix）
-{config, pkgs, lib, ...}: {name, extension ? "conf"}: <モジュール>
+{config, pkgs, lib, ...}: {name}: <モジュール>
 #  ↑ import 時に前半を渡し、imports の中で後半を渡す。返り値がモジュールになる
 ```
 
-`?` は既定値付き引数です。`extension ? "conf"` は「省略時は `"conf"` 」の意味。
+`?` は既定値付き引数です。`branch ? null` は「省略時は `null` 」の意味。
 
 ### let ... in
 
@@ -57,7 +57,7 @@ in {... cfg.active ...}
 ''
   複数行文字列。インデントは自動で揃えられる
 ''
-"${pkgs.hyde}/Configs/.config/hypr/hyprland.conf"   # ${...} で値を埋め込む
+"${pkgs.hyde}/Configs/.config/hypr/hypridle.conf"   # ${...} で値を埋め込む
 ```
 
 `${pkgs.hyde}` は評価すると `/nix/store/xxxx-hyde` のような**パス文字列**になります。
@@ -72,8 +72,8 @@ in {... cfg.active ...}
 
 | 演算子 | 意味 | 例 |
 |-------|-----|----|
-| `//` | 属性集合の上書きマージ | `hyprlandPkgs // (import ./pkgs final prev)` |
-| `?` | その属性が存在するか | `if cfg.animations.overrides ? ${preset} then ... else ...` |
+| `//` | 属性集合の上書きマージ | `(old.passthru or {}) // {updateBranch = "master";}` |
+| `?` | その属性が存在するか | `(package.src or null) ? outputHash` |
 | `or` | 属性が無いときの既定値 | `pkgs.hydenix-themes.${name} or null` |
 | `++` | リストの連結 | `[a] ++ lib.optionals cond [b]` |
 
@@ -162,7 +162,7 @@ assertions = [
 warnings = ["設定を上書きしています"];
 ```
 
-`assertion` が偽ならビルドが止まり、`message` が表示されます。 `modules/hm/hyprland/assertions.nix` が良い実例です。
+`assertion` が偽ならビルドが止まり、`message` が表示されます。 `modules/hm/hyprland/animations.nix`（存在しないプリセット名を書くとビルドが止まる）が良い実例です。
 
 ## 3. このリポジトリで頻出する lib 関数
 
@@ -175,26 +175,25 @@ warnings = ["設定を上書きしています"];
 | `lib.listToAttrs [{name=..;value=..;}]` | リストを属性集合に変換 |
 | `lib.mapAttrs' f attrs` | 属性集合のキーと値を両方変換 |
 | `lib.filterAttrs f attrs` | 属性集合を絞り込む |
-| `lib.setAttrByPath ["a" "b"] v` | `{a.b = v;}` を作る |
-| `lib.getAttrFromPath ["a" "b"] s` | `s.a.b` を取り出す |
 | `lib.concatStringsSep ", " list` | 文字列リストを連結 |
 | `lib.readFile path` | **ビルド時に**ファイルの中身を文字列として読む |
 | `lib.escapeShellArg s` | シェルに安全に渡せるようクォートする |
 | `lib.makeBinPath [pkgs...]` | パッケージのリストから `PATH` 用の文字列を作る |
 | `lib.hm.dag.entryAfter ["X"] script` | activation script を X の後に実行する（home-manager 固有） |
+| `lib.hm.dag.entryBetween ["X"] ["Y"] script` | activation script を Y の後、X の前に実行する（home-manager 固有） |
 
-`setAttrByPath` / `getAttrFromPath` は `modules/hm/mutable.nix` の中心となる処理で使われています。`home.file` / `xdg.configFile` / `xdg.dataFile` の 3 つに同じ処理をするために、属性パスをデータとして扱っています。
+`entryBetween` は、先に書くリストが「この前に実行するもの」、後に書くリストが「この後に実行するもの」です。`modules/hm/mutable.nix` の `mutableFileCleanup` は `entryBetween ["linkGeneration"] ["writeBoundary" "checkFilesChanged"]` なので、`writeBoundary` と `checkFilesChanged` の後、`linkGeneration` の前に実行されます（[04](./04-mutable-files.md)）。
 
 ### `source` と `lib.readFile` の違い
 
 ```nix
 # (A) リンクを張る：中身は変えられない
-".config/hypr/hyprlock.conf".source = "${pkgs.hyde}/Configs/.config/hypr/hyprlock.conf";
+".config/MangoHud/MangoHud.conf".source = "${pkgs.hyde}/Configs/.config/MangoHud/MangoHud.conf";
 
-# (B) 中身を読んで新しいファイルを生成：後ろに追記できる
+# (B) 中身を読んで新しいファイルを生成：後ろに追記できる（mkHyprConfig で name = "hypridle" のとき）
 ".config/hypr/hypridle.conf".text = ''
   ${lib.readFile "${pkgs.hyde}/Configs/.config/hypr/hypridle.conf"}
-  ${cfg.hypridle.extraConfig}
+  ${cfg.extraConfig}
 '';
 ```
 
@@ -217,17 +216,19 @@ pkgs.stdenv.mkDerivation {
 
 `fetchFromGitHub` の `hash` / `sha256` は「内容のハッシュ」です。改ざん検知と再現性のために必須で、値が合わないとビルドが失敗します。空文字を書くと全ゼロのハッシュに正規化されるので、取得したものと絶対に一致しません。
 
-`pkgs/` のパッケージは、`src` を `let` で先に束ねて `version` をその `rev` から導く形にそろえてあります。
+`pkgs/` のパッケージは、`src` を `let` で先に束ねて `version` をその `rev` から導く形にそろえてあります（`pkgs/hydectl/default.nix` など）。
 
 ```nix
 let
-  src = fetchFromGitHub {rev = "v0.5.2"; hash = "sha256-..."; ...};
-  version = lib.removePrefix "v" src.rev;   # "0.5.2"
+  src = fetchFromGitHub {rev = "v26.0.0"; hash = "sha256-..."; ...};
+  version = lib.removePrefix "v" src.rev;   # "26.0.0"
 in
-  buildGoModule {inherit src version; ...}
+  buildGoLatestModule {inherit src version; ...}
 ```
 
 `rev` と `version` を別々に書くと、renovate が `rev` だけを書き換えたときに `version` がずれるからです。`rev` を変えたら `nix run .#update-hashes` で `hash` を計算し直します（[10](./10-ci.md)）。
+
+例外は `pkgs/hyprquery/default.nix` です。HyDE のテーマ切り替えに要る機能は main ブランチにしか無いので、`rev` に commit を書いており、`version` は `"0.6.8-unstable-2026-06-13"` のように直接書いています。
 
 ## 5. overlay
 
@@ -242,16 +243,13 @@ final: _prev: {
 
 返した属性が `pkgs` に足されるので、各モジュールから `pkgs.hyde` として使えるようになります。
 
-`callPackage` は「定義ファイルの引数を自動で埋める」仕組みです。`pkgs/pokego/default.nix` が `{lib, buildGoModule, fetchFromGitHub}:` という引数を書けるのは、`callPackage` が pkgs から自動で探して渡してくれるからです。
+`callPackage` は「定義ファイルの引数を自動で埋める」仕組みです。`pkgs/hydectl/default.nix` が `{lib, buildGoLatestModule, fetchFromGitHub}:` という引数を書けるのは、`callPackage` が pkgs から自動で探して渡してくれるからです。
 
-`flake.nix` では Hyprland 側の overlay と合成しています。
+`flake.nix` は、この `pkgs/default.nix` をそのまま overlay として公開しています。Hyprland は nixpkgs のものを使うので、ほかの overlay は重ねていません。
 
 ```nix
-overlays.default = final: prev:
-  (inputs.hyprland.overlays.hyprland-packages final prev) // (import ./pkgs final prev);
+overlays.default = import ./pkgs;
 ```
-
-`//` は上書きマージなので、名前の衝突時は `pkgs/` 側が勝ちます。
 
 ## 6. コードスタイル（このリポジトリの規約）
 

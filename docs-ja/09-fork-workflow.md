@@ -1,6 +1,6 @@
 # 09. フォークの運用 — ブランチ構成と PR
 
-日本語コメントを持ちながら、英語で PR を出すための運用方法です。
+日本語コメントを持ちながら、日本語を含まない PR を出すための運用方法です。
 
 ## 結論
 
@@ -52,10 +52,9 @@ remote の状態は次のようになります。
 
 ```text
 origin    → github.com/santamn/hydenix       （自分のフォーク）
-upstream  → github.com/florianvazelle/hydenix（アーカイブ済み。履歴を見るときだけ使う）
 ```
 
-`upstream` は残してありますが、もう新しいコミットは来ません。消してしまっても構いません。
+フォーク元の florianvazelle/hydenix はアーカイブ済みで、新しいコミットは来ません。そのため remote には登録していません。履歴を見たいときだけ `git remote add upstream https://github.com/florianvazelle/hydenix` で足します。
 
 ### 2 つを同時に開いておきたい場合
 
@@ -78,18 +77,18 @@ worktree をリポジトリ内に置きたい場合は `.wt/` 以下が使えま
 
 ### 1. 依存を更新する
 
-依存の更新はどれも自動で PR が立ち、一部は自動でマージされます。
+依存の更新はどれも自動で PR が立ち、HyDE のリリース以外は必須チェックが通れば自動でマージされます。
 
 | 何が動くか | 何を上げるか | マージ |
 |---|---|---|
-| `renovate.yml`（週次）の lockFileMaintenance | `flake.lock`（nixpkgs、home-manager ほか） | チェックが通れば renovate が自動で |
-| `renovate.yml`（週次） | `pkgs/` の `rev`（HyDE やツール類のタグ）、`flake.nix` の Hyprland のタグ | 手動 |
-| `update-branch-pins.yml`（毎日） | テーマ 58 個と HyDE master（`hyde-diff-upstream` 用）の commit 固定 | ワークフローが直接 |
-| Dependabot（毎日） | GitHub Actions のバージョン | 手動 |
+| `renovate.yml`（週次）の lockFileMaintenance | `flake.lock`（nixpkgs、home-manager ほか。Hyprland も nixpkgs と一緒に上がる） | チェックが通れば renovate が自動で |
+| `renovate.yml`（週次） | `pkgs/` の `rev`（HyDE やツール類のタグ。リリースから 7 日たったものだけ） | HyDE は手動、ほかはチェックが通れば renovate が自動で |
+| `update-branch-pins.yml`（毎週日曜） | テーマ 58 個、HyDE master（`hyde-diff-upstream` 用）、hyprquery の commit 固定 | チェックが通れば auto-merge で |
+| Dependabot（毎日） | GitHub Actions のバージョン | `dependabot-auto-merge.yml`（毎日）が auto-merge を有効にし、チェックが通ればマージされる |
 
-手動でマージするものが普段の作業です。Hyprland は `flake.nix` で HyDE が対応するバージョンに固定してあるので、renovate が上げてきても HyDE 側の対応バージョンを確認してからマージします。詳細は [10-ci.md](./10-ci.md)。
+普段の作業は、HyDE のリリースを上げる PR のレビューと、チェックが失敗して残った PR の対応です。Hyprland は nixpkgs のものを使い、`modules/system/system.nix` の assertion が、`supportedHyprland`（今は `"0.57"`）と major.minor の違う Hyprland を評価時に止めます。nixpkgs が Hyprland を上げると lockFileMaintenance の PR が flake-check で失敗し、マージされずに残ります。HyDE が新しい Hyprland に対応していれば、`nix flake update`、`pkgs/hyde` の `rev`、`supportedHyprland` を 1 つの PR でまとめて上げます。手順は [`docs/src/contributing.md`](../docs/src/contributing.md) にあり、CI 側の詳細は [10-ci.md](./10-ci.md) にあります。
 
-`pkgs/` の `rev` を手で書き換えたときは、`nix run .#update-hashes` で `hash` を計算し直します。renovate も同じコマンドを使うので、手動の更新と bot の更新は同じ手順を踏みます。`version` は `rev` から導かれるので触りません。
+`pkgs/` の `rev` を手で書き換えたときは、`nix run .#update-hashes` で `hash` を計算し直します。renovate も同じコマンドを使うので、手動の更新と bot の更新は同じ手順を踏みます。タグを追うパッケージの `version` は `rev` から導かれるので触りません。
 
 ### 2. `ja` ブランチを追随させる
 
@@ -123,8 +122,13 @@ git switch -c fix/<修正内容>
 
 # 修正する（英語のコメントのみ。日本語は書かない）
 
-nix fmt                       # ← 実機または nix のある環境で
+# push の前に、CI と同じチェックと nix fmt を手元で通す（AGENTS.md）
+nix fmt                       # CI は整形を確かめない
+nix flake check
+nix flake check ./template --override-input hydenix path:. --no-write-lock-file
+nix develop -c typos
 git commit -am "fix: <英語で要約>"
+nix shell nixpkgs#commitlint -c commitlint --from main --to HEAD
 git push -u origin fix/<修正内容>
 ```
 
@@ -135,7 +139,7 @@ base:    santamn/hydenix  main
 compare: santamn/hydenix  fix/<修正内容>
 ```
 
-直接 `main` に push せず PR を挟むのは、このリポジトリの CI が PR に対してしか linux 向けのビルドを実行しないためです（[10-ci.md](./10-ci.md)）。手元が aarch64-darwin の場合、`nix flake check` を実際に実行できる場所はここしかありません。
+`main` は ruleset で PR からのマージしか受け付けず、必須チェックが通るまでマージできません（[10-ci.md](./10-ci.md)）。CI は x86_64-linux で `nix flake check` を実行するので、手元が aarch64-darwin の場合、`nix flake check` を実際に実行できる場所は PR の CI しかありません。
 
 ### 4. 自分の修正を `ja` にも取り込む
 
@@ -150,7 +154,7 @@ git switch ja && git merge main
 
 ## PR を出すときの決まりごと
 
-このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が確認し、整形はレビューで担保する運用です。ブランチ保護ではどのチェックも必須にしていないので、落ちていてもマージ自体はできてしまいます。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
+このリポジトリでは PR に対して次のようなチェックが働きます。整形以外は CI（GitHub Actions）が確認し、整形は push の前に各自が `nix fmt` を通す運用です（AGENTS.md）。CI が確認する 7 項目は `main` の ruleset で必須チェックになっており、通るまでマージできません。関係するファイルを変えていない PR では一部のジョブがスキップされますが、スキップされたジョブも必須チェックを満たします。各ワークフローの詳細は [10-ci.md](./10-ci.md) を参照してください。
 
 | 項目 | ツール | CI で確認 | 内容 |
 |---|---|---|---|
@@ -159,7 +163,9 @@ git switch ja && git merge main
 | スペル | typos | される | リポジトリ全体をチェック |
 | Actions | zizmor | される | ワークフローの静的解析 |
 | 依存の重複 | flint | される | `flake.lock` 内の依存バージョン重複をチェック |
-| ビルド | flake-check | される | `nix flake check` |
+| ビルド | flake-check | される | ルートと `template/` の `nix flake check` |
+| ドキュメント | mdbook（`pages.yml`） | される | `docs/` を変えたとき、`mdbook build docs` が通るか |
+| renovate の設定 | renovate-config-validator | される | `.github/renovate.json` を変えたとき、スキーマを検証 |
 
 コミットメッセージの型は次のどれかです。
 
@@ -183,7 +189,7 @@ refactor(hyprland): generate assertions from mkHyprConfig
 
 ### PR 本文の書き方
 
-英語で、[`.github/pull_request_template.md`](../.github/pull_request_template.md) の見出しをそのまま使います。見出しを足したり名前を変えたりはしません。
+日本語か英語で（AGENTS.md）、[`.github/pull_request_template.md`](../.github/pull_request_template.md) の見出しをそのまま使います。見出しを足したり名前を変えたりはしません。`gh pr create` の `--body` や `--body-file` はテンプレートを読み込まないので、見出しを写し、各見出しのコメントに従って書きます。
 
 | 見出し | 書くこと |
 |---|---|
@@ -237,7 +243,9 @@ PR を出す前に確認します。
 - [ ] 日本語が含まれていない（`git diff main... | grep -P '[\x{3000}-\x{9fff}]'` が空）
 - [ ] `docs-ja/` が含まれていない
 - [ ] `nix fmt` が通る
-- [ ] コミットメッセージが Conventional Commits に従っている
+- [ ] `nix flake check` と `nix flake check ./template --override-input hydenix path:. --no-write-lock-file` が通る
+- [ ] `typos` が通る
+- [ ] コミットメッセージが Conventional Commits に従っている（commitlint が通る）
 - [ ] 実機で動作確認した
 - [ ] 1 PR = 1 修正になっている
 

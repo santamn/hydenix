@@ -19,7 +19,7 @@ hydenix/
 │   ├── default.nix        ←   ここで pkgs.hyde などが pkgs に足される
 │   ├── hyde/              ←   HyDE 本体の NixOS 向けビルド
 │   ├── hydenix-themes/    ←   約 60 種類のテーマ定義
-│   ├── hydectl/ hyprquery/ hyde-ipc/ hyde-config/  ← HyDE 付属ツールの Nix 版
+│   ├── hydectl/ hyprquery/ hyde-config/  ← HyDE 付属ツールの Nix 版
 │   └── hyde-diff-*/       ←   HyDE 更新の差分確認ツール
 │
 ├── template/              ← 【利用者向け雛形】nix flake new -t で展開される
@@ -43,7 +43,7 @@ hydenix/
 
 ```mermaid
 flowchart TD
-    A["flake.nix<br/>inputs: nixpkgs / home-manager / hyprland ..."]
+    A["flake.nix<br/>inputs: nixpkgs / home-manager / nixos-hardware ..."]
 
     A --> OV["pkgs/default.nix<br/>overlays.default<br/>pkgs.hyde などを pkgs に追加"]
     A --> NM["modules/system<br/>nixosModules.default"]
@@ -81,10 +81,9 @@ sequenceDiagram
     Note over S: この時点ではまだ home-manager の設定は動かない<br/>→ カーソルテーマ等はシステム側で指定が必要
     S->>U: hyprland-uwsm.desktop セッションを開始
     U->>U: uwsm.nix: 環境変数を読み込む
-    U->>U: hyprland/*.nix が配置した .conf を読む
-    U->>U: dbus-update-activation-environment で systemd に環境変数を渡す
+    U->>U: hyde.lua → HyDE の Lua モジュール → hyprland.lua → ワークフローの順に読む
+    U->>U: hyprland.start のハンドラが dbus-update-activation-environment で systemd に環境変数を渡す
     U->>T: hyprland-session.target / graphical-session.target が起動
-    T->>T: setThemeDconf.service (dconf 設定)
     T->>T: setTheme.service (テーマ全体を再適用)
 ```
 
@@ -97,9 +96,10 @@ sequenceDiagram
     participant AS as activation scripts
 
     R->>HMG: ユーザー環境を構築
-    HMG->>AS: linkGeneration（シンボリックリンクを張る）
+    HMG->>AS: writeBoundary（実ファイル書き込みの境界）
+    AS->>AS: mutableFileCleanup（設定から外れたコピーを古い世代のリンクに戻す）
+    AS->>AS: linkGeneration（古い世代のリンクを消し、シンボリックリンクを張る）
     AS->>AS: mutableFileGeneration（mutable ファイルをコピーで上書き）
-    AS->>AS: writeBoundary（実ファイル書き込みの境界）
     AS->>AS: createHyprConfigs / createCavaConfig / setTheme ...
 ```
 
@@ -125,12 +125,6 @@ enable = lib.mkOption {
 
 このおかげで、利用者は `hydenix.enable = true;` と書くだけで全部が有効になります。
 不要なものだけ `hydenix.gaming.enable = false;` のような書き方で個別に切れます。
-
-> [!CAUTION]
-> **例外が 3 つあります。** `nix.nix` / `sddm.nix` / `system.nix` の `enable` は
-> 既定値が `config.hydenix.enable` ではなく `true` で固定されています。
-> つまり `hydenix.enable = false;` にしても SDDM や Hyprland は有効なままです。
-> 本家から続く仕様で、意図的かどうかは不明です。
 
 ## どこから読み始めるか
 

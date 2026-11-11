@@ -17,7 +17,7 @@ findThemeByName = themeName: pkgs.hydenix-themes.${themeName} or null;
 
 テーマが適用されないときは、まず名前のスペルを見直してください。正しい名前は `pkgs/hydenix-themes/default.nix` のキーで確認できます。（`"Rosé Pine"` / `"Mac OS"` / `"Catppuccin-Macchiato"` のように表記が不規則です）。
 
-なお、Hyprland の `animations.preset` などは逆に存在しない名前でビルドが失敗します。挙動が統一されていない点に注意してください。
+なお、Hyprland の `animations.preset` などは逆に、存在しない名前を書くと評価時の assertion で止まります。挙動が統一されていない点に注意してください。
 
 ## 2. `home.file` が同じファイル内に 2 回出てくる
 
@@ -37,87 +37,42 @@ Nix では同じ属性パスに属性集合リテラルを2回代入した場合
 
 内容が同一なのでマージされ、エラーになりません。ただし片方だけ変更するとその瞬間に定義衝突でビルドが落ちます。どれか1つを編集するときは、他の定義箇所も揃える必要があります。
 
-## 4. `nix` / `sddm` / `system` モジュールは `hydenix.enable` に従わない
+## 4. `mkHyprConfig` は生成物をすべて mutable にする
 
-```nix
-# modules/system/nix.nix, sddm.nix, system.nix
-enable = lib.mkOption {
-  type = lib.types.bool;
-  default = true;          # ← config.hydenix.enable ではない
-  ...
-};
-```
+本家では `monitors.conf` だけが `mutable = true` で、`keybindings.conf` などはリンクとして配置されています。
 
-他のモジュール（`boot` / `audio` / `hardware` / `network` / `gaming`）は`default = config.hydenix.enable;` なので、親を切れば子も切れます。しかしこの 3 つだけは `true` 固定です。
-
-つまり `hydenix.enable = false;` にしても、**SDDM・Hyprland・zsh・PipeWire 以外の共通パッケージは有効なまま**です。本家からそのまま引き継がれている挙動で、意図的かどうかは不明です。
-
-全部切りたい場合は個別に指定します。
-
-```nix
-hydenix.system.enable = false;
-hydenix.sddm.enable = false;
-hydenix.nix.enable = false;
-```
-
-## 5. シェル履歴の設定が `xdg.nix` にある
-
-```nix
-# modules/hm/xdg.nix
-HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
-HISTSIZE = "10000";
-setopt_EXTENDED_HISTORY = "true";
-```
-
-本来は `shell.nix` にあるべき設定です。本家 issue #154 として残っている整理課題で、フォークでも未対応です。動作上の問題はありません。
-
-なお `setopt_*` という名前の環境変数は zsh の `setopt` とは無関係で、HyDE 側の独自変数です。ただし**ピン留め中の HyDE には読み手がもう存在しません**。`HISTFILE` / `HISTSIZE` / `SAVEHIST` のほうも home-manager の zsh モジュールが `.zshrc` で上書きするため、この 9 行は 1 行も実際の挙動に反映されていません。
-
-移動と削除の両方を [08-C-2](./08-improvements.md#c-2-履歴の環境変数を-shellnix-へ移す本家-issue-154) に書いています。
-
-## 6. `mkHyprConfig` は生成物をすべて mutable にする
-
-本家では `monitors.conf` だけが `mutable = true` で、`keybindings.conf` などはリンクとして配置されていました。
-
-フォークでは `mkHyprConfig` に統合された結果、`hypridle.conf` / `keybindings.conf` / `windowrules.conf` / `nvidia.conf` /
-`hyprsunset.conf` もすべてコピーになりました。
+フォークでは `mkHyprConfig` が生成する `hypridle.conf` / `hyprlock.conf` / `hyprsunset.conf` がすべてコピーです。HyDE の `hyprlock.sh` がレイアウトを切り替えるときに `hyprlock.conf` を書き換えるため、3 つとも mutable にしています。
 
 |         | 利点 | 欠点 |
 |---------|-----|------|
-| mutable | 手で編集して `hyprctl reload` で即試せる | モジュールを切ってもファイルが残る |
+| mutable | HyDE のスクリプトが書き換えられる。手で編集してすぐ試せる | 手で編集した内容は次の rebuild で上書きされる |
 
-実運用ではむしろ便利ですが、設定から外したのにまだ反映されているという混乱の原因になり得ます。
+## 5. `pyprland` はオプションごと消えている
 
-## 7. `assertions.nix` が `hyprsunset` を見ていない
+本家では `pyprland.nix` は存在するが `imports` に無いという状態で、オプションだけあって何も起きない、という分かりにくい挙動です。
 
-`activeOverrides` と `assertions` のリストは、`hypridle` / `keybindings` / `windowrules` / `nvidia` / `monitors` / `overrideMain` の6つしか列挙していません。
+フォークには `pyprland.nix` とオプション定義のどちらも無いため、`hydenix.hm.hyprland.pyprland.*` を書くと未定義エラーで止まります。警告も出ずに無視されるよりは親切な挙動です。
 
-フォークで追加された `hyprsunset` は漏れているため、`hyprsunset.overrideConfig = "";`（空文字）を書いても検証されず、警告も出ません。
-
-## 8. `pyprland` はオプションごと消えている
-
-本家では`pyprland.nix` は存在するが `imports` に無いという状態で、オプションだけあって何も起きない、という分かりにくい挙動でした。
-
-フォークでは `imports` のコメントアウトに加えて**オプション定義も無くなった**ため、`hydenix.hm.hyprland.pyprland.*` を書くと未定義エラーで止まります。警告も出ずに無視されるよりは親切な挙動です。
-
-## 9. `hyde-diff-upstream` の master は commit で固定されている
+## 6. `hyde-diff-upstream` の master は commit で固定されている
 
 ```nix
 # pkgs/hyde-diff-upstream/default.nix
 hyde-master = pkgs.hyde.overrideAttrs (old: {
   src = pkgs.fetchFromGitHub {
-    rev = "7c7b832d479620133fb0a2bdec0fe20cf2e7c90a";   # master 上の commit
-    sha256 = "sha256-+YhLk3J59zThsVVDsbTlSKcBulSxOO/r/HpPZ6Udg1M=";
+    owner = "HyDE-Project";
+    repo = "HyDE";
+    rev = "fa2fd57afc7203b1b5653d3271f3a57ea3873f97";   # master 上の commit
+    sha256 = "sha256-/9oT3c60hZQtVdfbZWWUFo7GeU0pHQOWwhfsFELMoNE=";
   };
   passthru = (old.passthru or {}) // {updateBranch = "master";};
 });
 ```
 
-`rev` には master 上の commit を書き、`passthru.updateBranch = "master"` で追っているブランチを示しています。`update-branch-pins.yml` が毎晩この commit を master の先頭へ進めるので、比較相手は最大 1 日遅れの master です。
+`rev` には master 上の commit を書き、`passthru.updateBranch = "master"` で追っているブランチを示しています。`update-branch-pins.yml` が毎週日曜にこの commit を master の先頭へ進めるので、比較相手は最大 1 週間遅れの master です。
 
 nix-update は `src` を定義しているファイルを書き換えます。ここでは `overrideAttrs` の中で `src` を定義しているので、書き換わるのはこのファイルで、`pkgs/hyde` の rev はそのままです。
 
-## 10. 名前の紛らわしい重複
+## 7. 名前の紛らわしい重複
 
 | 名前 | 場所 | 中身 |
 |-----|------|-----|
@@ -133,7 +88,7 @@ nix-update は `src` を定義しているファイルを書き換えます。�
 
 `demo/` は hydenix 自身の検証用であり、利用者が触る場所ではありません。
 
-## 11. VM で試すときの注意
+## 8. VM で試すときの注意
 
 ```bash
 nix run github:santamn/hydenix

@@ -45,247 +45,13 @@ nix eval --impure --expr '
 
 ## A. 優先度: 高
 
-### A-3. `mutable` ファイルが設定から消しても残る
-
-#### 問題
-
-`mutable = true` のファイルはコピーなので home-manager の管理外です。設定から外してもホームに残り続け、手動削除が必要です。
-
-#### 原因
-
-これは仕組み上の必然です（[04](./04-mutable-files.md) 参照）。ただし実運用でいちばん影響の大きい問題でもあります。特にフォークでは `mkHyprConfig` の生成物がすべて mutable になったため、影響範囲が本家より広がっています。
-
-#### 確認方法 1（影響範囲を数える）
-
-mutable なファイルの一覧を出します。
-
-```bash
-nix eval --impure --expr '
-  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
-      mut = builtins.filter (f: f.mutable or false) (builtins.attrValues hc.config.home.file);
-  in { count = builtins.length mut; targets = builtins.map (f: f.target) mut; }'
-```
-
-執筆時点で 115 件でした。これがすべて、設定から消しても残るファイルです。`grep -rn "mutable = true" modules/ | wc -l` は宣言の数（60）なので、`mkHyprConfig` などのループで増える分は数えられません。実数を見るには上の方法が必要です。
-
-#### 確認方法 2（実機で残留を見る）
-
-mutable ファイルはシンボリックリンクではなく実ファイルです。
-
-```bash
-# リンクなら "-> /nix/store/..." が出る。実ファイルならパスだけが出る
-ls -l ~/.config/kitty/theme.conf ~/.config/hypr/keybindings.conf
-
-# home-manager 管理下の実ファイル（mutable なもの）を一覧する
-find ~/.config/hypr ~/.config/waybar -maxdepth 1 -type f
-```
-
-残留そのものを再現するなら、`mutable = true` のモジュールを 1 つ無効にして `nixos-rebuild switch` した後、該当ファイルがまだ存在することを確認します。
-
-#### 当面の対処
-
-おかしくなったらリセットします。
-
-```bash
-rm -rf ~/.config/hyde ~/.local/share/hyde ~/.cache/hyde
-# その後 nixos-rebuild switch で再配置される
-```
-
-#### 修正方法（未実装・本家 TODO）
-
-- `mutable.enable` … 機能そのものを切れるようにする
-- `mutable.mode` … `initOnly`（初回だけコピー）と `replace`（毎回上書き）を選べるようにする
-- 前世代の mutable ファイル一覧を記録し、設定から消えたものを自動削除する
-- generation ロールバック時に mutable ファイルも戻す
-
-3 つ目が本命ですが、ユーザーが手で編集した内容を消してよいかの判断が難しく、設計上の議論が必要です。大きめの変更なので、着手前に issue へ書き出して考えを固めたほうがよいでしょう。
+現在、この優先度の項目はありません。
 
 ---
 
 ## B. 優先度: 中
 
-### B-3. `assertions.nix` が `hyprsunset` を検証していない
-
-#### 問題
-
-フォークで `hyprsunset` を追加したときに、`assertions.nix` の 2 つのリスト（`activeOverrides` と `assertions`）への追加が漏れています。
-
-#### 実害
-
-`hyprsunset.overrideConfig = "";`（空文字）を書いても弾かれず、override 使用中の警告も出ません。
-
-#### 確認方法
-
-検証されている `keybindings` と並べて、両方に空文字を与えます。片方しか怒られないなら再現です。
-
-```bash
-nix eval --impure --expr '
-  let hc = (builtins.getFlake (toString ./.)).homeConfigurations.default;
-      probe = hc.extendModules { modules = [{
-        hydenix.hm.hyprland.hyprsunset.overrideConfig = "";
-        hydenix.hm.hyprland.keybindings.overrideConfig = "";
-      }]; };
-  in probe.config.home.file'
-```
-
-実行結果は次のとおりです。エラー終了しますが、それが期待どおりです。
-
-```text
-error:
-Failed assertions:
-- hydenix.hm.hyprland.keybindings.overrideConfig is set but empty. …
-```
-
-`keybindings` は報告されるのに `hyprsunset` は 1 行も出てきません。修正後は 2 件とも列挙されるようになります。`grep -n "overrideConfig" modules/hm/hyprland/assertions.nix` でも、`hyprsunset` だけが 2 つのリストに載っていないことが確認できます。
-
-#### 修正方法
-
-他の 5 つと同じ行を 2 か所に足すだけです。
-
-```nix
-(lib.optionalString (cfg.hyprsunset.overrideConfig != null) "hyprsunset.overrideConfig")
-```
-
-```nix
-{
-  assertion = cfg.hyprsunset.overrideConfig == null || cfg.hyprsunset.overrideConfig != "";
-  message = "hydenix.hm.hyprland.hyprsunset.overrideConfig is set but empty. ...";
-}
-```
-
-より良い直し方として、`mkHyprConfig` を使っている以上、assertion も `mkHyprConfig` 側で生成すべきです。そうすればモジュールを追加するときの書き忘れが構造的に無くなります。PR としてはこちらのほうが望ましいものの、変更範囲は大きくなります。
-
-### B-8. `setThemeDconf.service` が存在しないスクリプトを起動している
-
-#### 問題
-
-テーマ適用 3 段構えの 2 段目が、実在しないファイルを指しています。
-
-```nix
-# modules/hm/theme.nix:184
-ExecStart = ''
-  ${config.home.homeDirectory}/.local/lib/hyde/dconf.set.sh
-'';
-```
-
-現在ピン留めしている HyDE に `dconf.set.sh` はありません。上流のリファクタリングで `color/dconf.sh` へ移動・改名されています。TODO 中の `theme.set.sh` も同様に消えています（`color.set.sh` が相当）。
-
-#### 実害
-
-見た目ほど大きくありません。dconf 設定自体は別の処理で適用されています。`theme.switch.sh` の末尾が `wallpaper.sh` を呼び、`wallpaper/core.sh` が `color.set.sh` をバックグラウンド実行し、その `color.set.sh` が `load_dconf_kdeglobals()` の中で `color/dconf.sh` を source するためです。
-
-つまり 2 段目は丸ごと死んでいるものの、3 段目が同じ仕事を内包しているので、結果として dconf の設定は反映されています。残るのは次の 2 点です。
-
-- `systemctl --user --failed` に常時 1 件出る（セッションが degraded 扱いになる）
-- `After = ["setThemeDconf.service"]` の順序制約が意味を失っている
-
-#### 確認方法
-
-ピン留め中の rev に対して 3 つのパスの有無を引きます。
-
-```bash
-REV=$(nix eval --impure --raw --expr '
-  (builtins.getFlake (toString ./.)).packages.x86_64-linux.hyde.src.rev')
-
-for f in dconf.set.sh theme.set.sh color/dconf.sh; do
-  printf '%s  %s\n' \
-    "$(curl -s -o /dev/null -w '%{http_code}' \
-      "https://raw.githubusercontent.com/HyDE-Project/HyDE/$REV/Configs/.local/lib/hyde/$f")" "$f"
-done
-```
-
-実行結果:
-
-```text
-404  dconf.set.sh
-404  theme.set.sh
-200  color/dconf.sh
-```
-
-サービスが指しているパスも確認できます。
-
-```bash
-nix eval --impure --expr '
-  (builtins.getFlake (toString ./.)).homeConfigurations.default
-    .config.systemd.user.services.setThemeDconf.Service.ExecStart'
-# => [ "/home/hydenix/.local/lib/hyde/dconf.set.sh\n" ]
-```
-
-実機なら次の 2 つが直接の証拠になります。
-
-```bash
-ls ~/.local/lib/hyde/dconf.set.sh              # No such file or directory
-systemctl --user status setThemeDconf.service  # status=203/EXEC
-```
-
-#### 修正方法
-
-サービスごと削除するのが妥当です。`setTheme.service` の `After` からも該当行を外します。
-
-> [!WARNING]
-> パスを `color/dconf.sh` に差し替えるだけでは直りません。このスクリプトは `color.set.sh` から source される前提で書かれており、単体起動では `dcol_mode` が未設定になります。先頭の `COLOR_SCHEME="prefer-$dcol_mode"` が `"prefer-"` という不正な値になるため、かえって悪化します。`color.set.sh` を直接呼ぶ手もありますが、引数に現在の壁紙パスが要るため、サービス側でそれを解決する処理が新たに必要になります。
-
-#### 優先度の補足
-
-異常が目立つわりに実害が小さいので B に置いています。根本的には HyDE のスクリプト名を Nix 側にハードコードしていることが原因で、これは C-1 で扱う設計課題そのものの実例です。
-
-### B-10. 同名アイコンテーマを複数テーマが「異なる内容」で同梱している
-
-#### 問題
-
-HyDE テーマの tarball は各テーマリポジトリで別々の時期に生成されているため、同じアイコンテーマ（同じ `share/icons/<dir>`）を複数のテーマが**中身の違うビルド**で同梱していることがあります。全 58 テーマの pin 済み rev を調査したところ、内容の食い違うペアを 4 つ確認できました（10 桁は tar.gz の blob SHA）。
-
-| 展開先ディレクトリ | テーマ A | テーマ B |
-|---|---|---|
-| `Tela-circle-grey` | Catppuccin Latte `1cd2add523` | Graphite Mono `1c9e602cc5` |
-| `Tela-circle-green` | Greenify `1fbe03250f` | LimeFrenzy `6b38249179` |
-| `Aretha-Dark-Icons` | Amethyst-Aura `a2933d8840` | Nightbrew `a936bb73d2` |
-| `Gruvbox-Plus-Dark` | AbyssGreen `99ed823d5f` | Gruvbox Retro `e944ab8ae7` |
-
-同名で blob も一致するペア（`TelaGreen` の Decay Green / Green Lush、`Vivid-Glassy-Dark` の Another World / Code Garden など）はバイト同一なので無害です。
-
-#### 原因
-
-[`modules/hm/theme.nix`](../modules/hm/theme.nix) は選択されたテーマを 1 つの `symlinkJoin` に束ねます。`symlinkJoin` の実体は `lndir` で、同じパスに 2 回目のエントリが来ると**警告してスキップ**します（`buildEnv` と違ってエラーにしない）。結果は「先に並んだテーマの共有ファイル ＋ 後のテーマにしかないファイル」という混成アイコンテーマで、ビルドは何事もなく通ります。表のペアを両方 `hydenix.hm.theme.themes` に入れた場合だけ発生し、デフォルトの `[Mocha, Latte]` 単独では起きません。
-
-#### 確認方法
-
-ネットワークだけで確認できます（clone とビルドは不要、`gh` と `jq` が必要）。
-
-```bash
-for f in pkgs/hydenix-themes/*.nix; do
-  case "$f" in */default.nix) continue;; esac
-  owner=$(grep -o 'owner = "[^"]*"' "$f" | head -1 | cut -d'"' -f2)
-  repo=$(grep -o 'repo = "[^"]*"' "$f" | head -1 | cut -d'"' -f2)
-  rev=$(grep -o 'rev = "[a-f0-9]*"' "$f" | head -1 | cut -d'"' -f2)
-  gh api "repos/$owner/$repo/git/trees/$rev?recursive=1" \
-    --jq '.tree[] | select(.path|test("(Icon|Cursor)_[^/]*\\.tar\\.gz$")) | "\(.sha[0:10])  \(.path)"' \
-    | sed "s|^|$(basename "$f" .nix)  |"
-done
-```
-
-読み方の注意が 2 つあります。
-
-- **owner / repo は必ずテーマごとに読むこと。** 58 テーマ中 37 個は `HyDE-Project/hyde-themes` ではなく専用リポジトリにある。全 rev を `hyde-themes` に対して照会すると 44 件が 404 になり、「pin が無効になっている」ように見えるが、それはリポジトリ違いによる誤検出である（実際には 58 件すべて到達可能だった）。
-- **tarball 名と展開先ディレクトリ名は一致しないことがある。** Joker は `Icon_Tela-circle-dracula.tar.gz`（他は `Icon_TelaDracula.tar.gz`）、Electra の `Cursor_Electra.tar.gz` は `Nero-Cyber-Cyan` に展開される。blob が違う同名 tarball を見つけたら、最終判断は raw URL から取得して `tar -tzf` で top-level を見ること。
-
-#### 実害
-
-該当ペアを両方有効にしてテーマを切り替えると、アイコンの一部だけ別ビルド由来になります。サイズ違い・デザイン改版の混在なので見た目の乱れは軽微ですが、「テーマを切り替えたのに一部のアイコンが変わらない」形で表面化し、原因究明が非常にしづらい類のバグです。
-
-#### 修正方法
-
-`mkTheme` の `sharedAssets`（展開先ディレクトリ名 → 正準パッケージの attrset。該当ディレクトリを展開後に正準パッケージへの symlink に置き換える）がそのまま受け皿になります。ペアごとに正準ソースを 1 つ決めて登録するだけです。
-
-| ディレクトリ | 正準ソース候補 |
-|---|---|
-| `Tela-circle-grey` / `Tela-circle-green` | nixpkgs `tela-circle-icon-theme.override { colorVariants = ["grey" / "green"]; }`（`Tela-circle-dracula` と同じ作り） |
-| `Gruvbox-Plus-Dark` | nixpkgs `gruvbox-plus-icons`（展開先ディレクトリ名が一致するかは要確認） |
-| `Aretha-Dark-Icons` | nixpkgs に無い。どちらかのテーマの blob を `fetchurl` で固定して 1 回だけ展開する小パッケージを作るか、原作者リポジトリから `fetchFromGitHub` する |
-
-`sharedAssets` は「そのディレクトリを同梱していたテーマだけ」を置き換えるので、`home.packages` に増えるものはなく、該当テーマを有効にした人の閉包にだけ正準パッケージが入ります。あわせて `checks.theme-assets`（`buildEnv` はテーマを別々の paths として互いに比べるので、`symlinkJoin` と違って同名衝突を検出できる）に該当テーマを足すと、正準化の登録を忘れた場合は CI が失敗するようになります。
-
-> 優先度は B の末尾（ビルドは失敗せず、特定の組み合わせでしか起きない）。
+現在、この優先度の項目はありません。
 
 ---
 
@@ -293,27 +59,22 @@ done
 
 | 項目 | 内容 | 確認方法 | 対応の方向性 |
 |---|---|---|---|
-| `pyprland` が使えない | 本家 issue #188（`hyde-shell pypr console` が動かない）が未解決。フォークでは imports もオプションも削除済み | `grep -rn "pyprland" modules/` → コメントアウト行しか出ない | 上流の HyDE 側の問題。scratchpad が欲しくなったら再検討 |
-| `nix`/`sddm`/`system` が `enable` に従わない | `default = true` 固定（[07-4](./07-reading-notes.md)） | `grep -rn "default = config.hydenix.enable\|default = true;" modules/system/*.nix` → `nix.nix` / `sddm.nix` / `system.nix` だけが `true` 固定 | `config.hydenix.enable` に揃えるべきだが、既存利用者の環境が変わるので慎重に |
-| 履歴の環境変数が `xdg.nix` にある | 本家 issue #154 | `grep -n "HIST" modules/hm/xdg.nix` → `HISTFILE` / `HISTSIZE` / `SAVEHIST` が出る | 移すだけなら 10 行の移動で済む。ただし 9 行中 6 行は誰も読まない（[C-2](#c-2-履歴の環境変数を-shellnix-へ移す本家-issue-154)） |
-| `.config/waybar/modules` を配置している | 本家 TODO のもう配置不要ではという指摘が残存 | `grep -rn "waybar/modules" modules/` → `waybar.nix` と `hyde.nix` の 2 か所で配置 | 実機で外して試さないと判断できない |
-| hyprlock が `hyprland/` の外にある | `lockscreen.nix` のまま。hyprlock と swaylock の排他 assertion も無い | `ls modules/hm/hyprland/ modules/hm/lockscreen.nix` で配置を見る | 設計上の課題。統合するなら大きめの変更 |
-| `hyde config.toml` がオプション化されていない | mutable なので手で編集するしかない | `grep -n -A4 '".config/hyde/config.toml"' modules/hm/hyde.nix` → `source` + `mutable = true` のみ | Nix オプション化は大仕事。効果も限定的 |
+| `pyprland` が使えない | 本家 issue #188（`hyde-shell pypr console` が動かない）が未解決。このフォークは pyprland のパッケージも設定も配置しない | `grep -rn "pyprland" modules/` → 何も出ない | 上流の HyDE 側の問題。scratchpad が欲しくなったら再検討 |
+| waybar モジュールが NixOS で動くか未確認 | `waybar.nix` に TODO（review waybar modules for nix compatibility）が残っている。ビルド時に生成する `includes.json` が `~/.config/waybar/modules` のモジュール定義を 42 件読み込むので、配置そのものは外せない | `grep -n "TODO" modules/hm/waybar.nix`。読み込まれるモジュールの一覧は `nix build .#checks.x86_64-linux.waybar-includes` の出力で見られる | `waybar.nix` のコメントどおり NixOS で動かないものが混じっている可能性があるので、1 つずつ実機で確かめる |
+| `hyde config.toml` がオプション化されていない | mutable なので手で編集するしかない | `grep -n -A4 '".config/hyde/config.toml"' modules/hm/hyde.nix` → `source` / `force` / `mutable = true` だけ | Nix オプション化は大仕事。効果も限定的 |
 | `kdePackages.kconfig` の要否 | コード中に TODO が残っている | `grep -n "kconfig" modules/hm/hyde.nix` → TODO コメント付きで残っている | 外して動くか実機で確認するだけ |
 | GTK テーマ初回変更時のちらつき | `gtk.nix` に TODO | `grep -n "TODO" modules/hm/gtk.nix`。再現は実機でテーマを切り替えるしかない | 原因不明。優先度低 |
 | spicetify 対応 | `spotify.nix` に TODO | `grep -n "TODO" modules/hm/spotify.nix` → 案のコメントだけで実装は無い | flatpak 前提の案が書かれているだけ |
-| 本家 issue #182: hypr windowrules errors | 状態不明。HyDE の bump で解消した可能性あり | 実機で `hyprctl configerrors`（何も出なければ解消済み） | まず再現するか確認 |
 
 ### C-1. テーマ適用を Nix 側で再現する（`theme.nix` の TODO）
 
 [`modules/hm/theme.nix`](../modules/hm/theme.nix) に残っている TODO の検討です。
 
-> `#TODO: this works but a more robust implementation is possible. just do what
-> theme.set.sh/dconf.set.sh does and use home.file to set the correct gtk/qt/etc options`
+> `#TODO: this works but a more robust implementation is possible. just do what color.set.sh/color/dconf.lua does and use home.file to set the correct gtk/qt/etc options`
 
 実現すれば activation script、systemd サービス、mutable ファイルをいずれも減らせます。ただし、そのままでは実行できません。理由を先に 2 つ挙げます。
 
-1. TODO が名指ししている 2 本のスクリプトは、もう存在しない（B-8）。現在の相当物は `theme.switch.sh` と `color.set.sh` / `color/dconf.sh` である。TODO を書いた時点の HyDE と現在の HyDE では構造が変わっている。
+1. TODO が名指ししている 2 本のスクリプトをなぞっても、静的な設定の大半は取りこぼす。`color.set.sh` は壁紙から配色を作る動的な側の本体で、`color/dconf.lua` が書くのは dconf だけである。GTK / Qt / カーソルの設定ファイルを書いているのは `theme.switch.sh` 自身である。
 2. 一部だけを Nix 化する、という進め方はとれない。後述の「なぜ中途半端にできないのか」を参照。
 
 #### 何を Nix 化できるのか
@@ -332,8 +93,8 @@ done
 | `~/.local/share/icons/default/index.theme`, `~/.icons/default/index.theme` | `theme.switch.sh` | カーソルテーマの継承 |
 | `~/.Xresources` / `~/.Xdefaults` | `theme.switch.sh` | `Xcursor.theme` / `Xcursor.size` |
 | `~/.config/gtk-4.0`（シンボリックリンク） | `theme.switch.sh` | テーマの `gtk-4.0` へのリンク |
-| `~/.config/hypr/themes/theme.conf` | `theme.switch.sh`（`sanitize_hypr_theme`） | `hypr.theme` から `exec` と shadow 系を除いたもの |
-| dconf（`org/gnome/desktop/interface` ほか） | `color/dconf.sh` | GTK / icon / cursor / font / color-scheme |
+| `~/.local/state/hyde/lua_state/hypr_theme.lua` | `theme.switch.sh`（`hyq --dump … --export lua`） | `hypr.theme` を Hyprland の Lua 設定に変換したもの |
+| dconf（`org/gnome/desktop/interface` ほか） | `color/dconf.lua`（icon-theme は `theme.switch.sh` も `dconf write` で書く） | GTK / icon / cursor / font / color-scheme |
 
 動的な側は現在の壁紙に依存するので、実行時に生成するしかありません。
 
@@ -345,24 +106,30 @@ done
 
 #### なぜ中途半端にできないのか
 
-上の表の静的な生成先はすべて `theme.switch.sh` も書きに来ます。Nix が `settings.ini` を store へのシンボリックリンクとして置くと、`toml_write` が読み取り専用のリンク先に書こうとして失敗します。
+上の表の静的な生成先は、どれも `theme.switch.sh` かそこから呼ばれるスクリプトが書きに来ます。Nix が `settings.ini` を store へのシンボリックリンクとして置くと、`toml_write` が読み取り専用のリンク先に書こうとして失敗します。
 
 つまり Nix 側で書くなら、`theme.switch.sh` の静的な部分を呼ばないようにしなければなりません。HyDE にそれを止めるフラグはないので、取れる道は次の 3 つです。
 
 | 案 | 内容 | 評価 |
 |---|---|---|
 | 1 | `theme.switch.sh` を呼ぶのをやめ、動的な側（`wallpaper.sh`）だけ直接呼ぶ | 本命。下で詳述 |
-| 2 | `pkgs/hyde` で `theme.switch.sh` にパッチを当てて静的部分を削る | 非推奨。行番号決め打ちの `sed` は既に一度失敗して[コメントアウト済み](../pkgs/hyde/default.nix)（`sed -i '187,190d'`） |
+| 2 | `pkgs/hyde` で `theme.switch.sh` にパッチを当てて静的部分を削る | 非推奨。静的な部分は `theme.switch.sh` の L103〜217 にまたがり、AGENTS.md の決まりどおり `substituteInPlace --replace-fail` で削ると、HyDE がこの範囲を変えるたびにビルドが止まる |
 | 3 | mutable のまま両方に書かせる | 現状。何も得られない |
 
-案 1 は、`theme.switch.sh` の末尾がやっていることをそのまま引き継ぐ形になります。
+案 1 は、`theme.switch.sh` の末尾がやっていることをそのまま引き継ぐ形になります。動的な側を受け持つのは L232〜276 で、テーマの壁紙を決めて `wallpaper.sh` を呼び、配色の出力が揃っていなければ `color.set.sh` を直接呼び直します。
 
 ```bash
-# theme.switch.sh:239 — 動的な側の入口はここ 1 行
-"$LIB_DIR/hyde/wallpaper.sh" -s "$(readlink "$HYDE_THEME_DIR/wall.set")" --global
+# theme.switch.sh:232-276 から抜粋
+theme_wallpaper="$(readlink "$HYDE_THEME_DIR/wall.set")"
+…
+    "$LIB_DIR/hyde/wallpaper.sh" -s "$theme_wallpaper" --global || wallpaper_status=$?
+…
+if ! wallbash_state_is_complete; then
+    print_log -sec "theme" -stat "colours" "generating the colour state for $HYDE_THEME"
+    if ! "$LIB_DIR/hyde/color.set.sh" "$theme_wallpaper"; then
 ```
 
-ただし `wallpaper.sh` は `HYDE_THEME` と `HYDE_THEME_DIR` が設定済みであることを前提にしています。`theme.switch.sh:121` の `set_conf "HYDE_THEME" "$themeSet"` と、`globalcontrol.sh` / `env-theme` の読み込みに相当する処理は Nix 側で用意しなければなりません。
+ただし `wallpaper.sh` は `HYDE_THEME` と `HYDE_THEME_DIR` が設定済みであることを前提にしています。`theme.switch.sh:98` の `set_conf "HYDE_THEME" "$themeSet"` と、L101-102 の `globalcontrol.sh` / `env-theme` の読み込みに相当する処理は Nix 側で用意しなければなりません。
 
 #### 設計上の分岐点: テーマのメタデータをどこから取るか
 
@@ -411,7 +178,7 @@ nix eval --impure --raw --expr '
 ```nix
 # pkgs/hydenix-themes/Catppuccin-Macchiato.nix
 mkTheme rec {
-  name = "Catppuccin Macchiato";
+  name = "Catppuccin-Macchiato";
   settings = {
     gtkTheme = "Catppuccin-Macchiato";
     iconTheme = "Tela-circle-dracula";
@@ -428,193 +195,27 @@ mkTheme rec {
 
 #### 段階的な進め方
 
-1. B-8 を先に片付ける（死んだサービスの削除）。単独で価値があり、依存もない
-2. テーマ定義に `settings` を足し、抽出スクリプトと CI の drift 検出を用意する（案 C）
-3. dconf だけ home-manager の `dconf.settings` に移す。`setThemeDconf.service` が不要になり、3 段構えが 2 段になる
-4. GTK / Qt / カーソルを `gtk.*` / `qt.*` と `home.file` に移し、対応する mutable 指定を外す
-5. `theme.switch.sh` の呼び出しを `wallpaper.sh` の直接呼び出しに置き換える（案 1）
+1. テーマ定義に `settings` を足し、抽出スクリプトと CI の drift 検出を用意する（案 C）
+2. dconf だけ home-manager の `dconf.settings` に移す。ログイン後の `setTheme.service` で dconf の取りこぼしを直す必要がなくなる
+3. GTK / Qt / カーソルを `gtk.*` / `qt.*` と `home.file` に移し、対応する mutable 指定を外す
+4. `theme.switch.sh` の呼び出しを `wallpaper.sh` の直接呼び出しに置き換える（案 1）
 
-3 まで進めた時点で、初回 rebuild で dconf が失敗する問題は消えるはずです。home-manager の dconf モジュールは D-Bus セッションが無い場合の面倒を自前で見ますが、activation 時の挙動は実機で確認してください（`journalctl --user` と `dconf dump /org/gnome/desktop/interface`）。ここは未検証です。
+2 まで進めた時点で、初回 rebuild でも dconf の値は home-manager が書くので、取りこぼしは無くなるはずです。home-manager の dconf モジュールは D-Bus セッションが無い場合の面倒を自前で見ますが、activation 時の挙動は実機で確認してください（`journalctl --user` と `dconf dump /org/gnome/desktop/interface`）。ここは未検証です。
 
 #### 効果と費用
 
 得られるものは 2 つです。
 
-- 3 段構えの適用が減り、初回 rebuild の失敗が消える
+- 2 段構えの適用が減り、初回 rebuild での dconf の取りこぼしが消える
 - テーマ設定が Nix の世界に入るので、利用者が普通の home-manager オプションで上書きできる
 
 失うもの・費用は次のとおりです。
 
-- 上流追従コストが上がる。`theme.switch.sh` が変わるたびに Nix 側の再現も追う必要がある。この危険は仮定の話ではなく、`dconf.set.sh` から `color/dconf.sh` への改名に追従できていない B-8 が実例である。HyDE のスクリプトを呼ぶだけなら改名は追従不要だった。
-- A-3 の解決にはならない。減らせるのは上の表の十数件で、mutable ファイル 115 件の大半は wallbash 由来のため残る。
+- 上流追従コストが上がる。`theme.switch.sh` が変わるたびに Nix 側の再現も追う必要がある。この危険は仮定の話ではない。HyDE は dconf を書くスクリプトを `dconf.set.sh` から `color/dconf.sh`、さらに `color/dconf.lua` へと移しており、Nix 側で再現していればそのたびに追従が要った。HyDE のスクリプトを呼ぶだけなら、こうした改名に追従する必要はない。
+- mutable ファイルの大半は残る。上の表の生成先で mutable なのは `settings.ini`、`.gtkrc-2.0`、`xsettingsd.conf`、`kdeglobals`、`index.theme` の 5 件だけで、デモ構成（`homeConfigurations.default`）の mutable ファイル 106 件のうち残りは、テーマ 58 個の配置先や wallbash の出力先などである。
 - 実機での検証が必須である。GTK4・Qt・カーソルは不具合が出ても気づきにくい割に、出たときの体感は悪い部類である。
 
-結論として、設計としては正しい方向ですが、費用に対する効果が限定的です。HyDE のスクリプトをそのまま動かすという現在の方針を捨てて hydenix がテーマ適用を自前で持つ、という方針転換を伴うので、着手するなら issue に判断の理由を残してからにすべきです。一方、段階 1（B-8）と段階 3（dconf のみ）は方針転換を伴わず単独で価値があるため、そこだけ先に進めるのは十分に現実的です。
-
-### C-2. 履歴の環境変数を `shell.nix` へ移す（本家 issue #154）
-
-結論から書くと、簡単に直せます。移すだけなら 10 行の移動で、挙動は変わりません。ただし調べると置き場所が変だという以上のことが分かります。この 9 行は、1 行も実際の動作に反映されていません。
-
-#### 問題
-
-[`modules/hm/xdg.nix`](../modules/hm/xdg.nix) L91-100 の `home.sessionVariables` に zsh の履歴設定が置かれています。XDG とは無関係なので `shell.nix` にあるべきものです。
-
-```nix
-# History configuration // explicit to not nuke history
-HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
-HISTSIZE = "10000";
-SAVEHIST = "10000";
-setopt_EXTENDED_HISTORY = "true";
-setopt_INC_APPEND_HISTORY = "true";
-setopt_SHARE_HISTORY = "true";
-setopt_HIST_EXPIRE_DUPS_FIRST = "true";
-setopt_HIST_IGNORE_DUPS = "true";
-setopt_HIST_IGNORE_ALL_DUPS = "true";
-```
-
-#### 原因
-
-理由が 2 つに分かれます。
-
-1 つ目は、`setopt_*` の 6 行に読み手が存在しないことです。`setopt_EXTENDED_HISTORY` は zsh の `setopt` とは無関係な、HyDE 側の独自変数です。しかしピン留め中の HyDE（`a51460a`）に `setopt_` という文字列は 1 か所もありません。上流のリファクタリングで無くなった変数を、hydenix が export し続けている状態です。
-
-2 つ目は、`HISTFILE` / `HISTSIZE` / `SAVEHIST` が home-manager に上書きされることです。`shell.nix:111-112` で `programs.zsh.enable = true` にしているため、home-manager の zsh モジュール（[`modules/programs/zsh/history.nix`](https://github.com/nix-community/home-manager/blob/079a3b5d1aa6a719920a51316253b7d6dd22738d/modules/programs/zsh/history.nix)）が `.zshrc` の order 910 で同じ 3 つを書きます。
-
-```zsh
-# 生成される .zshrc
-HISTSIZE="10000"
-SAVEHIST="10000"
-HISTFILE="/home/<user>/.config/zsh/.zsh_history"
-```
-
-`hm-session-vars.sh` を読むのは `.zshenv` / `.zprofile` で、`.zshrc` はその後に読み込まれます。つまり後から書く home-manager が必ず勝ちます。
-
-`HISTSIZE` / `SAVEHIST` は値が同じ（`10000`）なので差は出ませんが、`HISTFILE` は違います。`${HISTFILE:-$HOME/.zsh_history}` という書き方を尊重するのは HyDE の `Configs/.config/zsh/conf.d/hyde/terminal.zsh` L171 ですが、hydenix はこのファイルを配置していません（`shell.nix:338` でコメントアウト）。コメントにある explicit to not nuke history、すなわち既存の `~/.zsh_history` を引き継ぐ意図は達成されていないことになります。実際の履歴は `~/.config/zsh/.zsh_history` に溜まります。
-
-#### 実害
-
-ありません。home-manager 側の既定が十分まともなので、意図した設定が反映されていないだけで、動作に支障はありません。反映されていない設定は次の 3 つです。
-
-| 意図した `setopt_*` | home-manager の既定 |
-|---|---|
-| `EXTENDED_HISTORY = true` | `NO_EXTENDED_HISTORY`（タイムスタンプを残さない） |
-| `HIST_EXPIRE_DUPS_FIRST = true` | `NO_HIST_EXPIRE_DUPS_FIRST` |
-| `HIST_IGNORE_ALL_DUPS = true` | `NO_HIST_IGNORE_ALL_DUPS` |
-
-`SHARE_HISTORY` と `HIST_IGNORE_DUPS` は home-manager の既定の設定で既に有効なので、結果的に一致しています。
-
-#### 確認方法 1（`setopt_*` の読み手が居ないこと）
-
-hydenix 側と HyDE 側の両方を見ます。
-
-```bash
-grep -rn 'setopt_' modules/
-# => xdg.nix の定義 6 行だけ（読んでいる箇所は無い）
-```
-
-HyDE 本体はピン留め rev のアーカイブを落として grep します（`nix` は不要）。
-
-```bash
-REV=$(grep -o '"[0-9a-f]\{40\}"' pkgs/hyde/default.nix | head -1 | tr -d '"')
-curl -sL "https://codeload.github.com/HyDE-Project/HyDE/tar.gz/$REV" | tar xz
-grep -rI 'setopt_' "HyDE-$REV" | wc -l
-# => 0
-```
-
-#### 確認方法 2（home-manager に上書きされること）
-
-生成される `.zshrc` の中身を直接読みます。
-
-```bash
-nix eval --raw --impure --expr '
-  (builtins.getFlake (toString ./.)).homeConfigurations.default
-    .config.programs.zsh.initContent
-' | grep -n 'HISTFILE\|HISTSIZE\|SAVEHIST'
-```
-
-`HISTFILE="/home/hydenix/.config/zsh/.zsh_history"` が出れば、export した `${HISTFILE:-$HOME/.zsh_history}` が使われていないことの証拠です。
-
-実際に適用される `setopt` の一覧も同じ方法で見られます。
-
-```bash
-nix eval --impure --expr '
-  (builtins.getFlake (toString ./.)).homeConfigurations.default
-    .config.programs.zsh.setOptions'
-# => [ "HIST_FCNTL_LOCK" "HIST_IGNORE_DUPS" … "NO_EXTENDED_HISTORY" "NO_HIST_IGNORE_ALL_DUPS" … ]
-```
-
-上の表のとおり `NO_` 付きで並んでいれば再現しています。実機なら次の 2 つが直接の証拠です。
-
-```bash
-grep -n 'HISTFILE\|EXTENDED_HISTORY' ~/.config/zsh/.zshrc
-echo $HISTFILE          # => /home/<user>/.config/zsh/.zsh_history
-```
-
-#### 修正方法
-
-2 つの案があります。issue #154 の文面どおりなら案 1、実態に合わせるなら案 2 です。
-
-案 1 は移動だけの最小変更です。`xdg.nix` の該当 10 行（コメント含む）を切り取り、`shell.nix` の `config` にそのまま貼ります。zsh 専用の設定なので `zsh.enable` で括ります。
-
-```nix
-# modules/hm/shell.nix の config 内に追加
-home.sessionVariables = lib.mkIf cfg.zsh.enable {
-  # History configuration // explicit to not nuke history
-  HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
-  # …以下 xdg.nix からそのまま
-};
-```
-
-括る条件が `hydenix.hm.xdg.enable` から `hydenix.hm.shell.enable`（＋ `zsh.enable`）に変わるだけです。どちらの既定も `config.hydenix.hm.enable` なので、既定の構成では出力が 1 バイトも変わりません。`xdg.nix` 冒頭 L3-4 の注意書きも同時に消せます。
-
-案 2 を推奨します。死んでいる 6 行を消し、意図を home-manager のオプションで表現します。
-
-```diff
- # modules/hm/xdg.nix
--      # History configuration // explicit to not nuke history
--      HISTFILE = "\${HISTFILE:-\$HOME/.zsh_history}";
--      HISTSIZE = "10000";
--      SAVEHIST = "10000";
--      setopt_EXTENDED_HISTORY = "true";
--      setopt_INC_APPEND_HISTORY = "true";
--      setopt_SHARE_HISTORY = "true";
--      setopt_HIST_EXPIRE_DUPS_FIRST = "true";
--      setopt_HIST_IGNORE_DUPS = "true";
--      setopt_HIST_IGNORE_ALL_DUPS = "true";
-```
-
-```diff
- # modules/hm/shell.nix の programs.zsh 内
-     dotDir = "${config.xdg.configHome}/zsh";
-+
-+    # 履歴設定（旧: xdg.nix の setopt_* 環境変数。読み手が居なかったので HM のオプションへ移した）
-+    history = {
-+      extended = true;              # setopt_EXTENDED_HISTORY
-+      expireDuplicatesFirst = true; # setopt_HIST_EXPIRE_DUPS_FIRST
-+      ignoreAllDups = true;         # setopt_HIST_IGNORE_ALL_DUPS
-+      # ignoreDups / share と size / save(=10000) は home-manager の既定と同じなので書かない
-+    };
-```
-
-- `setopt_INC_APPEND_HISTORY` に対応するオプションは無いが、不要である。zsh の `SHARE_HISTORY` は入力したコマンドを履歴ファイルへ追記する動作を含んでおり、マニュアルにもこの場合 `INC_APPEND_HISTORY` は切っておくべきと書かれている。
-- `HISTFILE` は書かないのが正解である。現在の実効値は `~/.config/zsh/.zsh_history`（home-manager の既定 = `$ZDOTDIR/.zsh_history`）である。ここで `programs.zsh.history.path` を `$HOME/.zsh_history` に変えると、既存利用者の履歴が消えたように見える（ファイルは残るが読まれなくなる）。置き場所を変えるかどうかは整理とは別の判断なので、混ぜないこと。
-- `home.sessionVariables` は fish / bash からも読まれるが、fish は履歴に `HISTFILE` を使わず、hydenix は `programs.bash` を設定していないため、削除して困る利用者は居ない。
-
-#### リスク
-
-案 1 はゼロです（出力が変わらない）。案 2 は `.zshrc` に `setopt` が 3 つ増えるぶん挙動が変わります。特に `EXTENDED_HISTORY` は履歴ファイルの書式が `: <epoch>:<elapsed>;<コマンド>` に変わりますが、zsh は新旧どちらの行も読めるので、既存の履歴はそのまま使えます。
-
-#### 付随して直すとよい点
-
-すぐ上の `xdg.nix:89` も同じ理由で反映されていません。
-
-```nix
-ZSH_AUTOSUGGEST_STRATEGY = "history completion";
-```
-
-`shell.nix:114` で `autosuggestion.enable = true` にしているため、home-manager が `.zshrc` の order 700 で `ZSH_AUTOSUGGEST_STRATEGY=(history)`（既定値）を書き、export した値を上書きします。`completion` が外れるので、補完候補からの提案は出ません。直すなら `programs.zsh.autosuggestion.strategy = ["history" "completion"];` を書き、`xdg.nix` 側の 1 行を消します。HyDE 本家の `terminal.zsh` も `(history completion)` にしているので、意図としてはこちらが正です。
-
-> 案 1 と案 2 を分けて出す必要はありません（案 2 は案 1 を含むため）。
+結論として、設計としては正しい方向ですが、費用に対する効果が限定的です。HyDE のスクリプトをそのまま動かすという現在の方針を捨てて hydenix がテーマ適用を自前で持つ、という方針転換を伴うので、着手するなら issue に判断の理由を残してからにすべきです。一方、段階 2（dconf のみ）は方針転換を伴わず単独で価値があるため、そこだけ先に進めるのは十分に現実的です。
 
 ---
 
