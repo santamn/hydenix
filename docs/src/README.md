@@ -54,6 +54,7 @@ nix run github:santamn/hydenix
 > [!NOTE]
 > Any configuration changes require rebuilding the VM.
 > To reset it, delete the disk image:
+>
 > ```text
 > rm hydenix.qcow2
 > ```
