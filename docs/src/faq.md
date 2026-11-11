@@ -106,7 +106,7 @@ hydenix is designed to be customizable outside of the module options. write your
 
 If you need to disable any of the modules above in [module options](#what-are-the-module-options), simply disable the module and write your own configuration. ideally referencing the module in the source code.
 
-Note however, it's very easy to overwrite hydenix defaults this way and may lead to bugs. feel free to ask questions in our [discord](https://discord.gg/AYbJ9MJez7) if you need help.
+Note however, it's very easy to overwrite hydenix defaults this way and may lead to bugs. feel free to ask questions in [issues](https://github.com/santamn/hydenix/issues) if you need help.
 
 ### What are some example configurations?
 

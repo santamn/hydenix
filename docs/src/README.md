@@ -27,7 +27,7 @@ the Nix module system and reproducible configuration management.
 > [!IMPORTANT]  
 > Some familiarity with **functional programming concepts** is recommended.  
 >
-> If you are new to Nix, check the [Nix resources](./faq.md#how-do-i-learn-more-about-nix) or ask questions in **Issues** or **Discord**.
+> If you are new to Nix, check the [Nix resources](./faq.md#how-do-i-learn-more-about-nix) or ask questions in **Issues**.
 
 ## Documentation
 

@@ -34,7 +34,7 @@ the Nix module system and reproducible configuration management.
 
 > [!IMPORTANT]
 > Some familiarity with **functional programming concepts** is recommended.  
-> If you are new to Nix, check the [Nix resources](https://santamn.github.io/hydenix/faq.html#how-do-i-learn-more-about-nix) or ask questions in **Issues** or **Discord**.
+> If you are new to Nix, check the [Nix resources](https://santamn.github.io/hydenix/faq.html#how-do-i-learn-more-about-nix) or ask questions in **Issues**.
 
 ## 🚀 Getting Started
 
