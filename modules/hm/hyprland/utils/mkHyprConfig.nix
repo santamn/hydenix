@@ -61,7 +61,7 @@ in {
         '';
       force = true;
       # HyDE 側のスクリプト（hyprlock.sh のレイアウト切り替えなど）が書き換えるため mutable。
-      # 副作用として、モジュールを無効化してもファイルはホームに残り続ける
+      # モジュールを無効化すると、mutable.nix の mutableFileCleanup がこのコピーを消す（手で書き換えた内容も消える）
       mutable = true;
     };
   };
