@@ -14,6 +14,26 @@
 
   # Icons, GTK themes and fonts of the enabled themes, bundled into one tree
   themeAssets = pkgs.hydenix-theme-assets (map findThemeByName availableThemes);
+
+  # PATH for theme.switch.sh, shared by the activation script and setTheme.service
+  themeSwitchPath = "${lib.makeBinPath (with pkgs; [
+    awww
+    killall
+    hyprland
+    hyprquery
+    dunst
+    libnotify
+    systemd
+    waybar
+    kitty
+    gawk
+    coreutils
+    parallel
+    imagemagick
+    which
+    util-linux
+    dconf
+  ])}:$HOME/.local/bin:$PATH";
 in {
   options.hydenix.hm.theme = {
     enable = lib.mkOption {
@@ -90,29 +110,7 @@ in {
 
     # applies what it can before graphical.target, think of this like a "first content paint"
     home.activation.setTheme = lib.hm.dag.entryAfter ["mutableFileGeneration"] ''
-      # Define path with required tools
-      export PATH="${
-        lib.makeBinPath (
-          with pkgs; [
-            awww
-            killall
-            hyprland
-            hyprquery
-            dunst
-            libnotify
-            systemd
-            waybar
-            kitty
-            gawk
-            coreutils
-            parallel
-            imagemagick
-            which
-            util-linux
-            dconf
-          ]
-        )
-      }:$HOME/.local/bin:$PATH"
+      export PATH="${themeSwitchPath}"
       # theme.switch.sh turns the theme's hypr.theme into Lua for Hyprland only when it finds the Lua config here
       export HYPRLAND_CONFIG="${config.home.sessionVariables.HYPRLAND_CONFIG or ""}"
 
@@ -154,27 +152,11 @@ in {
       };
       Service = {
         Type = "oneshot";
-        ExecStart = ''
+        # systemd runs ExecStart without a shell and has no Path= key, so a script sets PATH and keeps `|| true` working
+        ExecStart = "${pkgs.writeShellScript "hyde-set-theme" ''
+          export PATH="${themeSwitchPath}"
           ${config.home.homeDirectory}/.local/lib/hyde/theme.switch.sh -s "${cfg.active}" || true
-        '';
-        Path = with pkgs; [
-          awww
-          killall
-          hyprland
-          dunst
-          libnotify
-          systemd
-          waybar
-          kitty
-          gawk
-          coreutils
-          parallel
-          imagemagick
-          which
-          util-linux
-          dconf
-          "${config.home.homeDirectory}/.local/bin"
-        ];
+        ''}";
       };
       Install.WantedBy = ["graphical-session.target"];
     };
