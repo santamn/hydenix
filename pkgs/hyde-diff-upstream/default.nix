@@ -7,8 +7,8 @@
     src = pkgs.fetchFromGitHub {
       owner = "HyDE-Project";
       repo = "HyDE";
-      rev = "fa2fd57afc7203b1b5653d3271f3a57ea3873f97";
-      sha256 = "sha256-/9oT3c60hZQtVdfbZWWUFo7GeU0pHQOWwhfsFELMoNE=";
+      rev = "cc824554ac63417d58253ea6764dc0045d963dce";
+      sha256 = "sha256-WpsZmb4R9aePm958Xck50EOB0w36Xf7mFBbt+flB74o=";
     };
     passthru = (old.passthru or {}) // {updateBranch = "master";};
   });
