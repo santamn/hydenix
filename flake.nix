@@ -31,15 +31,21 @@
     treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
 
     # Keep non-ASCII in theme names from being escaped into a form Nix misreads (e.g. "Rosé Pine" -> "Rosu00e9 Pine")
-    nix-update = pkgs.nix-update.overrideAttrs (prev: {
-      postPatch =
-        (prev.postPatch or "")
-        + ''
-          substituteInPlace nix_update/options.py \
-            --replace-fail '".".join(map(json.dumps, self.attribute_path))' \
-              '".".join(json.dumps(part, ensure_ascii=False) for part in self.attribute_path)'
-        '';
-    });
+    # Since Nix 2.35, `nix flake metadata` reports the flake's store path without writing it, so archive the flake for nix-update to read (Mic92/nix-update#687)
+    # shortcut: the archive patch is checked against nix-update 1.16.0 only, drop it once a release fixes #687
+    nix-update = assert pkgs.lib.assertMsg (pkgs.nix-update.version == "1.16.0")
+    "nix-update is now ${pkgs.nix-update.version}: drop the flake archive patch if this release fixes Mic92/nix-update#687, otherwise update the version checked here";
+      pkgs.nix-update.overrideAttrs (prev: {
+        postPatch =
+          (prev.postPatch or "")
+          + ''
+            substituteInPlace nix_update/options.py \
+              --replace-fail '".".join(map(json.dumps, self.attribute_path))' \
+                '".".join(json.dumps(part, ensure_ascii=False) for part in self.attribute_path)' \
+              --replace-fail 'metadata = json.loads(result.stdout)' \
+                'metadata = json.loads(result.stdout); subprocess.run(["nix", "flake", "archive"], cwd=import_path, capture_output=True, check=True)'
+          '';
+      });
   in {
     # Define custom NixOS modules
     nixosModules.default = {...}: {
